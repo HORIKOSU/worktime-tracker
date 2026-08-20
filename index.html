@@ -165,10 +165,10 @@
   .day-timeline { position: relative; }
   .day-hour-row { position: absolute; left: 0; right: 0; border-top: 1px solid var(--gridline); }
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
-  .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
-  .day-segment-block.compact { flex-direction: row; align-items: center; gap: 6px; }
+  .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-align: center; }
+  .day-segment-block.compact { flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
-  .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
   .day-segment-block.compact .day-segment-name { flex: 0 1 auto; }
   .day-segment-time { font-size: 10px; opacity: 0.9; white-space: nowrap; flex: 0 0 auto; }
   .day-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
@@ -226,7 +226,7 @@
         </div>
         <div class="cal-weekdays"><div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div></div>
         <div id="schMonthGrid" class="cal-grid"></div>
-        <p class="generated-note" style="margin-top:10px;">日付をクリックすると、その日の「日表示」を開きます。</p>
+        <p class="generated-note" style="margin-top:10px; text-align:center;">日付をクリックすると、その日の「日表示」を開きます。</p>
       </div>
 
       <div id="scheduleDayView" style="display:none;">
@@ -236,7 +236,7 @@
           <button type="button" id="schDayTodayBtn" class="cal-today-btn">今日</button>
           <button type="button" id="schDayNextBtn" class="cal-nav-btn" aria-label="次の日">›</button>
         </div>
-        <div id="schDayTotal" class="generated-note" style="margin-bottom:8px;"></div>
+        <div id="schDayTotal" class="generated-note" style="margin-bottom:8px; text-align:center;"></div>
         <div class="day-timeline-scroll" id="dayTimelineScroll">
           <div class="day-timeline" id="dayTimeline"></div>
         </div>
