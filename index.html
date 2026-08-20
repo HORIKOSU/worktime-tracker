@@ -386,6 +386,7 @@
   var state = loadInitialState();
 
   function persistState() {
+    invalidateBusinessOrderCache();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); usingLocalData = true; } catch (e) {}
   }
 
@@ -907,11 +908,31 @@
     if (!trimmed) return "";
     return trimmed.split(/\s+/)[0];
   }
+  // 業務名ごとの色は「最初に登場した順」で12色を順番に割り当てる（ハッシュ方式だと、
+  // 業務の数が色数より少なくても偶然同じ色にぶつかり、色のレパートリーが無駄になっていたため）。
+  // これにより、登場する業務が色数の範囲内であれば必ず異なる色になる。
+  var businessOrderCache = null;
+  function businessAppearanceOrder() {
+    if (businessOrderCache) return businessOrderCache;
+    var seen = {};
+    var order = [];
+    var sorted = state.sessions.slice().sort(function (a, b) { return a.start.localeCompare(b.start); });
+    sorted.forEach(function (s) {
+      var b = businessLabel(projectLabel(s));
+      if (b && !seen[b]) { seen[b] = true; order.push(b); }
+    });
+    businessOrderCache = order;
+    return order;
+  }
+  function invalidateBusinessOrderCache() {
+    businessOrderCache = null;
+  }
   function colorForProject(name) {
     var key = businessLabel(name) || name || "";
-    var hash = 0;
-    for (var i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-    return SERIES_COLORS[hash % SERIES_COLORS.length];
+    var order = businessAppearanceOrder();
+    var idx = order.indexOf(key);
+    if (idx === -1) idx = order.length;
+    return SERIES_COLORS[idx % SERIES_COLORS.length];
   }
   function minutesOfDay(iso) {
     var t = splitIsoSeconds(iso).time.split(":");
@@ -1120,7 +1141,7 @@
 
   // ---- stats tab ----
   var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null;
-  var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2", "#00897b", "#ad1477", "#92400e"];
+  var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2", "#00897b", "#ad1477", "#92400e", "#7cb342"];
 
   function last30Days() {
     var days = [], base = new Date(); base.setHours(0, 0, 0, 0);
