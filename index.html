@@ -79,12 +79,12 @@
 
   /* status card / timer */
   .status-card { text-align: center; padding: 26px 18px; min-height: 328px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .status-card.running { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); box-shadow: inset 4px 0 0 var(--project-color, var(--series-2)); }
+  .status-card.running { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
-  .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
+  .status-badge.running { background: var(--series-2); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 6px 0 4px; color: var(--text-primary); }
-  .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color, var(--series-1)); margin-bottom: 2px; }
+  .timer-project { font-size: 15px; font-weight: 700; color: var(--series-1); margin-bottom: 2px; }
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
@@ -124,7 +124,6 @@
   .hist-entry-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .hist-entry-name { font-weight: 700; font-size: 13px; color: var(--text-primary); }
   .hist-entry-name .running-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--series-2); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
-  .project-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
   .hist-entry-detail { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
   .hist-seg-line { line-height: 1.6; }
   .hist-seg-total { font-weight: 700; color: var(--text-primary); margin-top: 2px; }
@@ -568,7 +567,6 @@
       var segLabel = segs.length > 1 ? "区間：" : "開始：";
       var segText = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); }).join("、");
       card.className = "card status-card running";
-      card.style.setProperty("--project-color", colorForProject(projectLabel(running)));
       card.innerHTML =
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-display" id="elapsedTimer">' + formatHMS(durationSecOf(running)) + '</div>' +
@@ -590,7 +588,6 @@
       var lastProject = last ? (last.project || "") : "";
       var forcedNew = false;
       card.className = "card status-card";
-      card.style.removeProperty("--project-color");
       card.innerHTML =
         '<span class="status-badge idle">停止中</span>' +
         '<div class="status-form">' +
@@ -720,7 +717,7 @@
       var running = !s.end;
       html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
         '<div class="hist-entry-main">' +
-        '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+        '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
         '<div class="hist-entry-detail">' + (getSegments(s).length > 1
           ? '<div class="hist-seg-line">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '</div>' + sessionDetailHtml(s)
           : escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + sessionDetailHtml(s)) + '</div>' +
@@ -807,7 +804,7 @@
           var running = !s.end;
           html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
-            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+            '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
             '<div class="hist-entry-detail">' + sessionDetailHtml(s) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
@@ -1214,7 +1211,7 @@
 
     var labels = entries.map(function (e) { return e.name; });
     var hours = entries.map(function (e) { return +(e.sec / 3600).toFixed(2); });
-    var colors = entries.map(function (e) { return colorForProject(e.name); });
+    var colors = entries.map(function (e, i) { return SERIES_COLORS[i % SERIES_COLORS.length]; });
 
     var ctx = document.getElementById("projectChart").getContext("2d");
     if (projectChartInstance) projectChartInstance.destroy();
