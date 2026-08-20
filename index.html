@@ -484,7 +484,7 @@
     return h + "時間" + m + "分";
   }
   function formatTimeShort(iso) {
-    return splitIsoSeconds(iso).time;
+    return splitIso(iso).time;
   }
   function sessionDetailText(s) {
     var segs = getSegments(s);
