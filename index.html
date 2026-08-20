@@ -150,6 +150,12 @@
   .hist-edit-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
   .hist-edit-field input, .hist-edit-field select { width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
   .hist-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .seg-break-row { background: #fffaf0; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #92720f; margin-bottom: 6px; }
+  .e-break-remove { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .e-break-remove:hover { background: var(--page-plane); }
+  .e-add-break { appearance: none; border: 1px dashed var(--series-4); background: transparent; color: #92720f; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .e-add-break:hover { background: #fffaf0; }
 
   /* schedule tab: month calendar + day timeline */
   .mode-toggle { display: flex; gap: 4px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
@@ -366,6 +372,10 @@
   var usingLocalData = false;
   var tickInterval = null;
   var historyEditingId = null;
+  // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
+  // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
+  // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
+  var historyEditDraftSegments = null;
   var scheduleViewMode = "month";
   var scheduleMonthState = null;
   var scheduleDayState = null;
@@ -814,6 +824,63 @@
     renderHistoryList();
   }
 
+  // 編集フォームの入力欄（開始・休憩0個以上・終了）から、区間の配列を組み立てる。
+  // 「休憩を追加／削除」ボタンを押した直後や、保存時に呼び出す。
+  function readDraftSegmentsFromDom(editRow) {
+    var curStart = combineDateTime(editRow.querySelector(".e-start-date").value, editRow.querySelector(".e-start-time").value);
+    var segs = [];
+    var current = { start: curStart, end: null };
+    var breakRows = editRow.querySelectorAll(".seg-break-row");
+    breakRows.forEach(function (br) {
+      current.end = combineDateTime(br.querySelector(".e-break-start-date").value, br.querySelector(".e-break-start-time").value);
+      segs.push(current);
+      current = { start: combineDateTime(br.querySelector(".e-break-end-date").value, br.querySelector(".e-break-end-time").value), end: null };
+    });
+    var runningEl = editRow.querySelector(".e-running");
+    if (runningEl && runningEl.checked) {
+      current.end = null;
+    } else {
+      current.end = combineDateTime(editRow.querySelector(".e-end-date").value, editRow.querySelector(".e-end-time").value);
+    }
+    segs.push(current);
+    return segs;
+  }
+
+  // 区間の配列（開始～休憩～終了）から編集フォームのHTMLを組み立てる。
+  function renderSegmentEditFields(segs) {
+    var firstStart = splitIsoSeconds(segs[0].start);
+    var html = '<div class="hist-edit-fields">' +
+      '<div class="hist-edit-field"><label>開始日</label><input type="date" class="e-start-date" value="' + firstStart.date + '"></div>' +
+      '<div class="hist-edit-field"><label>開始時刻</label><input type="time" step="1" class="e-start-time" value="' + firstStart.time + '"></div>' +
+      '</div>';
+
+    for (var i = 0; i < segs.length - 1; i++) {
+      var bStart = splitIsoSeconds(segs[i].end || segs[i].start);
+      var bEnd = splitIsoSeconds(segs[i + 1].start || segs[i].end || segs[i].start);
+      html += '<div class="seg-break-row" data-break-index="' + i + '">' +
+        '<div class="seg-break-heading">☕ 休憩' + (i + 1) + '<button type="button" class="e-break-remove" data-break-index="' + i + '">この休憩を削除</button></div>' +
+        '<div class="hist-edit-fields">' +
+        '<div class="hist-edit-field"><label>休憩開始日</label><input type="date" class="e-break-start-date" value="' + bStart.date + '"></div>' +
+        '<div class="hist-edit-field"><label>休憩開始時刻</label><input type="time" step="1" class="e-break-start-time" value="' + bStart.time + '"></div>' +
+        '<div class="hist-edit-field"><label>休憩終了日</label><input type="date" class="e-break-end-date" value="' + bEnd.date + '"></div>' +
+        '<div class="hist-edit-field"><label>休憩終了時刻</label><input type="time" step="1" class="e-break-end-time" value="' + bEnd.time + '"></div>' +
+        '</div>' +
+        '</div>';
+    }
+
+    var last = segs[segs.length - 1];
+    var running = !last.end;
+    var lastEndParts = splitIsoSeconds(last.end || last.start);
+    html += '<div class="hist-edit-fields">' +
+      '<div class="hist-edit-field"><label>終了日</label><input type="date" class="e-end-date" value="' + lastEndParts.date + '"' + (running ? ' disabled' : '') + '></div>' +
+      '<div class="hist-edit-field"><label>終了時刻</label><input type="time" step="1" class="e-end-time" value="' + lastEndParts.time + '"' + (running ? ' disabled' : '') + '></div>' +
+      '</div>' +
+      '<label class="checkbox-row"><input type="checkbox" class="e-running"' + (running ? ' checked' : '') + '> まだ作業中（終了時刻を設定しない）</label>' +
+      '<div class="seg-add-break-row"><button type="button" class="e-add-break"' + (running ? ' style="display:none;"' : '') + '>＋ 休憩を追加</button></div>';
+
+    return html;
+  }
+
   function renderHistoryList() {
     var filter = document.getElementById("histProjectFilter").value;
     var filtered = state.sessions.filter(function (s) {
@@ -839,20 +906,13 @@
         '<span class="hist-date-total">合計 ' + formatHM(dayTotal) + '</span></div><div class="hist-date-body">';
       daySessions.forEach(function (s) {
         if (s.id === historyEditingId) {
-          var startParts = splitIsoSeconds(s.start);
-          var endParts = s.end ? splitIsoSeconds(s.end) : { date: startParts.date, time: startParts.time };
-          var isMulti = s.segments && s.segments.length > 1;
+          var draftSegs = historyEditDraftSegments || getSegments(s).map(function (seg) { return { start: seg.start, end: seg.end }; });
           html += '<div class="hist-entry-edit" data-id="' + escapeHtml(s.id) + '">' +
-            (isMulti ? '<p class="generated-note" style="margin:0;">この記録は「再開」により複数の区間（' + escapeHtml(sessionDetailText(s)) + '）をまとめています。保存すると1つの区間にまとめられます。</p>' : '') +
             '<div class="hist-edit-fields">' +
             '<div class="hist-edit-field"><label>案件名</label><input type="text" class="e-project" list="projectList" value="' + escapeHtml(s.project || "") + '"></div>' +
             '<div class="hist-edit-field"><label>メモ</label><input type="text" class="e-memo" value="' + escapeHtml(s.memo || "") + '"></div>' +
-            '<div class="hist-edit-field"><label>開始日</label><input type="date" class="e-start-date" value="' + startParts.date + '"></div>' +
-            '<div class="hist-edit-field"><label>開始時刻</label><input type="time" step="1" class="e-start-time" value="' + startParts.time + '"></div>' +
-            '<div class="hist-edit-field"><label>終了日</label><input type="date" class="e-end-date" value="' + endParts.date + '"' + (!s.end ? ' disabled' : '') + '></div>' +
-            '<div class="hist-edit-field"><label>終了時刻</label><input type="time" step="1" class="e-end-time" value="' + endParts.time + '"' + (!s.end ? ' disabled' : '') + '></div>' +
             '</div>' +
-            '<label class="checkbox-row"><input type="checkbox" class="e-running"' + (!s.end ? ' checked' : '') + '> まだ作業中（終了時刻を設定しない）</label>' +
+            renderSegmentEditFields(draftSegs) +
             '<div class="hist-edit-actions"><button type="button" class="hist-save-btn">保存</button><button type="button" class="hist-cancel-btn">キャンセル</button></div>' +
             '</div>';
         } else {
@@ -875,15 +935,16 @@
 
   document.getElementById("histProjectFilter").addEventListener("change", function () {
     historyEditingId = null;
+    historyEditDraftSegments = null;
     renderHistoryList();
   });
 
   document.getElementById("historyWrap").addEventListener("click", function (evt) {
     var editBtn = evt.target.closest ? evt.target.closest(".hist-edit-btn") : null;
-    if (editBtn) { historyEditingId = editBtn.getAttribute("data-id"); renderHistoryList(); return; }
+    if (editBtn) { historyEditingId = editBtn.getAttribute("data-id"); historyEditDraftSegments = null; renderHistoryList(); return; }
 
     var cancelBtn = evt.target.closest ? evt.target.closest(".hist-cancel-btn") : null;
-    if (cancelBtn) { historyEditingId = null; renderHistoryList(); return; }
+    if (cancelBtn) { historyEditingId = null; historyEditDraftSegments = null; renderHistoryList(); return; }
 
     var runningCheckbox = evt.target.closest ? evt.target.closest(".e-running") : null;
     if (runningCheckbox) {
@@ -891,6 +952,32 @@
       var endDateEl = row.querySelector(".e-end-date"), endTimeEl = row.querySelector(".e-end-time");
       endDateEl.disabled = runningCheckbox.checked;
       endTimeEl.disabled = runningCheckbox.checked;
+      var addBreakBtnEl = row.querySelector(".e-add-break");
+      if (addBreakBtnEl) addBreakBtnEl.style.display = runningCheckbox.checked ? "none" : "";
+      return;
+    }
+
+    var addBreakBtn = evt.target.closest ? evt.target.closest(".e-add-break") : null;
+    if (addBreakBtn) {
+      var addRow = addBreakBtn.closest(".hist-entry-edit");
+      var draftForAdd = readDraftSegmentsFromDom(addRow);
+      var lastForAdd = draftForAdd[draftForAdd.length - 1];
+      if (!lastForAdd.end) { window.alert("作業中のままでは休憩を追加できません。先に終了時刻を設定してください。"); return; }
+      draftForAdd.push({ start: lastForAdd.end, end: lastForAdd.end });
+      historyEditDraftSegments = draftForAdd;
+      renderHistoryList();
+      return;
+    }
+
+    var removeBreakBtn = evt.target.closest ? evt.target.closest(".e-break-remove") : null;
+    if (removeBreakBtn) {
+      var removeRow = removeBreakBtn.closest(".hist-entry-edit");
+      var breakIdx = parseInt(removeBreakBtn.getAttribute("data-break-index"), 10);
+      var draftForRemove = readDraftSegmentsFromDom(removeRow);
+      draftForRemove[breakIdx] = { start: draftForRemove[breakIdx].start, end: draftForRemove[breakIdx + 1].end };
+      draftForRemove.splice(breakIdx + 1, 1);
+      historyEditDraftSegments = draftForRemove;
+      renderHistoryList();
       return;
     }
 
@@ -899,38 +986,46 @@
       var editRow = saveBtn.closest(".hist-entry-edit");
       var id = editRow.getAttribute("data-id");
       var session = state.sessions.find(function (s) { return s.id === id; });
-      if (!session) { historyEditingId = null; renderHistoryList(); return; }
+      if (!session) { historyEditingId = null; historyEditDraftSegments = null; renderHistoryList(); return; }
 
       var project = editRow.querySelector(".e-project").value.trim();
       var memo = editRow.querySelector(".e-memo").value.trim();
-      var startDate = editRow.querySelector(".e-start-date").value;
-      var startTime = editRow.querySelector(".e-start-time").value;
-      var stillRunning = editRow.querySelector(".e-running").checked;
+      var newSegs = readDraftSegmentsFromDom(editRow);
 
-      var newStart = combineDateTime(startDate, startTime);
-      if (!newStart) { window.alert("開始日・開始時刻を入力してください。"); return; }
+      if (!newSegs[0].start) { window.alert("開始日・開始時刻を入力してください。"); return; }
 
-      // 編集して保存すると、複数区間（再開でできたもの）は1つの区間にまとめられる。
-      delete session.segments;
-
-      if (stillRunning) {
-        var otherRunning = state.sessions.some(function (s) { return s.id !== id && !s.end; });
-        if (otherRunning) { window.alert("すでに作業中の記録が他にあります。先にそちらを終了してください。"); return; }
-        session.start = newStart;
-        session.end = null;
-      } else {
-        var endDate = editRow.querySelector(".e-end-date").value;
-        var endTime = editRow.querySelector(".e-end-time").value;
-        var newEnd = combineDateTime(endDate, endTime);
-        if (!newEnd) { window.alert("終了日・終了時刻を入力してください（作業中のままにする場合はチェックボックスを入れてください）。"); return; }
-        if (parseLocal(newEnd) <= parseLocal(newStart)) { window.alert("終了時刻は開始時刻より後にしてください。"); return; }
-        session.start = newStart;
-        session.end = newEnd;
+      for (var i = 0; i < newSegs.length; i++) {
+        var seg = newSegs[i];
+        var isLastSeg = i === newSegs.length - 1;
+        if (isLastSeg && !seg.end) {
+          var otherRunning = state.sessions.some(function (s) { return s.id !== id && !s.end; });
+          if (otherRunning) { window.alert("すでに作業中の記録が他にあります。先にそちらを終了してください。"); return; }
+        } else if (!seg.end) {
+          window.alert("休憩" + (i + 1) + "の開始日時（区間の終了）を入力してください。");
+          return;
+        } else if (parseLocal(seg.end) <= parseLocal(seg.start)) {
+          window.alert((isLastSeg ? "終了時刻" : "区間" + (i + 1) + "の終了時刻（休憩の開始）") + "は、開始時刻より後にしてください。");
+          return;
+        }
+        if (i > 0) {
+          var prevEnd = newSegs[i - 1].end;
+          if (!prevEnd) { window.alert("休憩" + i + "の終了日時（作業再開時刻）を入力してください。"); return; }
+          if (parseLocal(seg.start) < parseLocal(prevEnd)) { window.alert("休憩" + i + "の終了時刻は、休憩の開始より後にしてください。"); return; }
+        }
       }
+
       session.project = project;
       session.memo = memo;
+      session.start = newSegs[0].start;
+      session.end = newSegs[newSegs.length - 1].end || null;
+      if (newSegs.length > 1) {
+        session.segments = newSegs.map(function (seg) { return { start: seg.start, end: seg.end || null }; });
+      } else {
+        delete session.segments;
+      }
       persistState();
       historyEditingId = null;
+      historyEditDraftSegments = null;
       renderAll();
       return;
     }
@@ -1140,6 +1235,7 @@
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
     if (!block) return;
     historyEditingId = block.getAttribute("data-id");
+    historyEditDraftSegments = null;
     var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
     if (historyTabBtn) historyTabBtn.click();
     renderHistoryList();
