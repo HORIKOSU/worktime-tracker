@@ -880,7 +880,16 @@
     var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
     if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
     if (state.onBreakSessionId === id) state.onBreakSessionId = null;
+    var deletedTaskId = target.taskId;
     state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
+    // このタスクを参照する記録が他に残っていなければ、記録の無い「空のタスク」が
+    // 未完了タスク一覧に残り続けてしまうため、タスク自体も削除する。
+    if (deletedTaskId) {
+      var stillReferenced = state.sessions.some(function (s) { return s.taskId === deletedTaskId; });
+      if (!stillReferenced) {
+        state.tasks = getTasks().filter(function (t) { return t.id !== deletedTaskId; });
+      }
+    }
     persistState();
     renderAll();
   }
