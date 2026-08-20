@@ -90,8 +90,6 @@
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
-  .resume-hint { max-width: 380px; margin: 14px auto 0; text-align: left; font-size: 12px; color: var(--series-1); background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
-  .resume-hint a { color: var(--text-secondary); text-decoration: underline; }
   .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
   .big-btn.start { background: var(--series-1); color: #fff; }
   .big-btn.start:hover { opacity: 0.92; }
@@ -104,6 +102,23 @@
   .break-alt-action { margin-top: 12px; font-size: 12px; }
   .break-alt-action a { color: var(--text-secondary); text-decoration: underline; }
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
+  .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
+  .task-list-section { max-width: 480px; margin: 0 auto 18px; text-align: left; }
+  .task-list-heading { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+  .task-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .task-row.done { background: var(--surface-1); }
+  .task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+  .task-row-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .task-row-memo { font-size: 11px; color: var(--text-secondary); }
+  .task-row-total { font-size: 11px; color: var(--text-secondary); }
+  .task-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .task-resume-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .task-resume-btn:hover { background: var(--series-1); color: #fff; }
+  .task-complete-btn, .task-reopen-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .task-complete-btn:hover { border-color: var(--success); color: var(--success); }
+  .task-done-section { max-width: 480px; margin: 6px auto 0; text-align: left; }
+  .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; }
+  .task-done-section .task-row { opacity: 0.8; }
   .running-memo-field input[type="text"] { padding: 12px 14px; border-radius: 10px; }
 
   /* data io (import/export) */
@@ -488,12 +503,6 @@
     }
     session.end = now;
   }
-  function lastFinishedSession() {
-    var finished = state.sessions.filter(function (s) { return s.end; });
-    if (!finished.length) return null;
-    finished.sort(function (a, b) { return b.end.localeCompare(a.end); });
-    return finished[0];
-  }
   function formatHMS(sec) {
     var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
     return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
@@ -553,6 +562,42 @@
     return s;
   }
 
+  // ---- タスク（IDで管理する、完了になるまで残る作業単位） ----
+  // 1つの「タスク」に対して、開始・終了（＝作業区間）を何度でも行える。
+  // 実体としては、同じ taskId を持つ複数の session をまたいで合計時間を集計する。
+  // これにより、日をまたいだ再開でも履歴上は各回ごとに正しい日付で記録される。
+  function getTasks() {
+    if (!state.tasks) state.tasks = [];
+    return state.tasks;
+  }
+  function createTask(project, memo) {
+    var num = (state.nextTaskNumber || 0) + 1;
+    state.nextTaskNumber = num;
+    var task = { id: "T" + ("00" + num).slice(-3), project: project, memo: memo || "", completed: false };
+    getTasks().push(task);
+    return task;
+  }
+  function getTaskById(id) {
+    return getTasks().find(function (t) { return t.id === id; });
+  }
+  function taskTotalSec(task) {
+    var total = 0;
+    state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
+    return total;
+  }
+  // 未完了タスクの一覧（現在作業中・休憩中のタスクはステータスカードに専用表示があるため除く）
+  function openTasks() {
+    var running = getRunningSession();
+    var onBreak = getOnBreakSession();
+    var excludeIds = {};
+    if (running && running.taskId) excludeIds[running.taskId] = true;
+    if (onBreak && onBreak.taskId) excludeIds[onBreak.taskId] = true;
+    return getTasks().filter(function (t) { return !t.completed && !excludeIds[t.id]; });
+  }
+  function completedTasks() {
+    return getTasks().filter(function (t) { return t.completed; });
+  }
+
   function distinctProjects() {
     var seen = {}, order = [];
     // most recently started first
@@ -597,12 +642,13 @@
       var segs = getSegments(running);
       var segLabel = segs.length > 1 ? "区間：" : "開始：";
       var segText = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); }).join("、");
+      var runningTask = running.taskId ? getTaskById(running.taskId) : null;
       card.className = "card status-card running";
       card.style.setProperty("--project-color", colorForProject(projectLabel(running)));
       card.innerHTML =
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-display" id="elapsedTimer">' + formatHMS(durationSecOf(running)) + '</div>' +
-        '<div class="timer-project">' + escapeHtml(projectLabel(running)) + '</div>' +
+        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + '</div>' +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">メモ</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="任意"></div>' +
         '<div class="status-btn-row">' +
@@ -626,11 +672,12 @@
       });
     } else if (getOnBreakSession()) {
       var onBreak = getOnBreakSession();
+      var onBreakTask = onBreak.taskId ? getTaskById(onBreak.taskId) : null;
       card.className = "card status-card on-break";
       card.style.setProperty("--project-color", colorForProject(projectLabel(onBreak)));
       card.innerHTML =
         '<span class="status-badge on-break">☕ 休憩中</span>' +
-        '<div class="timer-project">' + escapeHtml(projectLabel(onBreak)) + '</div>' +
+        '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
         '<div class="break-alt-action"><a href="#" id="breakNewLink">別の作業を始める</a></div>';
@@ -647,70 +694,103 @@
         renderAll();
       });
     } else {
-      var last = lastFinishedSession();
-      var lastProject = last ? (last.project || "") : "";
-      var forcedNew = false;
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
-      card.innerHTML =
-        '<span class="status-badge idle">停止中</span>' +
-        '<div class="status-form">' +
-        '<div><label class="field-label">案件名</label><input type="text" id="startProjectInput" list="projectList" value="' + escapeHtml(lastProject) + '" placeholder="例：〇〇様 TikTok運用代行"></div>' +
-        '<div><label class="field-label">メモ</label><input type="text" id="startMemoInput" placeholder="任意"></div>' +
-        '</div>' +
-        '<div id="resumeHint" class="resume-hint" style="display:none;"></div>' +
-        '<button type="button" class="big-btn start" id="startBtn">▶ 開始</button>';
 
-      var projectInput = document.getElementById("startProjectInput");
-      var startBtn = document.getElementById("startBtn");
-      var resumeHint = document.getElementById("resumeHint");
+      var openList = openTasks();
+      var doneList = completedTasks();
 
-      function updateResumeUI() {
-        var typed = projectInput.value.trim();
-        var candidate = (last && typed && last.project && last.project.trim() === typed && !forcedNew) ? last : null;
-        if (candidate) {
-          startBtn.textContent = "▶ 再開する（前回の続き）";
-          startBtn.dataset.resumeId = candidate.id;
-          resumeHint.style.display = "block";
-          resumeHint.innerHTML = "「" + escapeHtml(typed) + "」の続きから再開します（これまでの合計 " + escapeHtml(formatHM(durationSecOf(candidate))) + "）。" +
-            ' <a href="#" id="forceNewLink">別の新しい記録として開始する</a>';
-        } else {
-          startBtn.textContent = "▶ 開始";
-          delete startBtn.dataset.resumeId;
-          resumeHint.style.display = "none";
-          resumeHint.innerHTML = "";
-        }
+      var openHtml = "";
+      if (openList.length) {
+        openHtml = '<div class="task-list-section"><div class="task-list-heading">未完了のタスク（' + openList.length + '件）</div>' +
+          openList.map(function (t) {
+            return '<div class="task-row">' +
+              '<div class="task-row-main">' +
+              '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
+              '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
+              (t.memo ? '<span class="task-row-memo">' + escapeHtml(t.memo) + '</span>' : '') +
+              '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
+              '</div>' +
+              '<div class="task-row-actions">' +
+              '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
+              '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
+              '</div>' +
+              '</div>';
+          }).join("") +
+          '</div>';
       }
 
-      projectInput.addEventListener("input", function () { forcedNew = false; updateResumeUI(); });
-      resumeHint.addEventListener("click", function (evt) {
-        var link = evt.target.closest ? evt.target.closest("#forceNewLink") : null;
-        if (link) { evt.preventDefault(); forcedNew = true; updateResumeUI(); }
-      });
-      updateResumeUI();
+      var doneHtml = "";
+      if (doneList.length) {
+        doneHtml = '<details class="task-done-section"><summary>完了したタスク（' + doneList.length + '件）</summary>' +
+          doneList.map(function (t) {
+            return '<div class="task-row done">' +
+              '<div class="task-row-main">' +
+              '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
+              '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
+              '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
+              '</div>' +
+              '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button></div>' +
+              '</div>';
+          }).join("") +
+          '</details>';
+      }
 
-      startBtn.addEventListener("click", function () {
-        var project = projectInput.value.trim();
+      card.innerHTML =
+        '<span class="status-badge idle">停止中</span>' +
+        openHtml +
+        '<div class="status-form">' +
+        '<div><label class="field-label">案件名</label><input type="text" id="startProjectInput" list="projectList" placeholder="例：〇〇様 TikTok運用代行"></div>' +
+        '<div><label class="field-label">メモ</label><input type="text" id="startMemoInput" placeholder="任意"></div>' +
+        '</div>' +
+        '<button type="button" class="big-btn start" id="startBtn">▶ 新しいタスクを開始</button>' +
+        doneHtml;
+
+      document.getElementById("startBtn").addEventListener("click", function () {
+        var project = document.getElementById("startProjectInput").value.trim();
         if (!project) {
           window.alert("案件名を入力してください。");
-          projectInput.focus();
+          document.getElementById("startProjectInput").focus();
           return;
         }
         var memo = document.getElementById("startMemoInput").value.trim();
-        var resumeId = startBtn.dataset.resumeId;
-        if (resumeId) {
-          var target = state.sessions.find(function (s) { return s.id === resumeId; });
-          if (target && !target.end) { window.alert("すでに作業中の記録があります。"); return; }
-          if (target) {
-            resumeSession(target, memo);
-            persistState();
-            renderAll();
-            return;
-          }
-        }
-        state.sessions.push({ id: generateId(), project: project, memo: memo, start: nowLocalIso(), end: null });
+        var task = createTask(project, memo);
+        state.sessions.push({ id: generateId(), project: project, memo: memo, start: nowLocalIso(), end: null, taskId: task.id });
         persistState();
         renderAll();
+      });
+
+      card.querySelectorAll(".task-resume-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var task = getTaskById(btn.getAttribute("data-task-id"));
+          if (!task) return;
+          if (getRunningSession()) { window.alert("すでに作業中の記録があります。"); return; }
+          state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, start: nowLocalIso(), end: null, taskId: task.id });
+          persistState();
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-complete-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var task = getTaskById(btn.getAttribute("data-task-id"));
+          if (!task) return;
+          var total = taskTotalSec(task);
+          if (!window.confirm(task.project + "（" + task.id + "）を完了にしますか？\n合計時間：" + formatHM(total))) return;
+          task.completed = true;
+          persistState();
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-reopen-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var task = getTaskById(btn.getAttribute("data-task-id"));
+          if (!task) return;
+          task.completed = false;
+          persistState();
+          renderAll();
+        });
       });
     }
   }
@@ -781,7 +861,7 @@
       var running = !s.end;
       html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
         '<div class="hist-entry-main">' +
-        '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+        '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
         '<div class="hist-entry-detail">' + (getSegments(s).length > 1
           ? '<div class="hist-seg-line">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '</div>' + sessionDetailHtml(s)
           : escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + sessionDetailHtml(s)) + '</div>' +
@@ -919,7 +999,7 @@
           var running = !s.end;
           html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
-            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
             '<div class="hist-entry-detail">' + sessionDetailHtml(s) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
@@ -1498,9 +1578,10 @@
   });
 
   document.getElementById("csvExportBtn").addEventListener("click", function () {
-    var rows = [["案件名", "メモ", "日付", "開始時刻", "終了時刻", "作業時間(分)"]];
+    var rows = [["タスクID", "案件名", "メモ", "日付", "開始時刻", "終了時刻", "作業時間(分)"]];
     state.sessions.slice().sort(function (a, b) { return a.start.localeCompare(b.start); }).forEach(function (s) {
       rows.push([
+        s.taskId || "",
         projectLabel(s),
         s.memo || "",
         s.start.slice(0, 10),
