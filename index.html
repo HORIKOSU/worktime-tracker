@@ -125,6 +125,8 @@
   .hist-entry-name { font-weight: 700; font-size: 13px; color: var(--text-primary); }
   .hist-entry-name .running-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--series-2); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
   .hist-entry-detail { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .hist-seg-line { line-height: 1.6; }
+  .hist-seg-total { font-weight: 700; color: var(--text-primary); margin-top: 2px; }
   .hist-entry-memo { font-size: 12px; color: var(--text-muted); }
   .hist-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .hist-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -420,6 +422,22 @@
     if (s.end) text += "（" + formatHM(durationSecOf(s)) + "）";
     return text;
   }
+  // 区間が複数（再開でできたもの）ある場合は、横に並べて詰め込むと読みにくいため
+  // 1区間ずつ改行して表示する。単一区間のときは従来どおり1行で表示する。
+  function sessionDetailHtml(s) {
+    var segs = getSegments(s);
+    if (segs.length <= 1) {
+      var seg = segs[0];
+      var line = escapeHtml(formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""));
+      if (s.end) line += escapeHtml("（" + formatHM(durationSecOf(s)) + "）");
+      return line;
+    }
+    var html = segs.map(function (seg) {
+      return '<div class="hist-seg-line">' + escapeHtml(formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : "")) + '</div>';
+    }).join("");
+    if (s.end) html += '<div class="hist-seg-total">合計 ' + escapeHtml(formatHM(durationSecOf(s))) + '</div>';
+    return html;
+  }
   function formatDateHeading(d) {
     var p = d.split("-");
     var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
@@ -628,7 +646,9 @@
       html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
         '<div class="hist-entry-main">' +
         '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
-        '<div class="hist-entry-detail">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + escapeHtml(sessionDetailText(s)) + '</div>' +
+        '<div class="hist-entry-detail">' + (getSegments(s).length > 1
+          ? '<div class="hist-seg-line">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '</div>' + sessionDetailHtml(s)
+          : escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + sessionDetailHtml(s)) + '</div>' +
         (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
         '</div>' +
         '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
@@ -713,7 +733,7 @@
           html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
             '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
-            '<div class="hist-entry-detail">' + escapeHtml(sessionDetailText(s)) + '</div>' +
+            '<div class="hist-entry-detail">' + sessionDetailHtml(s) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
