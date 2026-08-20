@@ -165,10 +165,12 @@
   .day-timeline { position: relative; }
   .day-hour-row { position: absolute; left: 0; right: 0; border-top: 1px solid var(--gridline); }
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
-  .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 3px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; line-height: 1.4; }
+  .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+  .day-segment-block.compact { flex-direction: row; align-items: center; gap: 6px; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
-  .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .day-segment-time { font-size: 10px; opacity: 0.9; white-space: nowrap; }
+  .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .day-segment-block.compact .day-segment-name { flex: 0 1 auto; }
+  .day-segment-time { font-size: 10px; opacity: 0.9; white-space: nowrap; flex: 0 0 auto; }
   .day-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
   .day-now-line::before { content: ""; position: absolute; left: 50px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 
@@ -362,6 +364,8 @@
   var scheduleMonthState = null;
   var scheduleDayState = null;
   var HOUR_PX = 48;
+  var MIN_BLOCK_HEIGHT = 3; // ブロックの最小の高さ(px)。前後の記録と時間が近いことがあるため、実時間より高くしすぎない
+  var COMPACT_BLOCK_HEIGHT = 34; // これより低いブロックは案件名と時刻を横並びの1行で表示する（2行だと時刻が隠れてしまうため）
 
   function isValidState(obj) {
     return !!obj && Array.isArray(obj.sessions);
@@ -999,7 +1003,7 @@
         endMin = Math.min(endMin, 24 * 60);
         blocks.push({
           session: s, seg: seg, running: running, startMin: startMin,
-          top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, 3)
+          top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       });
     });
@@ -1007,7 +1011,8 @@
 
     blocks.forEach(function (b) {
       var color = colorForProject(projectLabel(b.session));
-      html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
+      var compact = b.height < COMPACT_BLOCK_HEIGHT;
+      html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + (compact ? ' compact' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
         '<div class="day-segment-name">' + escapeHtml(projectLabel(b.session)) + '</div>' +
         '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.seg.start)) + '〜' + (b.seg.end ? escapeHtml(formatTimeShort(b.seg.end)) : '') + '</div>' +
         '</div>';
@@ -1037,7 +1042,9 @@
     if (runningBlock) {
       var top = parseFloat(runningBlock.style.top);
       var nowMin = isToday ? minutesOfDay(nowLocalIso()) : 24 * 60;
-      runningBlock.style.height = Math.max((nowMin / 60) * HOUR_PX - top, 3) + "px";
+      var newHeight = Math.max((nowMin / 60) * HOUR_PX - top, 3);
+      runningBlock.style.height = newHeight + "px";
+      runningBlock.classList.toggle("compact", newHeight < COMPACT_BLOCK_HEIGHT);
       if (isToday) {
         var timeEl = runningBlock.querySelector(".day-segment-time");
         if (timeEl) timeEl.textContent = timeEl.textContent.split("〜")[0] + "〜" + formatTimeShort(nowLocalIso());
