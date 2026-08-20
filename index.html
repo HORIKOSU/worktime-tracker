@@ -80,8 +80,10 @@
   /* status card / timer */
   .status-card { text-align: center; padding: 26px 18px; min-height: 328px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .status-card.running { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
+  .status-card.on-break { background: linear-gradient(180deg, #fffaf0, var(--surface-1)); }
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
+  .status-badge.on-break { background: var(--series-4); color: #fff; }
   .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 6px 0 4px; color: var(--text-primary); }
   .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color, var(--series-1)); margin-bottom: 2px; }
@@ -95,6 +97,12 @@
   .big-btn.start:hover { opacity: 0.92; }
   .big-btn.stop { background: var(--danger); color: #fff; }
   .big-btn.stop:hover { opacity: 0.92; }
+  .big-btn.break { background: var(--series-4); color: #fff; }
+  .big-btn.break:hover { opacity: 0.92; }
+  .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
+  .status-btn-row .big-btn { margin: 0; }
+  .break-alt-action { margin-top: 12px; font-size: 12px; }
+  .break-alt-action a { color: var(--text-secondary); text-decoration: underline; }
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
   .running-memo-field input[type="text"] { padding: 12px 14px; border-radius: 10px; }
 
@@ -525,6 +533,16 @@
     return null;
   }
 
+  // 休憩中は該当セッションの最後の区間を一旦終了させ、state.onBreakSessionId で
+  // どのセッションが休憩中かを覚えておく。作業に戻るときは resumeSession() で
+  // 同じセッションに新しい区間を追加する（＝再開の仕組みをそのまま流用）。
+  function getOnBreakSession() {
+    if (!state.onBreakSessionId) return null;
+    var s = state.sessions.find(function (s) { return s.id === state.onBreakSessionId; });
+    if (!s) { state.onBreakSessionId = null; return null; }
+    return s;
+  }
+
   function distinctProjects() {
     var seen = {}, order = [];
     // most recently started first
@@ -577,13 +595,44 @@
         '<div class="timer-project">' + escapeHtml(projectLabel(running)) + '</div>' +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">メモ</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="任意"></div>' +
-        '<button type="button" class="big-btn stop" id="stopBtn">■ 終了</button>';
+        '<div class="status-btn-row">' +
+        '<button type="button" class="big-btn break" id="breakBtn">☕ 休憩</button>' +
+        '<button type="button" class="big-btn stop" id="stopBtn">■ 終了</button>' +
+        '</div>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
         running.memo = this.value;
         persistState();
       });
+      document.getElementById("breakBtn").addEventListener("click", function () {
+        endRunningSession(running);
+        state.onBreakSessionId = running.id;
+        persistState();
+        renderAll();
+      });
       document.getElementById("stopBtn").addEventListener("click", function () {
         endRunningSession(running);
+        persistState();
+        renderAll();
+      });
+    } else if (getOnBreakSession()) {
+      var onBreak = getOnBreakSession();
+      card.className = "card status-card on-break";
+      card.style.setProperty("--project-color", colorForProject(projectLabel(onBreak)));
+      card.innerHTML =
+        '<span class="status-badge on-break">☕ 休憩中</span>' +
+        '<div class="timer-project">' + escapeHtml(projectLabel(onBreak)) + '</div>' +
+        '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
+        '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
+        '<div class="break-alt-action"><a href="#" id="breakNewLink">別の作業を始める</a></div>';
+      document.getElementById("resumeBreakBtn").addEventListener("click", function () {
+        resumeSession(onBreak);
+        state.onBreakSessionId = null;
+        persistState();
+        renderAll();
+      });
+      document.getElementById("breakNewLink").addEventListener("click", function (evt) {
+        evt.preventDefault();
+        state.onBreakSessionId = null;
         persistState();
         renderAll();
       });
@@ -740,6 +789,7 @@
     if (!target) return;
     var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
     if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
+    if (state.onBreakSessionId === id) state.onBreakSessionId = null;
     state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
     persistState();
     renderAll();
