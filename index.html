@@ -78,7 +78,7 @@
   .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; }
 
   /* status card / timer */
-  .status-card { text-align: center; padding: 26px 18px; }
+  .status-card { text-align: center; padding: 26px 18px; min-height: 328px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .status-card.running { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
@@ -87,6 +87,8 @@
   .timer-project { font-size: 15px; font-weight: 700; color: var(--series-1); margin-bottom: 2px; }
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+  .resume-hint { max-width: 380px; margin: 10px auto 0; text-align: left; font-size: 12px; color: var(--series-1); background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .resume-hint a { color: var(--text-secondary); text-decoration: underline; }
   .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; padding: 16px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 6px auto 0; display: block; }
   .big-btn.start { background: var(--series-1); color: #fff; }
   .big-btn.start:hover { opacity: 0.92; }
@@ -144,6 +146,7 @@
     .hist-row-actions { width: 100%; justify-content: flex-end; }
     .hist-edit-field { flex: 1 1 100%; }
     .timer-display { font-size: 34px; }
+    .status-card { min-height: 300px; }
   }
 </style>
 </head>
@@ -361,9 +364,40 @@
   function projectLabel(s) {
     return (s.project && s.project.trim()) ? s.project.trim() : "(案件名未設定)";
   }
+  // セッションは通常1区間（start/end）だが、「再開」した場合は複数区間になる。
+  // segments が無い（=再開されていない）場合は start/end から仮想的に1区間とみなす。
+  function getSegments(s) {
+    return (s.segments && s.segments.length) ? s.segments : [{ start: s.start, end: s.end }];
+  }
+  function segmentDurationSec(seg) {
+    if (seg.end) return Math.max(0, Math.round((parseLocal(seg.end) - parseLocal(seg.start)) / 1000));
+    return Math.max(0, Math.round((new Date() - parseLocal(seg.start)) / 1000));
+  }
   function durationSecOf(s) {
-    if (s.end) return Math.max(0, Math.round((parseLocal(s.end) - parseLocal(s.start)) / 1000));
-    return Math.max(0, Math.round((new Date() - parseLocal(s.start)) / 1000));
+    var total = 0;
+    getSegments(s).forEach(function (seg) { total += segmentDurationSec(seg); });
+    return total;
+  }
+  function resumeSession(session, memo) {
+    if (!session.segments || !session.segments.length) {
+      session.segments = [{ start: session.start, end: session.end }];
+    }
+    session.segments.push({ start: nowLocalIso(), end: null });
+    session.end = null;
+    if (memo !== undefined) session.memo = memo;
+  }
+  function endRunningSession(session) {
+    var now = nowLocalIso();
+    if (session.segments && session.segments.length) {
+      session.segments[session.segments.length - 1].end = now;
+    }
+    session.end = now;
+  }
+  function lastFinishedSession() {
+    var finished = state.sessions.filter(function (s) { return s.end; });
+    if (!finished.length) return null;
+    finished.sort(function (a, b) { return b.end.localeCompare(a.end); });
+    return finished[0];
   }
   function formatHMS(sec) {
     var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -375,7 +409,14 @@
     return h + "時間" + m + "分";
   }
   function formatTimeShort(iso) {
-    return splitIso(iso).time;
+    return splitIsoSeconds(iso).time;
+  }
+  function sessionDetailText(s) {
+    var segs = getSegments(s);
+    var parts = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); });
+    var text = parts.join("、");
+    if (s.end) text += "（" + formatHM(durationSecOf(s)) + "）";
+    return text;
   }
   function formatDateHeading(d) {
     var p = d.split("-");
@@ -432,12 +473,15 @@
     var card = document.getElementById("statusCard");
     var running = getRunningSession();
     if (running) {
+      var segs = getSegments(running);
+      var segLabel = segs.length > 1 ? "区間：" : "開始：";
+      var segText = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); }).join("、");
       card.className = "card status-card running";
       card.innerHTML =
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-display" id="elapsedTimer">' + formatHMS(durationSecOf(running)) + '</div>' +
         '<div class="timer-project">' + escapeHtml(projectLabel(running)) + '</div>' +
-        '<div class="timer-memo">開始：' + escapeHtml(formatTimeShort(running.start)) + '〜</div>' +
+        '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">メモ</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="任意"></div>' +
         '<button type="button" class="big-btn stop" id="stopBtn">■ 終了</button>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
@@ -445,12 +489,14 @@
         persistState();
       });
       document.getElementById("stopBtn").addEventListener("click", function () {
-        running.end = nowLocalIso();
+        endRunningSession(running);
         persistState();
         renderAll();
       });
     } else {
-      var lastProject = distinctProjects()[0] || "";
+      var last = lastFinishedSession();
+      var lastProject = last ? (last.project || "") : "";
+      var forcedNew = false;
       card.className = "card status-card";
       card.innerHTML =
         '<span class="status-badge idle">停止中</span>' +
@@ -458,15 +504,56 @@
         '<div><label class="field-label">案件名</label><input type="text" id="startProjectInput" list="projectList" value="' + escapeHtml(lastProject) + '" placeholder="例：〇〇様 TikTok運用代行"></div>' +
         '<div><label class="field-label">メモ</label><input type="text" id="startMemoInput" placeholder="任意"></div>' +
         '</div>' +
+        '<div id="resumeHint" class="resume-hint" style="display:none;"></div>' +
         '<button type="button" class="big-btn start" id="startBtn">▶ 開始</button>';
-      document.getElementById("startBtn").addEventListener("click", function () {
-        var project = document.getElementById("startProjectInput").value.trim();
+
+      var projectInput = document.getElementById("startProjectInput");
+      var startBtn = document.getElementById("startBtn");
+      var resumeHint = document.getElementById("resumeHint");
+
+      function updateResumeUI() {
+        var typed = projectInput.value.trim();
+        var candidate = (last && typed && last.project && last.project.trim() === typed && !forcedNew) ? last : null;
+        if (candidate) {
+          startBtn.textContent = "▶ 再開する（前回の続き）";
+          startBtn.dataset.resumeId = candidate.id;
+          resumeHint.style.display = "block";
+          resumeHint.innerHTML = "「" + escapeHtml(typed) + "」の続きから再開します（これまでの合計 " + escapeHtml(formatHM(durationSecOf(candidate))) + "）。" +
+            ' <a href="#" id="forceNewLink">別の新しい記録として開始する</a>';
+        } else {
+          startBtn.textContent = "▶ 開始";
+          delete startBtn.dataset.resumeId;
+          resumeHint.style.display = "none";
+          resumeHint.innerHTML = "";
+        }
+      }
+
+      projectInput.addEventListener("input", function () { forcedNew = false; updateResumeUI(); });
+      resumeHint.addEventListener("click", function (evt) {
+        var link = evt.target.closest ? evt.target.closest("#forceNewLink") : null;
+        if (link) { evt.preventDefault(); forcedNew = true; updateResumeUI(); }
+      });
+      updateResumeUI();
+
+      startBtn.addEventListener("click", function () {
+        var project = projectInput.value.trim();
         if (!project) {
           window.alert("案件名を入力してください。");
-          document.getElementById("startProjectInput").focus();
+          projectInput.focus();
           return;
         }
         var memo = document.getElementById("startMemoInput").value.trim();
+        var resumeId = startBtn.dataset.resumeId;
+        if (resumeId) {
+          var target = state.sessions.find(function (s) { return s.id === resumeId; });
+          if (target && !target.end) { window.alert("すでに作業中の記録があります。"); return; }
+          if (target) {
+            resumeSession(target, memo);
+            persistState();
+            renderAll();
+            return;
+          }
+        }
         state.sessions.push({ id: generateId(), project: project, memo: memo, start: nowLocalIso(), end: null });
         persistState();
         renderAll();
@@ -497,6 +584,17 @@
     state.sessions.forEach(function (s) { if (predicate(s)) total += durationSecOf(s); });
     return total;
   }
+  // 日付・週をまたぐ集計は、セッション単位ではなく区間（segment）単位で行う。
+  // 「再開」でできた区間が別の日にまたがっても、その区間が実際に行われた日に正しく計上するため。
+  function sumSegmentSecWhere(predicate) {
+    var total = 0;
+    state.sessions.forEach(function (s) {
+      getSegments(s).forEach(function (seg) {
+        if (predicate(seg, s)) total += segmentDurationSec(seg);
+      });
+    });
+    return total;
+  }
 
   function renderStatRow() {
     var todayStr = todayDateInputValue();
@@ -504,12 +602,12 @@
     var sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
     var monthPrefix = todayStr.slice(0, 7);
 
-    var todaySec = totalSecFiltered(function (s) { return isSameDate(s.start, todayStr); });
-    var weekSec = totalSecFiltered(function (s) {
-      var d = new Date(s.start.slice(0, 10) + "T00:00:00");
+    var todaySec = sumSegmentSecWhere(function (seg) { return isSameDate(seg.start, todayStr); });
+    var weekSec = sumSegmentSecWhere(function (seg) {
+      var d = new Date(seg.start.slice(0, 10) + "T00:00:00");
       return d >= monday && d <= sunday;
     });
-    var monthSec = totalSecFiltered(function (s) { return s.start.slice(0, 7) === monthPrefix; });
+    var monthSec = sumSegmentSecWhere(function (seg) { return seg.start.slice(0, 7) === monthPrefix; });
 
     var row = document.getElementById("statRow");
     row.innerHTML =
@@ -528,12 +626,38 @@
       html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
         '<div class="hist-entry-main">' +
         '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
-        '<div class="hist-entry-detail">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + escapeHtml(formatTimeShort(s.start)) + '〜' + (s.end ? escapeHtml(formatTimeShort(s.end)) : '') + (s.end ? '（' + formatHM(durationSecOf(s)) + '）' : '') + '</div>' +
+        '<div class="hist-entry-detail">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + escapeHtml(sessionDetailText(s)) + '</div>' +
         (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
-        '</div></div>';
+        '</div>' +
+        '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
+        '<button type="button" class="hist-delete-btn" data-id="' + escapeHtml(s.id) + '">削除</button></div>' +
+        '</div>';
     });
     wrap.innerHTML = html;
   }
+
+  function deleteSessionById(id) {
+    var target = state.sessions.find(function (s) { return s.id === id; });
+    if (!target) return;
+    var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
+    if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
+    state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
+    persistState();
+    renderAll();
+  }
+
+  document.getElementById("recentList").addEventListener("click", function (evt) {
+    var editBtn = evt.target.closest ? evt.target.closest(".hist-edit-btn") : null;
+    if (editBtn) {
+      historyEditingId = editBtn.getAttribute("data-id");
+      var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+      if (historyTabBtn) historyTabBtn.click();
+      renderHistoryList();
+      return;
+    }
+    var delBtn = evt.target.closest ? evt.target.closest(".hist-delete-btn") : null;
+    if (delBtn) deleteSessionById(delBtn.getAttribute("data-id"));
+  });
 
   // ---- history tab ----
   function renderHistory() {
@@ -568,7 +692,9 @@
         if (s.id === historyEditingId) {
           var startParts = splitIsoSeconds(s.start);
           var endParts = s.end ? splitIsoSeconds(s.end) : { date: startParts.date, time: startParts.time };
+          var isMulti = s.segments && s.segments.length > 1;
           html += '<div class="hist-entry-edit" data-id="' + escapeHtml(s.id) + '">' +
+            (isMulti ? '<p class="generated-note" style="margin:0;">この記録は「再開」により複数の区間（' + escapeHtml(sessionDetailText(s)) + '）をまとめています。保存すると1つの区間にまとめられます。</p>' : '') +
             '<div class="hist-edit-fields">' +
             '<div class="hist-edit-field"><label>案件名</label><input type="text" class="e-project" list="projectList" value="' + escapeHtml(s.project || "") + '"></div>' +
             '<div class="hist-edit-field"><label>メモ</label><input type="text" class="e-memo" value="' + escapeHtml(s.memo || "") + '"></div>' +
@@ -585,7 +711,7 @@
           html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
             '<div class="hist-entry-name">' + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
-            '<div class="hist-entry-detail">' + escapeHtml(formatTimeShort(s.start)) + '〜' + (s.end ? escapeHtml(formatTimeShort(s.end)) : '') + (s.end ? '（' + formatHM(durationSecOf(s)) + '）' : '') + '</div>' +
+            '<div class="hist-entry-detail">' + escapeHtml(sessionDetailText(s)) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
@@ -635,6 +761,9 @@
       var newStart = combineDateTime(startDate, startTime);
       if (!newStart) { window.alert("開始日・開始時刻を入力してください。"); return; }
 
+      // 編集して保存すると、複数区間（再開でできたもの）は1つの区間にまとめられる。
+      delete session.segments;
+
       if (stillRunning) {
         var otherRunning = state.sessions.some(function (s) { return s.id !== id && !s.end; });
         if (otherRunning) { window.alert("すでに作業中の記録が他にあります。先にそちらを終了してください。"); return; }
@@ -658,16 +787,7 @@
     }
 
     var delBtn = evt.target.closest ? evt.target.closest(".hist-delete-btn") : null;
-    if (delBtn) {
-      var delId = delBtn.getAttribute("data-id");
-      var target = state.sessions.find(function (s) { return s.id === delId; });
-      if (!target) return;
-      var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + formatTimeShort(target.start) + "〜）";
-      if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
-      state.sessions = state.sessions.filter(function (s) { return s.id !== delId; });
-      persistState();
-      renderAll();
-    }
+    if (delBtn) deleteSessionById(delBtn.getAttribute("data-id"));
   });
 
   // ---- manual add ----
@@ -723,12 +843,12 @@
     return filter === "__all__" || projectLabel(s) === filter;
   }
   function secForDate(dateStr, filter) {
-    return totalSecFiltered(function (s) { return isSameDate(s.start, dateStr) && projectMatches(s, filter); });
+    return sumSegmentSecWhere(function (seg, s) { return isSameDate(seg.start, dateStr) && projectMatches(s, filter); });
   }
   function secForWeek(weekStart, filter) {
     var end = new Date(weekStart); end.setDate(weekStart.getDate() + 7);
-    return totalSecFiltered(function (s) {
-      var d = new Date(s.start.slice(0, 10) + "T00:00:00");
+    return sumSegmentSecWhere(function (seg, s) {
+      var d = new Date(seg.start.slice(0, 10) + "T00:00:00");
       return d >= weekStart && d < end && projectMatches(s, filter);
     });
   }
