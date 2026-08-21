@@ -91,6 +91,8 @@
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 6px 0 4px; color: var(--text-primary); }
   .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color, var(--series-1)); margin-bottom: 2px; }
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+  .timer-caption { font-size: 11px; color: var(--text-secondary); margin-top: -4px; margin-bottom: 2px; }
+  .timer-session-elapsed { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
   .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
@@ -716,13 +718,21 @@
       var segLabel = segs.length > 1 ? "区間：" : "開始：";
       var segText = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); }).join("、");
       var runningTask = running.taskId ? getTaskById(running.taskId) : null;
+      var sessionElapsedSec = durationSecOf(running);
+      var priorTaskSec = 0;
+      if (runningTask) {
+        state.sessions.forEach(function (s) { if (s.taskId === runningTask.id && s.id !== running.id) priorTaskSec += durationSecOf(s); });
+      }
+      var hasPriorTime = priorTaskSec > 0;
       card.className = "card status-card running";
       card.style.setProperty("--project-color", colorForProject(projectLabel(running)));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<span class="status-badge running">● 作業中</span>' +
-        '<div class="timer-display" id="elapsedTimer">' + formatHMS(durationSecOf(running)) + '</div>' +
+        '<div class="timer-display" id="elapsedTimer">' + formatHMS(hasPriorTime ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec) + '</div>' +
+        (hasPriorTime ? '<div class="timer-caption">このタスクの合計時間</div>' : '') +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
+        (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">今回：' + formatHMS(sessionElapsedSec) + '</div>' : '') +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
         '<div class="status-btn-row">' +
@@ -1010,8 +1020,16 @@
   function tick() {
     var running = getRunningSession();
     if (running) {
+      var runningTask = running.taskId ? getTaskById(running.taskId) : null;
+      var sessionElapsedSec = durationSecOf(running);
+      var priorTaskSec = 0;
+      if (runningTask) {
+        state.sessions.forEach(function (s) { if (s.taskId === runningTask.id && s.id !== running.id) priorTaskSec += durationSecOf(s); });
+      }
       var timerEl = document.getElementById("elapsedTimer");
-      if (timerEl) timerEl.textContent = formatHMS(durationSecOf(running));
+      if (timerEl) timerEl.textContent = formatHMS(priorTaskSec > 0 ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec);
+      var sessionEl = document.getElementById("sessionElapsedTimer");
+      if (sessionEl) sessionEl.textContent = "今回：" + formatHMS(sessionElapsedSec);
       renderStatRow();
     }
     updateScheduleLiveGauge();
