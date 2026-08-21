@@ -179,6 +179,8 @@
   .hist-date-body { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
   .hist-entry { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
   .hist-entry.is-running { border-color: var(--series-2); }
+  .hist-break-entry { background: #fffaf0; border-color: var(--series-4); }
+  .hist-break-entry.is-running { border-color: var(--series-4); }
   /* 最近の記録：同じタスクの記録を日付をまたいで1つのくくりにまとめた表示 */
   .recent-task-group { background: var(--page-plane); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; }
   .recent-task-group.is-running { border-color: var(--series-2); }
@@ -244,7 +246,7 @@
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
   .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; text-align: center; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
-  .day-break-block { background: repeating-linear-gradient(45deg, #fff8ea, #fff8ea 6px, #ffedc2 6px, #ffedc2 12px); border: 1px dashed var(--series-4); color: #8a6a10; cursor: default; }
+  .day-break-block { background: repeating-linear-gradient(45deg, #fff8ea, #fff8ea 6px, #ffedc2 6px, #ffedc2 12px); border: 1px dashed var(--series-4); color: #8a6a10; }
   .day-break-block .day-segment-name { font-weight: 700; }
   .day-break-block.running { box-shadow: 0 0 0 2px var(--series-4); }
   .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; flex: 0 1 auto; }
@@ -449,6 +451,7 @@
   var usingLocalData = false;
   var tickInterval = null;
   var historyEditingId = null;
+  var generalBreakEditingId = null; // 「記録の履歴」で編集中の一般休憩のID（1件のみ）
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
   // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
@@ -1286,30 +1289,79 @@
     return html;
   }
 
+  // 一般休憩の編集フォームHTML（開始・終了を並列表示、まだ休憩中ならチェックボックスで終了日時を無効化）。
+  function renderGeneralBreakEditFields(b) {
+    var ongoing = !b.end;
+    var startParts = splitIsoSeconds(b.start);
+    var endParts = splitIsoSeconds(b.end || b.start);
+    return '<div class="datetime-row hist-segment-flow">' +
+      '<div class="datetime-pair start">' +
+      '<div class="datetime-pair-label">休憩開始</div>' +
+      '<div class="datetime-pair-inputs"><input type="date" class="e-gb-start-date" value="' + startParts.date + '"><input type="time" step="1" class="e-gb-start-time" value="' + startParts.time + '"></div>' +
+      '</div>' +
+      '<span class="datetime-arrow">→</span>' +
+      '<div class="datetime-pair end">' +
+      '<div class="datetime-pair-label">休憩終了</div>' +
+      '<div class="datetime-pair-inputs"><input type="date" class="e-gb-end-date" value="' + endParts.date + '"' + (ongoing ? ' disabled' : '') + '><input type="time" step="1" class="e-gb-end-time" value="' + endParts.time + '"' + (ongoing ? ' disabled' : '') + '></div>' +
+      '</div>' +
+      '</div>' +
+      '<label class="checkbox-row"><input type="checkbox" class="e-gb-ongoing"' + (ongoing ? ' checked' : '') + '> まだ休憩中（終了時刻を設定しない）</label>';
+  }
+
   function renderHistoryList() {
     var filter = document.getElementById("histProjectFilter").value;
     var filtered = state.sessions.filter(function (s) {
       return filter === "__all__" || projectLabel(s) === filter || (s.project && s.project.trim() === filter);
-    }).sort(function (a, b) { return b.start.localeCompare(a.start); });
+    });
+
+    // タスクに紐づかない一般休憩は特定のプロジェクトに属さないため、
+    // プロジェクトで絞り込んでいないとき（すべて表示）だけ記録のログに混ぜて表示する。
+    var entries = filtered.map(function (s) { return { type: "session", start: s.start, session: s }; });
+    if (filter === "__all__") {
+      getGeneralBreaks().forEach(function (b) { entries.push({ type: "general-break", start: b.start, gb: b }); });
+    }
+    entries.sort(function (a, b) { return b.start.localeCompare(a.start); });
 
     var wrap = document.getElementById("historyWrap");
-    if (filtered.length === 0) { wrap.innerHTML = '<div class="empty-state">記録がありません。</div>'; return; }
+    if (entries.length === 0) { wrap.innerHTML = '<div class="empty-state">記録がありません。</div>'; return; }
 
     var dateOrder = [], byDate = {};
-    filtered.forEach(function (s) {
-      var d = s.start.slice(0, 10);
+    entries.forEach(function (e) {
+      var d = e.start.slice(0, 10);
       if (!byDate[d]) { byDate[d] = []; dateOrder.push(d); }
-      byDate[d].push(s);
+      byDate[d].push(e);
     });
 
     var html = '<div class="hist-groups">';
     dateOrder.forEach(function (date) {
-      var daySessions = byDate[date];
-      var dayTotal = daySessions.reduce(function (sum, s) { return sum + durationSecOf(s); }, 0);
+      var dayEntries = byDate[date];
+      var dayTotal = dayEntries.reduce(function (sum, e) { return e.type === "session" ? sum + durationSecOf(e.session) : sum; }, 0);
       html += '<div class="hist-date-group"><div class="hist-date-heading"><span class="hist-date-label">' +
-        escapeHtml(formatDateHeading(date)) + '</span><span class="hist-date-count">' + daySessions.length + '件</span>' +
+        escapeHtml(formatDateHeading(date)) + '</span><span class="hist-date-count">' + dayEntries.length + '件</span>' +
         '<span class="hist-date-total">合計 ' + formatHM(dayTotal) + '</span></div><div class="hist-date-body">';
-      daySessions.forEach(function (s) {
+      dayEntries.forEach(function (e) {
+        if (e.type === "general-break") {
+          var b = e.gb;
+          var gbOngoing = !b.end;
+          if (b.id === generalBreakEditingId) {
+            html += '<div class="hist-entry-edit" data-break-id="' + escapeHtml(b.id) + '">' +
+              renderGeneralBreakEditFields(b) +
+              '<div class="hist-edit-actions"><button type="button" class="hist-break-save-btn" data-id="' + escapeHtml(b.id) + '">保存</button><button type="button" class="hist-break-cancel-btn">キャンセル</button></div>' +
+              '</div>';
+          } else {
+            html += '<div class="hist-entry hist-break-entry' + (gbOngoing ? ' is-running' : '') + '">' +
+              '<div class="hist-entry-main">' +
+              '<div class="hist-entry-name"><span class="project-dot" style="background:var(--series-4)"></span>☕ 休憩' + (gbOngoing ? '<span class="running-tag">休憩中</span>' : '') + '</div>' +
+              '<div class="hist-entry-detail">' + escapeHtml(formatTimeShort(b.start)) + '〜' + (b.end ? escapeHtml(formatTimeShort(b.end)) : '') + '</div>' +
+              '</div>' +
+              '<div class="hist-row-actions"><button type="button" class="hist-break-edit-btn" data-id="' + escapeHtml(b.id) + '">編集</button>' +
+              '<button type="button" class="hist-break-delete-btn" data-id="' + escapeHtml(b.id) + '">削除</button></div>' +
+              '</div>';
+          }
+          return;
+        }
+
+        var s = e.session;
         if (s.id === historyEditingId) {
           var draftSegs = historyEditDraftSegments || getSegments(s).map(function (seg) { return { start: seg.start, end: seg.end }; });
           html += '<div class="hist-entry-edit" data-id="' + escapeHtml(s.id) + '">' +
@@ -1345,15 +1397,73 @@
   document.getElementById("histProjectFilter").addEventListener("change", function () {
     historyEditingId = null;
     historyEditDraftSegments = null;
+    generalBreakEditingId = null;
     renderHistoryList();
   });
 
   document.getElementById("historyWrap").addEventListener("click", function (evt) {
     var editBtn = evt.target.closest ? evt.target.closest(".hist-edit-btn") : null;
-    if (editBtn) { historyEditingId = editBtn.getAttribute("data-id"); historyEditDraftSegments = null; renderHistoryList(); return; }
+    if (editBtn) { historyEditingId = editBtn.getAttribute("data-id"); historyEditDraftSegments = null; generalBreakEditingId = null; renderHistoryList(); return; }
 
     var cancelBtn = evt.target.closest ? evt.target.closest(".hist-cancel-btn") : null;
     if (cancelBtn) { historyEditingId = null; historyEditDraftSegments = null; renderHistoryList(); return; }
+
+    var gbEditBtn = evt.target.closest ? evt.target.closest(".hist-break-edit-btn") : null;
+    if (gbEditBtn) { generalBreakEditingId = gbEditBtn.getAttribute("data-id"); historyEditingId = null; historyEditDraftSegments = null; renderHistoryList(); return; }
+
+    var gbCancelBtn = evt.target.closest ? evt.target.closest(".hist-break-cancel-btn") : null;
+    if (gbCancelBtn) { generalBreakEditingId = null; renderHistoryList(); return; }
+
+    var gbOngoingCheckbox = evt.target.closest ? evt.target.closest(".e-gb-ongoing") : null;
+    if (gbOngoingCheckbox) {
+      var gbRow = gbOngoingCheckbox.closest(".hist-entry-edit");
+      var gbEndDateEl = gbRow.querySelector(".e-gb-end-date"), gbEndTimeEl = gbRow.querySelector(".e-gb-end-time");
+      gbEndDateEl.disabled = gbOngoingCheckbox.checked;
+      gbEndTimeEl.disabled = gbOngoingCheckbox.checked;
+      return;
+    }
+
+    var gbSaveBtn = evt.target.closest ? evt.target.closest(".hist-break-save-btn") : null;
+    if (gbSaveBtn) {
+      var gbEditRow = gbSaveBtn.closest(".hist-entry-edit");
+      var gbId = gbEditRow.getAttribute("data-break-id");
+      var gb = getGeneralBreaks().find(function (x) { return x.id === gbId; });
+      if (!gb) { generalBreakEditingId = null; renderHistoryList(); return; }
+
+      var gbStart = combineDateTime(gbEditRow.querySelector(".e-gb-start-date").value, gbEditRow.querySelector(".e-gb-start-time").value);
+      if (!gbStart) { window.alert("休憩開始の日時を入力してください。"); return; }
+
+      var gbOngoingChecked = gbEditRow.querySelector(".e-gb-ongoing").checked;
+      var gbEnd = gbOngoingChecked ? null : combineDateTime(gbEditRow.querySelector(".e-gb-end-date").value, gbEditRow.querySelector(".e-gb-end-time").value);
+      if (!gbOngoingChecked) {
+        if (!gbEnd) { window.alert("休憩終了の日時を入力してください。「まだ休憩中」にチェックすると終了時刻なしで保存できます。"); return; }
+        if (parseLocal(gbEnd) <= parseLocal(gbStart)) { window.alert("休憩終了は、休憩開始より後にしてください。"); return; }
+      } else {
+        var otherActiveBreak = getGeneralBreaks().some(function (x) { return x.id !== gbId && !x.end; });
+        if (otherActiveBreak) { window.alert("すでに進行中の一般休憩が他にあります。先にそちらを終了してください。"); return; }
+      }
+
+      gb.start = gbStart;
+      gb.end = gbEnd;
+      persistState();
+      generalBreakEditingId = null;
+      renderAll();
+      return;
+    }
+
+    var gbDeleteBtn = evt.target.closest ? evt.target.closest(".hist-break-delete-btn") : null;
+    if (gbDeleteBtn) {
+      var gbDelId = gbDeleteBtn.getAttribute("data-id");
+      var gbToDelete = getGeneralBreaks().find(function (x) { return x.id === gbDelId; });
+      if (!gbToDelete) return;
+      var gbLabel = "☕ 休憩（" + formatDateHeading(gbToDelete.start.slice(0, 10)) + " " + formatTimeShort(gbToDelete.start) + "〜" + (gbToDelete.end ? formatTimeShort(gbToDelete.end) : "") + "）";
+      if (!window.confirm(gbLabel + " を削除しますか？この操作は元に戻せません。")) return;
+      state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== gbDelId; });
+      if (generalBreakEditingId === gbDelId) generalBreakEditingId = null;
+      persistState();
+      renderAll();
+      return;
+    }
 
     var runningCheckbox = evt.target.closest ? evt.target.closest(".e-running") : null;
     if (runningCheckbox) {
@@ -1628,7 +1738,7 @@
         var gStartMin = minutesOfDay(gapStart);
         var gEndMin = minMaxClamp(gStartMin, minutesOfDay(gapEnd));
         blocks.push({
-          kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false,
+          kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false, sessionId: s.id,
           top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       }
@@ -1637,7 +1747,7 @@
         var oStartMin = minutesOfDay(s.end);
         var oEndMin = minMaxClamp(oStartMin, minutesOfDay(nowLocalIso()));
         blocks.push({
-          kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock",
+          kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock", sessionId: s.id,
           top: (oStartMin / 60) * HOUR_PX, height: Math.max(((oEndMin - oStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       }
@@ -1650,7 +1760,7 @@
       var gStartMin = minutesOfDay(b.start);
       var gEndMin = minMaxClamp(gStartMin, ongoing ? minutesOfDay(nowLocalIso()) : minutesOfDay(b.end));
       blocks.push({
-        kind: "general-break", startMin: gStartMin, startIso: b.start, endIso: b.end, ongoing: ongoing,
+        kind: "general-break", startMin: gStartMin, startIso: b.start, endIso: b.end, ongoing: ongoing, breakId: b.id,
         elId: ongoing ? "liveGeneralBreakBlock" : null,
         top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
       });
@@ -1675,7 +1785,10 @@
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.seg.start)) + '〜' + (b.seg.end ? escapeHtml(formatTimeShort(b.seg.end)) : '') + '</div>' +
           '</div>';
       } else {
-        html += '<div' + (b.elId ? ' id="' + b.elId + '"' : '') + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
+        var breakAttrs = (b.elId ? ' id="' + b.elId + '"' : '') +
+          (b.sessionId ? ' data-session-id="' + escapeHtml(b.sessionId) + '"' : '') +
+          (b.breakId ? ' data-break-id="' + escapeHtml(b.breakId) + '"' : '');
+        html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
           '<div class="day-segment-name">☕ 休憩</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
           '</div>';
@@ -1738,10 +1851,34 @@
   document.getElementById("scheduleDayModeBtn").addEventListener("click", function () { switchScheduleMode("day"); });
   document.getElementById("dayTimeline").addEventListener("click", function (evt) {
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
-    if (!block || block.classList.contains("day-break-block")) return;
+    if (!block) return;
+    var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+    // プロジェクトで絞り込んだままだと、遷移先の記録が一覧に出てこないことがあるため、すべて表示に戻す。
+    var histFilterEl = document.getElementById("histProjectFilter");
+    if (histFilterEl) histFilterEl.value = "__all__";
+    if (block.classList.contains("day-break-block")) {
+      // タスクの休憩は、その休憩を含むタスクの記録の編集フォームを開く（休憩の追加・削除・時刻変更はそこから行える）。
+      // 一般休憩は専用の編集フォームを開く。
+      var sessionId = block.getAttribute("data-session-id");
+      var breakId = block.getAttribute("data-break-id");
+      if (sessionId) {
+        historyEditingId = sessionId;
+        historyEditDraftSegments = null;
+        generalBreakEditingId = null;
+      } else if (breakId) {
+        generalBreakEditingId = breakId;
+        historyEditingId = null;
+        historyEditDraftSegments = null;
+      } else {
+        return;
+      }
+      if (historyTabBtn) historyTabBtn.click();
+      renderHistoryList();
+      return;
+    }
     historyEditingId = block.getAttribute("data-id");
     historyEditDraftSegments = null;
-    var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+    generalBreakEditingId = null;
     if (historyTabBtn) historyTabBtn.click();
     renderHistoryList();
   });
