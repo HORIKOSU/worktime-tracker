@@ -179,6 +179,10 @@
   .task-resume-form-actions { display: flex; gap: 8px; }
   .task-resume-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
   .task-resume-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+  .task-group-row td { background: var(--page-plane); font-size: 11px; font-weight: 700; color: var(--text-secondary); padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .task-group-row:not(:first-child) td { border-top: 1px solid var(--border); }
+  .task-done-group-heading { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin: 14px 0 6px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .task-done-group-heading:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .task-done-section { max-width: 100%; margin: 6px 0 0; text-align: left; }
   .task-done-section summary { font-size: 15px; font-weight: 700; color: var(--text-primary); cursor: pointer; padding: 6px 0; text-align: left; }
   .task-done-section .task-row { opacity: 0.8; }
@@ -757,6 +761,32 @@
   function completedTasks() {
     return getTasks().filter(function (t) { return t.completed; });
   }
+  // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
+  function taskLastActivity(taskId) {
+    var max = "";
+    state.sessions.forEach(function (s) { if (s.taskId === taskId && s.start > max) max = s.start; });
+    return max;
+  }
+  // タスク一覧を「業務内容」ごとにグループ分けする（見分けやすくするため）。
+  // グループの並び順は、そのグループの中で最も直近に使われたタスクがある順（最近使った業務内容が上に来る）。
+  function groupTasksByMemo(taskList) {
+    var map = {}, order = [];
+    taskList.forEach(function (t) {
+      var key = (t.memo || "").trim();
+      if (!map[key]) { map[key] = { key: key, label: key || "（業務内容未設定）", tasks: [] }; order.push(key); }
+      map[key].tasks.push(t);
+    });
+    order.forEach(function (key) {
+      var maxAct = "";
+      map[key].tasks.forEach(function (t) {
+        var act = taskLastActivity(t.id);
+        if (act > maxAct) maxAct = act;
+      });
+      map[key].sortKey = maxAct;
+    });
+    order.sort(function (a, b) { return map[b].sortKey.localeCompare(map[a].sortKey); });
+    return order.map(function (key) { return map[key]; });
+  }
   // 現在「作業中」または「休憩中」のセッションがこのタスクを参照しているか。
   // 参照していれば、そのタスクをうっかり完了にしてしまわないようにするためのチェックに使う。
   function taskHasOpenSession(taskId) {
@@ -962,8 +992,11 @@
         }
         var memo = document.getElementById("startMemoInput").value.trim();
         var number = document.getElementById("startNumberInput").value.trim();
-        var task = createTask(project, memo, number);
-        state.sessions.push({ id: generateId(), project: project, memo: memo, number: number, start: nowLocalIso(), end: null, taskId: task.id });
+        // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
+        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは紐づけない。
+        var matchedTask = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+        var task = matchedTask || createTask(project, memo, number);
+        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
         persistState();
         renderAll();
       });
@@ -1026,72 +1059,84 @@
     var openList = openTasks();
     var doneList = completedTasks();
 
+    function openTaskRowHtml(t) {
+      var formOpen = (resumeFormTaskId === t.id);
+      var resumeRowHtml = "";
+      if (formOpen) {
+        var nowParts = nowDateTimeParts();
+        resumeRowHtml =
+          '<tr class="task-table-resume-row"><td colspan="6">' +
+          '<div class="task-resume-form">' +
+          '<div class="task-resume-form-row">' +
+          '<div><label class="field-label">開始日時</label>' +
+          '<input type="date" id="resumeStartDate" value="' + nowParts.date + '"> ' +
+          '<input type="time" step="1" id="resumeStartTime" value="' + nowParts.time + '"></div>' +
+          '<div><label class="field-label">終了日時（空欄なら作業中として開始）</label>' +
+          '<input type="date" id="resumeEndDate"> ' +
+          '<input type="time" step="1" id="resumeEndTime"></div>' +
+          '</div>' +
+          '<div class="task-resume-form-actions">' +
+          '<button type="button" class="task-resume-confirm-btn" data-task-id="' + escapeHtml(t.id) + '">この日時で記録</button>' +
+          '<button type="button" class="task-resume-cancel-btn">キャンセル</button>' +
+          '</div>' +
+          '</div>' +
+          '</td></tr>';
+      }
+      return '<tr>' +
+        '<td><span class="task-id-badge">' + escapeHtml(t.id) + '</span></td>' +
+        '<td class="task-table-name">' + escapeHtml(t.project) + '</td>' +
+        '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
+        '<td class="task-table-memo">' + (t.memo ? escapeHtml(t.memo) : '') + '</td>' +
+        '<td class="task-table-total">' + escapeHtml(formatHM(taskTotalSec(t))) + '</td>' +
+        '<td class="task-table-actions"><div class="task-row-actions">' +
+        '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
+        '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
+        '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
+        '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
+        '</div></td>' +
+        '</tr>' +
+        resumeRowHtml;
+    }
+
     var openHtml = "";
     if (openList.length) {
+      var openRowsHtml = groupTasksByMemo(openList).map(function (g) {
+        return '<tr class="task-group-row"><td colspan="6">業務内容：' + escapeHtml(g.label) + '（' + g.tasks.length + '件）</td></tr>' +
+          g.tasks.map(openTaskRowHtml).join("");
+      }).join("");
       openHtml = '<details class="task-list-section" open><summary class="task-list-heading">未完了のタスク（' + openList.length + '件）</summary>' +
         '<div class="task-table-wrap"><table class="task-table">' +
         '<colgroup><col class="col-id"><col class="col-project"><col class="col-number"><col class="col-memo"><col class="col-total"><col class="col-actions"></colgroup>' +
         '<thead><tr>' +
         '<th>ID</th><th>プロジェクト名</th><th>番号</th><th>業務内容</th><th>合計時間</th><th></th>' +
         '</tr></thead><tbody>' +
-        openList.map(function (t) {
-          var formOpen = (resumeFormTaskId === t.id);
-          var resumeRowHtml = "";
-          if (formOpen) {
-            var nowParts = nowDateTimeParts();
-            resumeRowHtml =
-              '<tr class="task-table-resume-row"><td colspan="6">' +
-              '<div class="task-resume-form">' +
-              '<div class="task-resume-form-row">' +
-              '<div><label class="field-label">開始日時</label>' +
-              '<input type="date" id="resumeStartDate" value="' + nowParts.date + '"> ' +
-              '<input type="time" step="1" id="resumeStartTime" value="' + nowParts.time + '"></div>' +
-              '<div><label class="field-label">終了日時（空欄なら作業中として開始）</label>' +
-              '<input type="date" id="resumeEndDate"> ' +
-              '<input type="time" step="1" id="resumeEndTime"></div>' +
-              '</div>' +
-              '<div class="task-resume-form-actions">' +
-              '<button type="button" class="task-resume-confirm-btn" data-task-id="' + escapeHtml(t.id) + '">この日時で記録</button>' +
-              '<button type="button" class="task-resume-cancel-btn">キャンセル</button>' +
-              '</div>' +
-              '</div>' +
-              '</td></tr>';
-          }
-          return '<tr>' +
-            '<td><span class="task-id-badge">' + escapeHtml(t.id) + '</span></td>' +
-            '<td class="task-table-name">' + escapeHtml(t.project) + '</td>' +
-            '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
-            '<td class="task-table-memo">' + (t.memo ? escapeHtml(t.memo) : '') + '</td>' +
-            '<td class="task-table-total">' + escapeHtml(formatHM(taskTotalSec(t))) + '</td>' +
-            '<td class="task-table-actions"><div class="task-row-actions">' +
-            '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
-            '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
-            '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
-            '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
-            '</div></td>' +
-            '</tr>' +
-            resumeRowHtml;
-        }).join("") +
+        openRowsHtml +
         '</tbody></table></div>' +
         '</details>';
     }
 
+    function doneTaskRowHtml(t) {
+      return '<div class="task-row done">' +
+        '<div class="task-row-main">' +
+        '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
+        '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
+        (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') +
+        '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
+        '</div>' +
+        '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button>' +
+        '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
+        '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button></div>' +
+        '</div>';
+    }
+
     var doneHtml = "";
     if (doneList.length) {
+      var doneRowsHtml = groupTasksByMemo(doneList).map(function (g) {
+        return '<div class="task-done-group-heading">業務内容：' + escapeHtml(g.label) + '（' + g.tasks.length + '件）</div>' +
+          g.tasks.map(doneTaskRowHtml).join("");
+      }).join("");
       doneHtml = '<details class="task-done-section"><summary>完了したタスク（' + doneList.length + '件）</summary>' +
-        doneList.map(function (t) {
-          return '<div class="task-row done">' +
-            '<div class="task-row-main">' +
-            '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
-            '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
-            (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') +
-            '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
-            '</div>' +
-            '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button>' +
-            '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
-            '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button></div>' +
-            '</div>';
-        }).join("") +
+        doneRowsHtml +
         '</details>';
     }
 
