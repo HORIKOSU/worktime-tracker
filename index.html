@@ -95,14 +95,11 @@
   .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
   .big-btn.start { background: var(--series-1); color: #fff; }
   .big-btn.start:hover { opacity: 0.92; }
-  .big-btn.stop { background: var(--danger); color: #fff; }
-  .big-btn.stop:hover { opacity: 0.92; }
   .big-btn.break { background: var(--series-4); color: #fff; }
   .big-btn.break:hover { opacity: 0.92; }
-  .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
-  .status-btn-row .big-btn { margin: 0; }
   .break-alt-action { margin-top: 12px; font-size: 12px; }
   .break-alt-action a { color: var(--text-secondary); text-decoration: underline; }
+  .break-alt-sep { margin: 0 6px; color: var(--text-muted); }
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .task-list-section { max-width: 480px; margin: 0 auto 18px; text-align: left; }
@@ -120,6 +117,8 @@
   .task-complete-btn:hover { border-color: var(--success); color: var(--success); }
   .task-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .task-delete-btn:hover { background: var(--series-8); color: #fff; }
+  .task-delete-hard-btn { appearance: none; border: 1px solid var(--danger); background: var(--danger); color: #fff; font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .task-delete-hard-btn:hover { background: #9a2f2f; border-color: #9a2f2f; }
   .task-done-section { max-width: 480px; margin: 6px auto 0; text-align: left; }
   .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; }
   .task-done-section .task-row { opacity: 0.8; }
@@ -598,6 +597,12 @@
     state.sessions.forEach(function (s) { if (s.taskId === id) delete s.taskId; });
     state.tasks = getTasks().filter(function (t) { return t.id !== id; });
   }
+  // タスクを「記録ごと」完全に削除する。deleteTaskById() と異なり、このタスクに紐づく
+  // 記録（session）自体もすべて削除するため、実際の作業時間の記録も失われる（元に戻せない操作）。
+  function deleteTaskCompletely(id) {
+    state.sessions = state.sessions.filter(function (s) { return s.taskId !== id; });
+    state.tasks = getTasks().filter(function (t) { return t.id !== id; });
+  }
   function taskTotalSec(task) {
     var total = 0;
     state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
@@ -694,10 +699,8 @@
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + '</div>' +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">メモ</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="任意"></div>' +
-        '<div class="status-btn-row">' +
         '<button type="button" class="big-btn break" id="breakBtn">☕ 休憩</button>' +
-        '<button type="button" class="big-btn stop" id="stopBtn">■ 終了</button>' +
-        '</div>';
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">このタスクを完全に終わらせたい場合は、休憩を押した後に表示される「✓ このタスクを完了にする」を押してください。</p>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
         running.memo = this.value;
         persistState();
@@ -705,11 +708,6 @@
       document.getElementById("breakBtn").addEventListener("click", function () {
         endRunningSession(running);
         state.onBreakSessionId = running.id;
-        persistState();
-        renderAll();
-      });
-      document.getElementById("stopBtn").addEventListener("click", function () {
-        endRunningSession(running);
         persistState();
         renderAll();
       });
@@ -724,7 +722,10 @@
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
-        '<div class="break-alt-action"><a href="#" id="breakNewLink">別の作業を始める</a></div>';
+        '<div class="break-alt-action">' +
+        (onBreakTask ? '<a href="#" id="breakCompleteLink">✓ このタスクを完了にする</a><span class="break-alt-sep">・</span>' : '') +
+        '<a href="#" id="breakNewLink">別の作業を始める</a>' +
+        '</div>';
       document.getElementById("resumeBreakBtn").addEventListener("click", function () {
         resumeSession(onBreak);
         state.onBreakSessionId = null;
@@ -737,6 +738,18 @@
         persistState();
         renderAll();
       });
+      var breakCompleteLink = document.getElementById("breakCompleteLink");
+      if (breakCompleteLink) {
+        breakCompleteLink.addEventListener("click", function (evt) {
+          evt.preventDefault();
+          var total = taskTotalSec(onBreakTask);
+          if (!window.confirm(onBreakTask.project + "（" + onBreakTask.id + "）を完了にしますか？\n合計時間：" + formatHM(total))) return;
+          onBreakTask.completed = true;
+          state.onBreakSessionId = null;
+          persistState();
+          renderAll();
+        });
+      }
     } else {
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
@@ -759,6 +772,7 @@
               '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
               '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
               '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
+              '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
               '</div>' +
               '</div>';
           }).join("") +
@@ -776,7 +790,8 @@
               '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
               '</div>' +
               '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button>' +
-              '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button></div>' +
+              '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
+              '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button></div>' +
               '</div>';
           }).join("") +
           '</details>';
@@ -849,6 +864,21 @@
             "※記録（合計 " + formatHM(total) + "の作業時間）は履歴にそのまま残ります。タスクとしての管理から外れるだけです。";
           if (!window.confirm(msg)) return;
           deleteTaskById(task.id);
+          persistState();
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-delete-hard-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var task = getTaskById(btn.getAttribute("data-task-id"));
+          if (!task) return;
+          var total = taskTotalSec(task);
+          var sessCount = state.sessions.filter(function (s) { return s.taskId === task.id; }).length;
+          var msg = task.project + "（" + task.id + "）を記録ごと完全に削除しますか？\n" +
+            "※このタスクに紐づく記録" + sessCount + "件（合計 " + formatHM(total) + "の作業時間）もすべて削除され、履歴・集計からも消えます。この操作は元に戻せません。";
+          if (!window.confirm(msg)) return;
+          deleteTaskCompletely(task.id);
           persistState();
           renderAll();
         });
