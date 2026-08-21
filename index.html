@@ -116,6 +116,8 @@
   .task-resume-btn:hover { background: var(--series-1); color: #fff; }
   .task-complete-btn, .task-reopen-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .task-complete-btn:hover { border-color: var(--success); color: var(--success); }
+  .task-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .task-delete-btn:hover { background: var(--series-8); color: #fff; }
   .task-done-section { max-width: 480px; margin: 6px auto 0; text-align: left; }
   .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; }
   .task-done-section .task-row { opacity: 0.8; }
@@ -156,6 +158,8 @@
   .hist-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-delete-btn:hover { background: var(--series-8); color: #fff; }
   .hist-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .hist-complete-task-btn { appearance: none; border: 1px solid var(--success); background: transparent; color: var(--success); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .hist-complete-task-btn:hover { background: var(--success); color: #fff; }
   .hist-edit-btn:hover { background: var(--series-1); color: #fff; }
   .hist-save-btn { appearance: none; border: 1px solid var(--success); background: var(--success); color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -580,6 +584,13 @@
   function getTaskById(id) {
     return getTasks().find(function (t) { return t.id === id; });
   }
+  // タスクを削除する。記録（session）自体は履歴に残したいので、
+  // 各記録の taskId だけ外し（＝「タスクなし」の記録に戻す）、タスクの器だけを消す。
+  // 時間の記録そのものは失われない。
+  function deleteTaskById(id) {
+    state.sessions.forEach(function (s) { if (s.taskId === id) delete s.taskId; });
+    state.tasks = getTasks().filter(function (t) { return t.id !== id; });
+  }
   function taskTotalSec(task) {
     var total = 0;
     state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
@@ -596,6 +607,30 @@
   }
   function completedTasks() {
     return getTasks().filter(function (t) { return t.completed; });
+  }
+  // 現在「作業中」または「休憩中」のセッションがこのタスクを参照しているか。
+  // 参照していれば、そのタスクをうっかり完了にしてしまわないようにするためのチェックに使う。
+  function taskHasOpenSession(taskId) {
+    var running = getRunningSession();
+    if (running && running.taskId === taskId) return true;
+    var onBreak = getOnBreakSession();
+    if (onBreak && onBreak.taskId === taskId) return true;
+    return false;
+  }
+  // 履歴の編集フォーム用：「タスクID」の選択欄のHTMLを組み立てる。
+  // 選択肢は「タスクなし」「新しいタスクとして登録」＋すべてのタスク（完了済みも含む）。
+  // 完了済みタスクも選べるようにしておかないと、後から見つかった過去の記録を
+  // 同じタスクに付け直したいときに選択肢から消えてしまうため。
+  function renderTaskIdSelect(currentTaskId) {
+    var options = getTasks();
+    var html = '<select class="e-task-id">' +
+      '<option value=""' + (!currentTaskId ? ' selected' : '') + '>（タスクを設定しない）</option>' +
+      '<option value="__new__">＋ 新しいタスクとして登録</option>';
+    options.forEach(function (t) {
+      html += '<option value="' + escapeHtml(t.id) + '"' + (t.id === currentTaskId ? ' selected' : '') + '>' +
+        escapeHtml(t.id) + ' ' + escapeHtml(t.project) + (t.completed ? '（完了済み）' : '') + '</option>';
+    });
+    return html;
   }
 
   function distinctProjects() {
@@ -714,6 +749,7 @@
               '<div class="task-row-actions">' +
               '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
               '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
+              '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
               '</div>' +
               '</div>';
           }).join("") +
@@ -730,7 +766,8 @@
               '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
               '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
               '</div>' +
-              '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button></div>' +
+              '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button>' +
+              '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button></div>' +
               '</div>';
           }).join("") +
           '</details>';
@@ -788,6 +825,20 @@
           var task = getTaskById(btn.getAttribute("data-task-id"));
           if (!task) return;
           task.completed = false;
+          persistState();
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-delete-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var task = getTaskById(btn.getAttribute("data-task-id"));
+          if (!task) return;
+          var total = taskTotalSec(task);
+          var msg = task.project + "（" + task.id + "）のタスクを削除しますか？\n" +
+            "※記録（合計 " + formatHM(total) + "の作業時間）は履歴にそのまま残ります。タスクとしての管理から外れるだけです。";
+          if (!window.confirm(msg)) return;
+          deleteTaskById(task.id);
           persistState();
           renderAll();
         });
@@ -1000,12 +1051,14 @@
             '<div class="hist-edit-fields">' +
             '<div class="hist-edit-field"><label>案件名</label><input type="text" class="e-project" list="projectList" value="' + escapeHtml(s.project || "") + '"></div>' +
             '<div class="hist-edit-field"><label>メモ</label><input type="text" class="e-memo" value="' + escapeHtml(s.memo || "") + '"></div>' +
+            '<div class="hist-edit-field"><label>タスクID</label>' + renderTaskIdSelect(s.taskId || "") + '</div>' +
             '</div>' +
             renderSegmentEditFields(draftSegs) +
             '<div class="hist-edit-actions"><button type="button" class="hist-save-btn">保存</button><button type="button" class="hist-cancel-btn">キャンセル</button></div>' +
             '</div>';
         } else {
           var running = !s.end;
+          var histTask = s.taskId ? getTaskById(s.taskId) : null;
           html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
             '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
@@ -1013,6 +1066,7 @@
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
+            (histTask && !histTask.completed ? '<button type="button" class="hist-complete-task-btn" data-task-id="' + escapeHtml(histTask.id) + '">✓ タスク完了</button>' : '') +
             '<button type="button" class="hist-delete-btn" data-id="' + escapeHtml(s.id) + '">削除</button></div>' +
             '</div>';
         }
@@ -1112,9 +1166,44 @@
       } else {
         delete session.segments;
       }
+
+      var taskSelectEl = editRow.querySelector(".e-task-id");
+      var taskSelectValue = taskSelectEl ? taskSelectEl.value : "";
+      var oldTaskId = session.taskId || null;
+      if (taskSelectValue === "__new__") {
+        session.taskId = createTask(project, memo).id;
+      } else if (taskSelectValue) {
+        session.taskId = taskSelectValue;
+      } else {
+        delete session.taskId;
+      }
+      // 付け替え・解除によって参照が無くなった旧タスクは、空のまま一覧に残さないよう削除する。
+      if (oldTaskId && oldTaskId !== session.taskId) {
+        var stillReferencedOld = state.sessions.some(function (s) { return s.taskId === oldTaskId; });
+        if (!stillReferencedOld) {
+          state.tasks = getTasks().filter(function (t) { return t.id !== oldTaskId; });
+        }
+      }
+
       persistState();
       historyEditingId = null;
       historyEditDraftSegments = null;
+      renderAll();
+      return;
+    }
+
+    var histCompleteBtn = evt.target.closest ? evt.target.closest(".hist-complete-task-btn") : null;
+    if (histCompleteBtn) {
+      var completeTask = getTaskById(histCompleteBtn.getAttribute("data-task-id"));
+      if (!completeTask) return;
+      if (taskHasOpenSession(completeTask.id)) {
+        window.alert("このタスクは現在作業中または休憩中のため完了にできません。先に終了してください。");
+        return;
+      }
+      var completeTotal = taskTotalSec(completeTask);
+      if (!window.confirm(completeTask.project + "（" + completeTask.id + "）を完了にしますか？\n合計時間：" + formatHM(completeTotal))) return;
+      completeTask.completed = true;
+      persistState();
       renderAll();
       return;
     }
