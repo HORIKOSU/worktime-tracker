@@ -125,6 +125,12 @@
   .task-delete-btn:hover { background: var(--series-8); color: #fff; }
   .task-delete-hard-btn { appearance: none; border: 1px solid var(--danger); background: var(--danger); color: #fff; font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .task-delete-hard-btn:hover { background: #9a2f2f; border-color: #9a2f2f; }
+  .task-resume-form { flex-basis: 100%; width: 100%; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .task-resume-form-row { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 10px; }
+  .task-resume-form-row .field-label { display: block; font-size: 11px; margin-bottom: 4px; }
+  .task-resume-form-actions { display: flex; gap: 8px; }
+  .task-resume-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+  .task-resume-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
   .task-done-section { max-width: 480px; margin: 6px auto 0; text-align: left; }
   .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; }
   .task-done-section .task-row { opacity: 0.8; }
@@ -423,6 +429,7 @@
   var scheduleViewMode = "day";
   var scheduleMonthState = null;
   var scheduleDayState = null;
+  var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
   var HOUR_PX = 48;
   var MIN_BLOCK_HEIGHT = 3; // ブロックの最小の高さ(px)。前後の記録と時間が近いことがあるため、実時間より高くしすぎない
 
@@ -803,6 +810,26 @@
       if (openList.length) {
         openHtml = '<details class="task-list-section" open><summary class="task-list-heading">未完了のタスク（' + openList.length + '件）</summary>' +
           openList.map(function (t) {
+            var formOpen = (resumeFormTaskId === t.id);
+            var resumeFormHtml = "";
+            if (formOpen) {
+              var nowParts = nowDateTimeParts();
+              resumeFormHtml =
+                '<div class="task-resume-form">' +
+                '<div class="task-resume-form-row">' +
+                '<div><label class="field-label">開始日時</label>' +
+                '<input type="date" id="resumeStartDate" value="' + nowParts.date + '"> ' +
+                '<input type="time" step="1" id="resumeStartTime" value="' + nowParts.time + '"></div>' +
+                '<div><label class="field-label">終了日時（空欄なら作業中として開始）</label>' +
+                '<input type="date" id="resumeEndDate"> ' +
+                '<input type="time" step="1" id="resumeEndTime"></div>' +
+                '</div>' +
+                '<div class="task-resume-form-actions">' +
+                '<button type="button" class="task-resume-confirm-btn" data-task-id="' + escapeHtml(t.id) + '">この日時で記録</button>' +
+                '<button type="button" class="task-resume-cancel-btn">キャンセル</button>' +
+                '</div>' +
+                '</div>';
+            }
             return '<div class="task-row">' +
               '<div class="task-row-main">' +
               '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
@@ -817,6 +844,7 @@
               '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
               '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
               '</div>' +
+              resumeFormHtml +
               '</div>';
           }).join("") +
           '</details>';
@@ -880,11 +908,48 @@
 
       card.querySelectorAll(".task-resume-btn").forEach(function (btn) {
         btn.addEventListener("click", function () {
+          var taskId = btn.getAttribute("data-task-id");
+          resumeFormTaskId = (resumeFormTaskId === taskId) ? null : taskId;
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-resume-confirm-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
           var task = getTaskById(btn.getAttribute("data-task-id"));
           if (!task) return;
-          if (getRunningSession()) { window.alert("すでに作業中の記録があります。"); return; }
-          state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
+          var startDate = document.getElementById("resumeStartDate").value;
+          var startTime = document.getElementById("resumeStartTime").value;
+          var endDate = document.getElementById("resumeEndDate").value;
+          var endTime = document.getElementById("resumeEndTime").value;
+
+          var start = combineDateTime(startDate, startTime);
+          if (!start) { window.alert("開始日時を入力してください。"); return; }
+
+          if ((endDate && !endTime) || (!endDate && endTime)) {
+            window.alert("終了日時は日付・時刻の両方を入力するか、両方空欄にしてください。");
+            return;
+          }
+          var end = combineDateTime(endDate, endTime);
+          if (end && parseLocal(end) <= parseLocal(start)) {
+            window.alert("終了時刻は開始時刻より後にしてください。");
+            return;
+          }
+          if (!end && getRunningSession()) {
+            window.alert("すでに作業中の記録があります。終了日時も入力してください。");
+            return;
+          }
+
+          state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: start, end: end, taskId: task.id });
           persistState();
+          resumeFormTaskId = null;
+          renderAll();
+        });
+      });
+
+      card.querySelectorAll(".task-resume-cancel-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          resumeFormTaskId = null;
           renderAll();
         });
       });
