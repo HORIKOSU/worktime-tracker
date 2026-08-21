@@ -54,6 +54,10 @@
   section.panel.active { display: block; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .dashboard-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
+  /* グリッドのアイテムは既定で min-width:auto となり、中の表（table）のような縮まない要素があると
+     グリッド自体がはみ出してしまう（いわゆる grid blowout）。0 にして、はみ出た分は
+     .task-table-wrap 側の横スクロールに閉じ込める。 */
+  .dashboard-top-grid > .card { min-width: 0; }
   .dashboard-top-grid .card { margin-bottom: 0; }
   .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
@@ -113,12 +117,12 @@
   .big-btn.stop:hover { opacity: 0.92; }
   .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
   .status-btn-row .big-btn { margin: 0; }
-  .action-card-row { display: flex; gap: 12px; width: 100%; max-width: 380px; margin: 20px auto 0; }
-  .action-card { appearance: none; border: none; border-radius: 14px; cursor: pointer; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 18px 10px; transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease; }
+  .action-card-row { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
+  .action-card { appearance: none; border: none; border-radius: 14px; cursor: pointer; width: 100%; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; padding: 14px 16px; transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease; }
   .action-card:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
   .action-card:active { transform: translateY(0); box-shadow: none; }
-  .action-card-icon { font-size: 28px; line-height: 1; }
-  .action-card-label { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.3; }
+  .action-card-icon { font-size: 22px; line-height: 1; }
+  .action-card-label { font-size: 14px; font-weight: 700; text-align: center; line-height: 1.3; }
   .action-card.start { background: var(--series-1); color: #fff; }
   .action-card.break { background: var(--series-4); color: #fff; }
   .break-alt-action { margin-top: 12px; font-size: 12px; }
@@ -127,8 +131,28 @@
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
-  .task-list-section { max-width: 480px; margin: 0 auto 18px; text-align: left; }
+  .task-list-section { max-width: 100%; margin: 0 auto 18px; text-align: left; }
   .task-list-heading { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; cursor: pointer; padding: 6px 0; text-align: center; }
+  .task-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .task-table { width: 100%; min-width: 560px; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
+  .task-table col.col-id { width: 9%; }
+  .task-table col.col-project { width: 20%; }
+  .task-table col.col-number { width: 10%; }
+  .task-table col.col-memo { width: 19%; }
+  .task-table col.col-total { width: 12%; }
+  .task-table col.col-actions { width: 30%; }
+  .task-table td.task-table-name, .task-table td.task-table-memo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-table th { text-align: left; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--page-plane); padding: 7px 10px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  .task-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .task-table tbody tr:last-child td { border-bottom: none; }
+  .task-table tbody tr:hover td { background: var(--page-plane); }
+  .task-table td.task-table-name { font-weight: 700; color: var(--text-primary); }
+  .task-table td.task-table-memo { color: var(--text-secondary); }
+  .task-table td.task-table-total { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-secondary); }
+  .task-table td.task-table-actions { text-align: right; }
+  .task-table .task-row-actions { justify-content: flex-end; flex-wrap: wrap; }
+  .task-table-resume-row td { background: var(--surface-1); }
+  .task-table-resume-row .task-resume-form { margin-top: 0; padding-top: 0; border-top: none; }
   .task-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .task-row.done { background: var(--surface-1); }
   .task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
@@ -253,6 +277,13 @@
   .day-segment-time { font-size: 10px; opacity: 0.9; white-space: nowrap; flex: 0 0 auto; }
   .day-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
   .day-now-line::before { content: ""; position: absolute; left: 50px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .resize-handle { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; z-index: 3; touch-action: none; }
+  .resize-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 26px; height: 3px; margin-left: -13px; margin-top: -1.5px; border-radius: 2px; background: rgba(255,255,255,0.85); opacity: 0; transition: opacity 0.12s; }
+  .day-break-block .resize-handle::after { background: rgba(138,106,16,0.55); }
+  .resize-handle-top { top: -3px; }
+  .resize-handle-bottom { bottom: -3px; }
+  .day-segment-block:hover .resize-handle::after, .day-segment-block.resizing .resize-handle::after { opacity: 1; }
+  .day-segment-block.resizing { box-shadow: 0 0 0 2px var(--series-1); }
 
   @media (max-width: 760px) {
     .dashboard-top-grid { grid-template-columns: 1fr; }
@@ -544,6 +575,23 @@
   // segments が無い（=再開されていない）場合は start/end から仮想的に1区間とみなす。
   function getSegments(s) {
     return (s.segments && s.segments.length) ? s.segments : [{ start: s.start, end: s.end }];
+  }
+  // getSegments() は segments が無いセッションに対して仮想的な配列を毎回新規に作って返すため、
+  // そのまま編集しても保存されない。ドラッグ編集など「その場で書き換えたい」場合は、
+  // 先にこちらで session.segments を実体化してから編集する。
+  function ensureSegments(session) {
+    if (!session.segments || !session.segments.length) {
+      session.segments = [{ start: session.start, end: session.end }];
+    }
+    return session.segments;
+  }
+  // ensureSegments() で実体化した segments を、通常時の保存形式（1区間なら segments を持たない）に戻す。
+  function syncSessionFromSegments(session) {
+    var segs = session.segments;
+    if (!segs || !segs.length) return;
+    session.start = segs[0].start;
+    session.end = segs[segs.length - 1].end || null;
+    if (segs.length <= 1) delete session.segments;
   }
   function segmentDurationSec(seg) {
     if (seg.end) return Math.max(0, Math.round((parseLocal(seg.end) - parseLocal(seg.start)) / 1000));
@@ -858,12 +906,18 @@
       var openHtml = "";
       if (openList.length) {
         openHtml = '<details class="task-list-section" open><summary class="task-list-heading">未完了のタスク（' + openList.length + '件）</summary>' +
+          '<div class="task-table-wrap"><table class="task-table">' +
+          '<colgroup><col class="col-id"><col class="col-project"><col class="col-number"><col class="col-memo"><col class="col-total"><col class="col-actions"></colgroup>' +
+          '<thead><tr>' +
+          '<th>ID</th><th>プロジェクト名</th><th>番号</th><th>業務内容</th><th>合計時間</th><th></th>' +
+          '</tr></thead><tbody>' +
           openList.map(function (t) {
             var formOpen = (resumeFormTaskId === t.id);
-            var resumeFormHtml = "";
+            var resumeRowHtml = "";
             if (formOpen) {
               var nowParts = nowDateTimeParts();
-              resumeFormHtml =
+              resumeRowHtml =
+                '<tr class="task-table-resume-row"><td colspan="6">' +
                 '<div class="task-resume-form">' +
                 '<div class="task-resume-form-row">' +
                 '<div><label class="field-label">開始日時</label>' +
@@ -877,25 +931,25 @@
                 '<button type="button" class="task-resume-confirm-btn" data-task-id="' + escapeHtml(t.id) + '">この日時で記録</button>' +
                 '<button type="button" class="task-resume-cancel-btn">キャンセル</button>' +
                 '</div>' +
-                '</div>';
+                '</div>' +
+                '</td></tr>';
             }
-            return '<div class="task-row">' +
-              '<div class="task-row-main">' +
-              '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
-              '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
-              (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') +
-              (t.memo ? '<span class="task-row-memo">' + escapeHtml(t.memo) + '</span>' : '') +
-              '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
-              '</div>' +
-              '<div class="task-row-actions">' +
+            return '<tr>' +
+              '<td><span class="task-id-badge">' + escapeHtml(t.id) + '</span></td>' +
+              '<td class="task-table-name">' + escapeHtml(t.project) + '</td>' +
+              '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
+              '<td class="task-table-memo">' + (t.memo ? escapeHtml(t.memo) : '') + '</td>' +
+              '<td class="task-table-total">' + escapeHtml(formatHM(taskTotalSec(t))) + '</td>' +
+              '<td class="task-table-actions"><div class="task-row-actions">' +
               '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
               '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
               '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
               '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
-              '</div>' +
-              resumeFormHtml +
-              '</div>';
+              '</div></td>' +
+              '</tr>' +
+              resumeRowHtml;
           }).join("") +
+          '</tbody></table></div>' +
           '</details>';
       }
 
@@ -928,8 +982,8 @@
         '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1"></div>' +
         '</div>' +
         '<div class="action-card-row">' +
-        '<button type="button" class="action-card start" id="startBtn"><span class="action-card-icon">▶</span><span class="action-card-label">新しいタスクを<br>開始</span></button>' +
-        '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">☕</span><span class="action-card-label">休憩を<br>開始</span></button>' +
+        '<button type="button" class="action-card start" id="startBtn"><span class="action-card-icon">▶</span><span class="action-card-label">新しいタスクを開始</span></button>' +
+        '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">☕</span><span class="action-card-label">休憩を開始</span></button>' +
         '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝タスクを選ばずに業務全体を一時中断（作業時間としては記録されません）。</p>' +
         doneHtml;
@@ -1637,6 +1691,19 @@
     var t = splitIsoSeconds(iso).time.split(":");
     return parseInt(t[0], 10) * 60 + parseInt(t[1], 10) + parseInt(t[2], 10) / 60;
   }
+  // スケジュールの図形ドラッグ用：指定した日付の「その日の何分目」を ISO 日時文字列に変換する。
+  // 24:00（=1440分）を超える場合は翌日の 0:00 として扱う。
+  function minutesToIsoOnDate(dateStr, min) {
+    min = Math.round(min);
+    if (min >= 24 * 60) {
+      var nd = new Date(dateStr + "T00:00:00");
+      nd.setDate(nd.getDate() + 1);
+      return dateStrOf(nd) + "T00:00:00";
+    }
+    if (min < 0) min = 0;
+    var hh = Math.floor(min / 60), mm = min % 60;
+    return dateStr + "T" + pad2(hh) + ":" + pad2(mm) + ":00";
+  }
   function dateStrOf(dateObj) {
     return dateObj.getFullYear() + "-" + pad2(dateObj.getMonth() + 1) + "-" + pad2(dateObj.getDate());
   }
@@ -1699,13 +1766,16 @@
     switchScheduleMode("day");
   });
 
-  function renderScheduleDayView() {
+  function renderScheduleDayView(preserveScroll) {
     var d = new Date(scheduleDayState + "T00:00:00");
     var wd = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
     document.getElementById("schDayLabel").textContent = (d.getMonth() + 1) + "月" + d.getDate() + "日（" + wd + "）";
 
     var timeline = document.getElementById("dayTimeline");
     timeline.style.height = (HOUR_PX * 24) + "px";
+
+    var scrollBoxEarly = document.getElementById("dayTimelineScroll");
+    var keptScrollTop = (preserveScroll && scrollBoxEarly) ? scrollBoxEarly.scrollTop : null;
 
     var html = "";
     for (var h = 0; h < 24; h++) {
@@ -1720,13 +1790,13 @@
     var blocks = [];
     state.sessions.forEach(function (s) {
       var segs = getSegments(s);
-      segs.forEach(function (seg) {
+      segs.forEach(function (seg, segIdx) {
         if (!isSameDate(seg.start, scheduleDayState)) return;
         var running = !seg.end;
         var startMin = minutesOfDay(seg.start);
         var endMin = minMaxClamp(startMin, running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end));
         blocks.push({
-          kind: "work", session: s, seg: seg, running: running, startMin: startMin,
+          kind: "work", session: s, seg: seg, segIndex: segIdx, running: running, startMin: startMin,
           top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       });
@@ -1738,7 +1808,7 @@
         var gStartMin = minutesOfDay(gapStart);
         var gEndMin = minMaxClamp(gStartMin, minutesOfDay(gapEnd));
         blocks.push({
-          kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false, sessionId: s.id,
+          kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false, sessionId: s.id, segIndex: gi,
           top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       }
@@ -1747,7 +1817,7 @@
         var oStartMin = minutesOfDay(s.end);
         var oEndMin = minMaxClamp(oStartMin, minutesOfDay(nowLocalIso()));
         blocks.push({
-          kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock", sessionId: s.id,
+          kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock", sessionId: s.id, segIndex: segs.length - 1,
           top: (oStartMin / 60) * HOUR_PX, height: Math.max(((oEndMin - oStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       }
@@ -1777,18 +1847,31 @@
       }
     }
 
+    // 図形の上下の縁をドラッグして開始・終了時刻を調整できるようにするための「つまみ」。
+    // 進行中（終了時刻がまだ「現在」で確定していない）ブロックは、下端のつまみは付けない。
+    function resizeHandlesHtml(showTop, showBottom) {
+      return (showTop ? '<div class="resize-handle resize-handle-top"></div>' : '') +
+        (showBottom ? '<div class="resize-handle resize-handle-bottom"></div>' : '');
+    }
+
     blocks.forEach(function (b) {
       if (b.kind === "work") {
         var color = colorForProject(projectLabel(b.session));
-        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
+        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') +
+          '" data-id="' + escapeHtml(b.session.id) + '" data-block-kind="work" data-session-id="' + escapeHtml(b.session.id) + '" data-seg-index="' + b.segIndex + '"' +
+          ' style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
+          resizeHandlesHtml(true, !b.running) +
           '<div class="day-segment-name">' + escapeHtml(projectLabel(b.session)) + '</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.seg.start)) + '〜' + (b.seg.end ? escapeHtml(formatTimeShort(b.seg.end)) : '') + '</div>' +
           '</div>';
       } else {
         var breakAttrs = (b.elId ? ' id="' + b.elId + '"' : '') +
+          ' data-block-kind="' + b.kind + '"' +
           (b.sessionId ? ' data-session-id="' + escapeHtml(b.sessionId) + '"' : '') +
-          (b.breakId ? ' data-break-id="' + escapeHtml(b.breakId) + '"' : '');
+          (b.breakId ? ' data-break-id="' + escapeHtml(b.breakId) + '"' : '') +
+          (b.segIndex !== undefined ? ' data-seg-index="' + b.segIndex + '"' : '');
         html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
+          resizeHandlesHtml(true, !b.ongoing) +
           '<div class="day-segment-name">☕ 休憩</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
           '</div>';
@@ -1806,8 +1889,12 @@
     document.getElementById("schDayTotal").textContent = "この日の合計：" + formatHM(totalSec);
 
     var scrollBox = document.getElementById("dayTimelineScroll");
-    var scrollToMin = isToday ? minutesOfDay(nowLocalIso()) : (blocks.length ? blocks[0].startMin : 8 * 60);
-    scrollBox.scrollTop = Math.max(0, (scrollToMin / 60) * HOUR_PX - 120);
+    if (keptScrollTop !== null) {
+      scrollBox.scrollTop = keptScrollTop;
+    } else {
+      var scrollToMin = isToday ? minutesOfDay(nowLocalIso()) : (blocks.length ? blocks[0].startMin : 8 * 60);
+      scrollBox.scrollTop = Math.max(0, (scrollToMin / 60) * HOUR_PX - 120);
+    }
   }
 
   function updateScheduleLiveGauge() {
@@ -1850,6 +1937,8 @@
   document.getElementById("scheduleMonthModeBtn").addEventListener("click", function () { switchScheduleMode("month"); });
   document.getElementById("scheduleDayModeBtn").addEventListener("click", function () { switchScheduleMode("day"); });
   document.getElementById("dayTimeline").addEventListener("click", function (evt) {
+    // 図形の縁をドラッグして時刻を調整した直後は、その場での click（＝編集フォームへの遷移）は発生させない。
+    if (resizeJustHappened) { resizeJustHappened = false; return; }
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
     if (!block) return;
     var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
@@ -1881,6 +1970,151 @@
     generalBreakEditingId = null;
     if (historyTabBtn) historyTabBtn.click();
     renderHistoryList();
+  });
+
+  // ---- スケジュール（日表示）：図形の上下の縁をドラッグして開始・終了時刻を調整する ----
+  var activeResize = null; // ドラッグ中のみ値が入る: { pointerId, blockEl, target, field, minMin, maxMin, startClientY, startValueMin, session, moved }
+  var resizeJustHappened = false; // ドラッグ操作の直後に click イベントで編集フォームへ遷移してしまわないようにするためのフラグ
+
+  function startResizeDrag(blockEl, edge, evt) {
+    var kind = blockEl.getAttribute("data-block-kind");
+    var sessionId = blockEl.getAttribute("data-session-id");
+    var breakId = blockEl.getAttribute("data-break-id");
+    var segIndexAttr = blockEl.getAttribute("data-seg-index");
+    var segIndex = (segIndexAttr !== null && segIndexAttr !== "") ? parseInt(segIndexAttr, 10) : null;
+
+    var session = null, segs = null, gb = null;
+    if (kind === "work" || kind === "task-break") {
+      session = state.sessions.find(function (s) { return s.id === sessionId; });
+      if (!session) return;
+      segs = ensureSegments(session);
+    } else if (kind === "general-break") {
+      gb = getGeneralBreaks().find(function (b) { return b.id === breakId; });
+      if (!gb) return;
+    } else {
+      return;
+    }
+
+    var target = null, field = null, minMin = 0, maxMin = 24 * 60;
+
+    if (kind === "work") {
+      var seg = segs[segIndex];
+      if (!seg) return;
+      if (edge === "top") {
+        target = seg; field = "start";
+        minMin = segIndex > 0 ? minutesOfDay(segs[segIndex - 1].end || segs[segIndex - 1].start) + 5 : 0;
+        maxMin = minutesOfDay(seg.end || nowLocalIso()) - 5;
+      } else {
+        if (!seg.end) return; // 進行中の区間の終了（＝現在時刻）はドラッグでは変更できない
+        target = seg; field = "end";
+        minMin = minutesOfDay(seg.start) + 5;
+        maxMin = segIndex < segs.length - 1 ? minutesOfDay(segs[segIndex + 1].start) - 5 : 24 * 60;
+      }
+    } else if (kind === "task-break") {
+      if (edge === "top") {
+        var seg1 = segs[segIndex];
+        if (!seg1 || !seg1.end) return;
+        target = seg1; field = "end";
+        minMin = minutesOfDay(seg1.start) + 5;
+        var nextSeg = segs[segIndex + 1];
+        maxMin = nextSeg ? minutesOfDay(nextSeg.start) - 5 : minutesOfDay(nowLocalIso()) - 5;
+      } else {
+        var seg2 = segs[segIndex + 1];
+        if (!seg2) return;
+        target = seg2; field = "start";
+        minMin = minutesOfDay(segs[segIndex].end) + 5;
+        maxMin = seg2.end ? minutesOfDay(seg2.end) - 5 : 24 * 60;
+      }
+    } else if (kind === "general-break") {
+      if (edge === "top") {
+        target = gb; field = "start";
+        minMin = 0;
+        maxMin = minutesOfDay(gb.end || nowLocalIso()) - 5;
+      } else {
+        if (!gb.end) return; // 進行中の休憩の終了（＝現在時刻）はドラッグでは変更できない
+        target = gb; field = "end";
+        minMin = minutesOfDay(gb.start) + 5;
+        maxMin = 24 * 60;
+      }
+    }
+
+    if (!target || minMin > maxMin) return;
+
+    activeResize = {
+      pointerId: evt.pointerId, kind: kind, sessionId: sessionId, breakId: breakId, segIndex: segIndex,
+      target: target, field: field, minMin: minMin, maxMin: maxMin, startClientY: evt.clientY,
+      startValueMin: minutesOfDay(target[field]), session: session, moved: false
+    };
+    blockEl.classList.add("resizing");
+  }
+
+  // 再描画（renderScheduleDayView）のたびに要素が作り直されるため、ドラッグ中であることを示す
+  // 見た目（.resizing）を、同じブロックを表す新しい要素に付け直す。
+  function reapplyResizingClass() {
+    var sel = '.day-segment-block[data-block-kind="' + activeResize.kind + '"]';
+    if (activeResize.sessionId) sel += '[data-session-id="' + activeResize.sessionId + '"]';
+    if (activeResize.breakId) sel += '[data-break-id="' + activeResize.breakId + '"]';
+    if (activeResize.segIndex !== null) sel += '[data-seg-index="' + activeResize.segIndex + '"]';
+    var el = document.querySelector(sel);
+    if (el) el.classList.add("resizing");
+  }
+
+  function updateResizeDrag(evt) {
+    var deltaY = evt.clientY - activeResize.startClientY;
+    if (Math.abs(deltaY) > 2) activeResize.moved = true;
+    var deltaMin = (deltaY / HOUR_PX) * 60;
+    var rawMin = activeResize.startValueMin + deltaMin;
+    var snapped = Math.round(rawMin / 5) * 5;
+    snapped = Math.max(activeResize.minMin, Math.min(activeResize.maxMin, snapped));
+    activeResize.target[activeResize.field] = minutesToIsoOnDate(scheduleDayState, snapped);
+    renderScheduleDayView(true);
+    reapplyResizingClass();
+  }
+
+  function finishResizeDrag() {
+    var wasMoved = activeResize.moved;
+    if (activeResize.session) syncSessionFromSegments(activeResize.session);
+    persistState();
+    activeResize = null;
+    if (wasMoved) {
+      resizeJustHappened = true;
+      // ドラッグ中は再描画のたびに図形のDOM要素が作り直されるため、ブラウザ標準の click イベントが
+      // 発火しないことがある。その場合フラグが消費されず残り続けてしまうので、直後に自動で解除する
+      // （click が発火する場合は、それより先にこのタイマーが動くことはない）。
+      setTimeout(function () { resizeJustHappened = false; }, 0);
+    }
+    // renderAll() は各種集計（合計時間・履歴など）も更新するが、スケジュールのスクロール位置は
+    // ドラッグ前の見た目のまま保つ（ドラッグ直後に表示位置が飛ぶのを防ぐ）。
+    var scrollBox = document.getElementById("dayTimelineScroll");
+    var keptScrollTop = scrollBox ? scrollBox.scrollTop : null;
+    renderAll();
+    if (keptScrollTop !== null) {
+      var scrollBoxAfter = document.getElementById("dayTimelineScroll");
+      if (scrollBoxAfter) scrollBoxAfter.scrollTop = keptScrollTop;
+    }
+  }
+
+  document.getElementById("dayTimeline").addEventListener("pointerdown", function (evt) {
+    var handle = evt.target.closest ? evt.target.closest(".resize-handle") : null;
+    if (!handle) return;
+    var block = handle.closest(".day-segment-block");
+    if (!block) return;
+    evt.preventDefault();
+    var edge = handle.classList.contains("resize-handle-top") ? "top" : "bottom";
+    startResizeDrag(block, edge, evt);
+  });
+  document.addEventListener("pointermove", function (evt) {
+    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
+    evt.preventDefault();
+    updateResizeDrag(evt);
+  });
+  document.addEventListener("pointerup", function (evt) {
+    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
+    finishResizeDrag();
+  });
+  document.addEventListener("pointercancel", function (evt) {
+    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
+    finishResizeDrag();
   });
 
   function renderSchedule() {
