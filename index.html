@@ -104,6 +104,14 @@
   .big-btn.stop:hover { opacity: 0.92; }
   .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
   .status-btn-row .big-btn { margin: 0; }
+  .action-card-row { display: flex; gap: 12px; width: 100%; max-width: 380px; margin: 20px auto 0; }
+  .action-card { appearance: none; border: none; border-radius: 14px; cursor: pointer; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 18px 10px; transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease; }
+  .action-card:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+  .action-card:active { transform: translateY(0); box-shadow: none; }
+  .action-card-icon { font-size: 28px; line-height: 1; }
+  .action-card-label { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.3; }
+  .action-card.start { background: var(--series-1); color: #fff; }
+  .action-card.break { background: var(--series-4); color: #fff; }
   .break-alt-action { margin-top: 12px; font-size: 12px; }
   .break-alt-action a { color: var(--text-secondary); text-decoration: underline; }
   .break-alt-sep { margin: 0 6px; color: var(--text-muted); }
@@ -111,7 +119,7 @@
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .task-list-section { max-width: 480px; margin: 0 auto 18px; text-align: left; }
-  .task-list-heading { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; cursor: pointer; padding: 6px 0; }
+  .task-list-heading { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; cursor: pointer; padding: 6px 0; text-align: center; }
   .task-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .task-row.done { background: var(--surface-1); }
   .task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
@@ -134,7 +142,7 @@
   .task-resume-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
   .task-resume-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
   .task-done-section { max-width: 480px; margin: 6px auto 0; text-align: left; }
-  .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; }
+  .task-done-section summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 0; text-align: center; }
   .task-done-section .task-row { opacity: 0.8; }
   .running-memo-field input[type="text"] { padding: 12px 14px; border-radius: 10px; }
 
@@ -165,7 +173,9 @@
   /* 最近の記録：同じタスクの記録を日付をまたいで1つのくくりにまとめた表示 */
   .recent-task-group { background: var(--page-plane); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; }
   .recent-task-group.is-running { border-color: var(--series-2); }
-  .recent-task-group-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .recent-task-group-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .recent-task-group[open] .recent-task-group-heading { margin-bottom: 8px; }
+  .recent-task-group:not([open]) .recent-task-group-heading { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
   .recent-task-group-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .recent-task-group-count { font-size: 10px; font-weight: 600; color: var(--text-secondary); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
   .recent-task-group-total { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-left: auto; }
@@ -433,7 +443,7 @@
   var scheduleDayState = null;
   var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
   var HOUR_PX = 48;
-  var MIN_BLOCK_HEIGHT = 3; // ブロックの最小の高さ(px)。前後の記録と時間が近いことがあるため、実時間より高くしすぎない
+  var MIN_BLOCK_HEIGHT = 18; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）
 
   function isValidState(obj) {
     return !!obj && Array.isArray(obj.sessions);
@@ -888,9 +898,9 @@
         '<div><label class="field-label">業務内容</label><input type="text" id="startMemoInput" placeholder="例、企画"></div>' +
         '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1"></div>' +
         '</div>' +
-        '<div class="status-btn-row">' +
-        '<button type="button" class="big-btn start" id="startBtn">▶ 新しいタスクを開始</button>' +
-        '<button type="button" class="big-btn break" id="generalBreakBtn">☕ 休憩を開始</button>' +
+        '<div class="action-card-row">' +
+        '<button type="button" class="action-card start" id="startBtn"><span class="action-card-icon">▶</span><span class="action-card-label">新しいタスクを<br>開始</span></button>' +
+        '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">☕</span><span class="action-card-label">休憩を<br>開始</span></button>' +
         '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝タスクを選ばずに業務全体を一時中断（作業時間としては記録されません）。</p>' +
         doneHtml;
@@ -1135,8 +1145,8 @@
       var anyRunning = g.sessions.some(function (s) { return !s.end; });
       var groupTask = getTaskById(g.taskId);
       var groupNumber = (groupTask && groupTask.number) || g.sessions[0].number;
-      html += '<div class="recent-task-group' + (anyRunning ? ' is-running' : '') + '">' +
-        '<div class="recent-task-group-heading">' +
+      html += '<details class="recent-task-group' + (anyRunning ? ' is-running' : '') + '">' +
+        '<summary class="recent-task-group-heading">' +
         '<span class="project-dot" style="background:' + colorForProject(projectLabel(g.sessions[0])) + '"></span>' +
         '<span class="task-id-badge">' + escapeHtml(g.taskId) + '</span>' +
         '<span class="recent-task-group-name">' + escapeHtml(projectLabel(g.sessions[0])) + '</span>' +
@@ -1144,9 +1154,9 @@
         (anyRunning ? '<span class="running-tag">作業中</span>' : '') +
         '<span class="recent-task-group-count">' + g.sessions.length + '件</span>' +
         '<span class="recent-task-group-total">合計 ' + escapeHtml(formatHM(totalSec)) + '</span>' +
-        '</div>' +
+        '</summary>' +
         g.sessions.map(recentEntryRowHtml).join("") +
-        '</div>';
+        '</details>';
     });
     wrap.innerHTML = html;
   }
@@ -1580,6 +1590,15 @@
     });
     blocks.sort(function (a, b) { return a.startMin - b.startMin; });
 
+    // 最小の高さを確保すると、直後の記録と間隔が近い場合に見た目上重なってしまうことがあるため、
+    // 次のブロックの開始位置を超えないようにその場で高さを詰める（文字は消さず、重なりだけを防ぐ）。
+    for (var bi = 0; bi < blocks.length - 1; bi++) {
+      var maxHeight = blocks[bi + 1].top - blocks[bi].top;
+      if (maxHeight > 0 && blocks[bi].height > maxHeight) {
+        blocks[bi].height = Math.max(maxHeight, 4);
+      }
+    }
+
     blocks.forEach(function (b) {
       var color = colorForProject(projectLabel(b.session));
       html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
@@ -1612,7 +1631,7 @@
     if (runningBlock) {
       var top = parseFloat(runningBlock.style.top);
       var nowMin = isToday ? minutesOfDay(nowLocalIso()) : 24 * 60;
-      var newHeight = Math.max((nowMin / 60) * HOUR_PX - top, 3);
+      var newHeight = Math.max((nowMin / 60) * HOUR_PX - top, MIN_BLOCK_HEIGHT);
       runningBlock.style.height = newHeight + "px";
       if (isToday) {
         var timeEl = runningBlock.querySelector(".day-segment-time");
