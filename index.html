@@ -66,6 +66,15 @@
   .filter-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: flex-end; }
   .filter-item { display: flex; flex-direction: column; min-width: 160px; }
   label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  .datetime-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .datetime-pair { display: flex; flex-direction: column; gap: 6px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; flex: 1 1 220px; min-width: 200px; box-sizing: border-box; }
+  .datetime-pair-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+  .datetime-pair-inputs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .datetime-pair-inputs input[type="date"], .datetime-pair-inputs input[type="time"] { width: auto; flex: 1 1 100px; min-width: 0; }
+  .datetime-arrow { font-size: 18px; color: var(--text-muted); flex-shrink: 0; }
+  @media (max-width: 480px) { .datetime-arrow { display: none; } }
+  .datetime-pair-sublabel { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .datetime-pair.break .datetime-pair-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.data-table th, table.data-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--gridline); }
   table.data-table th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
@@ -235,6 +244,9 @@
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
   .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; text-align: center; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
+  .day-break-block { background: repeating-linear-gradient(45deg, #fff8ea, #fff8ea 6px, #ffedc2 6px, #ffedc2 12px); border: 1px dashed var(--series-4); color: #8a6a10; cursor: default; }
+  .day-break-block .day-segment-name { font-weight: 700; }
+  .day-break-block.running { box-shadow: 0 0 0 2px var(--series-4); }
   .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; flex: 0 1 auto; }
   .day-segment-time { font-size: 10px; opacity: 0.9; white-space: nowrap; flex: 0 0 auto; }
   .day-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 5; pointer-events: none; }
@@ -334,18 +346,21 @@
           <input type="text" id="manualNumber" placeholder="例、1_1">
         </div>
       </div>
-      <div class="filter-row">
-        <div class="filter-item"><label class="field-label">開始日</label>
-          <input type="date" id="manualStartDate">
+      <div class="datetime-row">
+        <div class="datetime-pair start">
+          <div class="datetime-pair-label">開始</div>
+          <div class="datetime-pair-inputs">
+            <input type="date" id="manualStartDate">
+            <input type="time" step="1" id="manualStartTime">
+          </div>
         </div>
-        <div class="filter-item"><label class="field-label">開始時刻</label>
-          <input type="time" step="1" id="manualStartTime">
-        </div>
-        <div class="filter-item"><label class="field-label">終了日</label>
-          <input type="date" id="manualEndDate">
-        </div>
-        <div class="filter-item"><label class="field-label">終了時刻</label>
-          <input type="time" step="1" id="manualEndTime">
+        <span class="datetime-arrow">→</span>
+        <div class="datetime-pair end">
+          <div class="datetime-pair-label">終了</div>
+          <div class="datetime-pair-inputs">
+            <input type="date" id="manualEndDate">
+            <input type="time" step="1" id="manualEndTime">
+          </div>
         </div>
       </div>
       <button type="button" id="manualAddBtn" class="data-io-btn">記録を追加</button>
@@ -618,6 +633,15 @@
     if (!state.tasks) state.tasks = [];
     return state.tasks;
   }
+  // タスクに紐づかない「一般休憩」の履歴。開始のみでendがnullのものが現在進行中の休憩。
+  // スケジュールに過去の一般休憩も表示できるよう、開始・終了を記録として残す。
+  function getGeneralBreaks() {
+    if (!state.generalBreaks) state.generalBreaks = [];
+    return state.generalBreaks;
+  }
+  function getActiveGeneralBreak() {
+    return getGeneralBreaks().find(function (b) { return !b.end; });
+  }
   function createTask(project, memo, number) {
     var num = (state.nextTaskNumber || 0) + 1;
     state.nextTaskNumber = num;
@@ -680,6 +704,7 @@
       html += '<option value="' + escapeHtml(t.id) + '"' + (t.id === currentTaskId ? ' selected' : '') + '>' +
         escapeHtml(t.id) + ' ' + escapeHtml(t.project) + (t.completed ? '（完了済み）' : '') + '</option>';
     });
+    html += '</select>';
     return html;
   }
 
@@ -804,18 +829,19 @@
           renderAll();
         });
       }
-    } else if (state.generalBreakStartedAt) {
+    } else if (getActiveGeneralBreak()) {
+      var activeGeneralBreak = getActiveGeneralBreak();
       card.className = "card status-card on-break";
       card.style.removeProperty("--project-color");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<span class="status-badge on-break">☕ 休憩中</span>' +
         '<div class="timer-project">業務全体の休憩中</div>' +
-        '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(state.generalBreakStartedAt)) + '〜</div>' +
+        '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
         '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
-        state.generalBreakStartedAt = null;
+        activeGeneralBreak.end = nowLocalIso();
         persistState();
         renderAll();
       });
@@ -921,7 +947,7 @@
       });
 
       document.getElementById("generalBreakBtn").addEventListener("click", function () {
-        state.generalBreakStartedAt = nowLocalIso();
+        getGeneralBreaks().push({ id: generateId(), start: nowLocalIso(), end: null });
         persistState();
         renderAll();
       });
@@ -1223,33 +1249,36 @@
   }
 
   // 区間の配列（開始～休憩～終了）から編集フォームのHTMLを組み立てる。
+  // 開始・休憩・終了を横に並べて見比べやすいよう、矢印でつないだカード（datetime-pair）を並列表示する。
   function renderSegmentEditFields(segs) {
     var firstStart = splitIsoSeconds(segs[0].start);
-    var html = '<div class="hist-edit-fields">' +
-      '<div class="hist-edit-field"><label>開始日</label><input type="date" class="e-start-date" value="' + firstStart.date + '"></div>' +
-      '<div class="hist-edit-field"><label>開始時刻</label><input type="time" step="1" class="e-start-time" value="' + firstStart.time + '"></div>' +
+    var html = '<div class="datetime-row hist-segment-flow">' +
+      '<div class="datetime-pair start">' +
+      '<div class="datetime-pair-label">開始</div>' +
+      '<div class="datetime-pair-inputs"><input type="date" class="e-start-date" value="' + firstStart.date + '"><input type="time" step="1" class="e-start-time" value="' + firstStart.time + '"></div>' +
       '</div>';
 
     for (var i = 0; i < segs.length - 1; i++) {
       var bStart = splitIsoSeconds(segs[i].end || segs[i].start);
       var bEnd = splitIsoSeconds(segs[i + 1].start || segs[i].end || segs[i].start);
-      html += '<div class="seg-break-row" data-break-index="' + i + '">' +
-        '<div class="seg-break-heading">☕ 休憩' + (i + 1) + '<button type="button" class="e-break-remove" data-break-index="' + i + '">この休憩を削除</button></div>' +
-        '<div class="hist-edit-fields">' +
-        '<div class="hist-edit-field"><label>休憩開始日</label><input type="date" class="e-break-start-date" value="' + bStart.date + '"></div>' +
-        '<div class="hist-edit-field"><label>休憩開始時刻</label><input type="time" step="1" class="e-break-start-time" value="' + bStart.time + '"></div>' +
-        '<div class="hist-edit-field"><label>休憩終了日</label><input type="date" class="e-break-end-date" value="' + bEnd.date + '"></div>' +
-        '<div class="hist-edit-field"><label>休憩終了時刻</label><input type="time" step="1" class="e-break-end-time" value="' + bEnd.time + '"></div>' +
-        '</div>' +
+      html += '<span class="datetime-arrow">→</span>' +
+        '<div class="datetime-pair break seg-break-row" data-break-index="' + i + '">' +
+        '<div class="datetime-pair-label">☕ 休憩' + (i + 1) + '<button type="button" class="e-break-remove" data-break-index="' + i + '">削除</button></div>' +
+        '<div class="datetime-pair-sublabel">休憩開始</div>' +
+        '<div class="datetime-pair-inputs"><input type="date" class="e-break-start-date" value="' + bStart.date + '"><input type="time" step="1" class="e-break-start-time" value="' + bStart.time + '"></div>' +
+        '<div class="datetime-pair-sublabel">休憩終了</div>' +
+        '<div class="datetime-pair-inputs"><input type="date" class="e-break-end-date" value="' + bEnd.date + '"><input type="time" step="1" class="e-break-end-time" value="' + bEnd.time + '"></div>' +
         '</div>';
     }
 
     var last = segs[segs.length - 1];
     var running = !last.end;
     var lastEndParts = splitIsoSeconds(last.end || last.start);
-    html += '<div class="hist-edit-fields">' +
-      '<div class="hist-edit-field"><label>終了日</label><input type="date" class="e-end-date" value="' + lastEndParts.date + '"' + (running ? ' disabled' : '') + '></div>' +
-      '<div class="hist-edit-field"><label>終了時刻</label><input type="time" step="1" class="e-end-time" value="' + lastEndParts.time + '"' + (running ? ' disabled' : '') + '></div>' +
+    html += '<span class="datetime-arrow">→</span>' +
+      '<div class="datetime-pair end">' +
+      '<div class="datetime-pair-label">終了</div>' +
+      '<div class="datetime-pair-inputs"><input type="date" class="e-end-date" value="' + lastEndParts.date + '"' + (running ? ' disabled' : '') + '><input type="time" step="1" class="e-end-time" value="' + lastEndParts.time + '"' + (running ? ' disabled' : '') + '></div>' +
+      '</div>' +
       '</div>' +
       '<label class="checkbox-row"><input type="checkbox" class="e-running"' + (running ? ' checked' : '') + '> まだ作業中（終了時刻を設定しない）</label>' +
       '<div class="seg-add-break-row"><button type="button" class="e-add-break"' + (running ? ' style="display:none;"' : '') + '>＋ 休憩を追加</button></div>';
@@ -1573,21 +1602,60 @@
       html += '<div class="day-hour-row" style="top:' + (h * HOUR_PX) + 'px;"><span class="day-hour-label">' + pad2(h) + ':00</span></div>';
     }
 
+    function minMaxClamp(startMin, endMin) {
+      if (endMin < startMin) endMin = 24 * 60;
+      return Math.min(endMin, 24 * 60);
+    }
+
     var blocks = [];
     state.sessions.forEach(function (s) {
-      getSegments(s).forEach(function (seg) {
+      var segs = getSegments(s);
+      segs.forEach(function (seg) {
         if (!isSameDate(seg.start, scheduleDayState)) return;
         var running = !seg.end;
         var startMin = minutesOfDay(seg.start);
-        var endMin = running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end);
-        if (endMin < startMin) endMin = 24 * 60;
-        endMin = Math.min(endMin, 24 * 60);
+        var endMin = minMaxClamp(startMin, running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end));
         blocks.push({
-          session: s, seg: seg, running: running, startMin: startMin,
+          kind: "work", session: s, seg: seg, running: running, startMin: startMin,
           top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       });
+      // タスクを一時中断している間（セグメントとセグメントの間）は「休憩」として特別に表示する。
+      for (var gi = 0; gi < segs.length - 1; gi++) {
+        var gapStart = segs[gi].end;
+        var gapEnd = segs[gi + 1].start;
+        if (!gapStart || !isSameDate(gapStart, scheduleDayState)) continue;
+        var gStartMin = minutesOfDay(gapStart);
+        var gEndMin = minMaxClamp(gStartMin, minutesOfDay(gapEnd));
+        blocks.push({
+          kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false,
+          top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+        });
+      }
+      // 現在まさに休憩中のタスクは、休憩の終わりがまだ決まっていないので「進行中」として表示する。
+      if (state.onBreakSessionId === s.id && s.end && isSameDate(s.end, scheduleDayState)) {
+        var oStartMin = minutesOfDay(s.end);
+        var oEndMin = minMaxClamp(oStartMin, minutesOfDay(nowLocalIso()));
+        blocks.push({
+          kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock",
+          top: (oStartMin / 60) * HOUR_PX, height: Math.max(((oEndMin - oStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+        });
+      }
     });
+
+    // タスクに紐づかない一般休憩も同様に表示する。
+    getGeneralBreaks().forEach(function (b) {
+      if (!isSameDate(b.start, scheduleDayState)) return;
+      var ongoing = !b.end;
+      var gStartMin = minutesOfDay(b.start);
+      var gEndMin = minMaxClamp(gStartMin, ongoing ? minutesOfDay(nowLocalIso()) : minutesOfDay(b.end));
+      blocks.push({
+        kind: "general-break", startMin: gStartMin, startIso: b.start, endIso: b.end, ongoing: ongoing,
+        elId: ongoing ? "liveGeneralBreakBlock" : null,
+        top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+      });
+    });
+
     blocks.sort(function (a, b) { return a.startMin - b.startMin; });
 
     // 最小の高さを確保すると、直後の記録と間隔が近い場合に見た目上重なってしまうことがあるため、
@@ -1600,11 +1668,18 @@
     }
 
     blocks.forEach(function (b) {
-      var color = colorForProject(projectLabel(b.session));
-      html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
-        '<div class="day-segment-name">' + escapeHtml(projectLabel(b.session)) + '</div>' +
-        '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.seg.start)) + '〜' + (b.seg.end ? escapeHtml(formatTimeShort(b.seg.end)) : '') + '</div>' +
-        '</div>';
+      if (b.kind === "work") {
+        var color = colorForProject(projectLabel(b.session));
+        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + '" data-id="' + escapeHtml(b.session.id) + '" style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
+          '<div class="day-segment-name">' + escapeHtml(projectLabel(b.session)) + '</div>' +
+          '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.seg.start)) + '〜' + (b.seg.end ? escapeHtml(formatTimeShort(b.seg.end)) : '') + '</div>' +
+          '</div>';
+      } else {
+        html += '<div' + (b.elId ? ' id="' + b.elId + '"' : '') + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
+          '<div class="day-segment-name">☕ 休憩</div>' +
+          '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
+          '</div>';
+      }
     });
 
     var isToday = scheduleDayState === todayDateInputValue();
@@ -1627,17 +1702,20 @@
     var nowLine = document.getElementById("dayNowLine");
     if (nowLine) nowLine.style.top = ((minutesOfDay(nowLocalIso()) / 60) * HOUR_PX) + "px";
 
-    var runningBlock = document.getElementById("runningDayBlock");
-    if (runningBlock) {
-      var top = parseFloat(runningBlock.style.top);
+    // 作業中のブロック・進行中の休憩ブロック（タスク休憩・一般休憩）はいずれも
+    // 終わりがまだ決まっていないため、同じ仕組みで高さと時刻表示をリアルタイムに更新する。
+    ["runningDayBlock", "liveTaskBreakBlock", "liveGeneralBreakBlock"].forEach(function (elId) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      var top = parseFloat(el.style.top);
       var nowMin = isToday ? minutesOfDay(nowLocalIso()) : 24 * 60;
       var newHeight = Math.max((nowMin / 60) * HOUR_PX - top, MIN_BLOCK_HEIGHT);
-      runningBlock.style.height = newHeight + "px";
+      el.style.height = newHeight + "px";
       if (isToday) {
-        var timeEl = runningBlock.querySelector(".day-segment-time");
+        var timeEl = el.querySelector(".day-segment-time");
         if (timeEl) timeEl.textContent = timeEl.textContent.split("〜")[0] + "〜" + formatTimeShort(nowLocalIso());
       }
-    }
+    });
   }
 
   document.getElementById("schDayPrevBtn").addEventListener("click", function () {
@@ -1660,7 +1738,7 @@
   document.getElementById("scheduleDayModeBtn").addEventListener("click", function () { switchScheduleMode("day"); });
   document.getElementById("dayTimeline").addEventListener("click", function (evt) {
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
-    if (!block) return;
+    if (!block || block.classList.contains("day-break-block")) return;
     historyEditingId = block.getAttribute("data-id");
     historyEditDraftSegments = null;
     var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
