@@ -777,6 +777,21 @@
           renderAll();
         });
       }
+    } else if (state.generalBreakStartedAt) {
+      card.className = "card status-card on-break";
+      card.style.removeProperty("--project-color");
+      card.innerHTML =
+        '<h2>現在の状況</h2>' +
+        '<span class="status-badge on-break">☕ 休憩中</span>' +
+        '<div class="timer-project">業務全体の休憩中</div>' +
+        '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(state.generalBreakStartedAt)) + '〜</div>' +
+        '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
+        '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
+      document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
+        state.generalBreakStartedAt = null;
+        persistState();
+        renderAll();
+      });
     } else {
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
@@ -835,7 +850,11 @@
         '<div><label class="field-label">業務内容</label><input type="text" id="startMemoInput" placeholder="例、企画"></div>' +
         '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1"></div>' +
         '</div>' +
+        '<div class="status-btn-row">' +
         '<button type="button" class="big-btn start" id="startBtn">▶ 新しいタスクを開始</button>' +
+        '<button type="button" class="big-btn break" id="generalBreakBtn">☕ 休憩を開始</button>' +
+        '</div>' +
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝タスクを選ばずに業務全体を一時中断（作業時間としては記録されません）。</p>' +
         doneHtml;
 
       document.getElementById("startBtn").addEventListener("click", function () {
@@ -849,6 +868,12 @@
         var number = document.getElementById("startNumberInput").value.trim();
         var task = createTask(project, memo, number);
         state.sessions.push({ id: generateId(), project: project, memo: memo, number: number, start: nowLocalIso(), end: null, taskId: task.id });
+        persistState();
+        renderAll();
+      });
+
+      document.getElementById("generalBreakBtn").addEventListener("click", function () {
+        state.generalBreakStartedAt = nowLocalIso();
         persistState();
         renderAll();
       });
