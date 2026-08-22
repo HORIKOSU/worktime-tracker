@@ -884,8 +884,8 @@
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-display" id="elapsedTimer">' + formatHMS(hasPriorTime ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec) + '</div>' +
         (hasPriorTime ? '<div class="timer-caption">このタスクの合計時間</div>' : '') +
-        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">今回：' + formatHMS(sessionElapsedSec) + '</div>' : '') +
+        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
         '<div class="status-btn-row">' +
@@ -993,9 +993,30 @@
         var memo = document.getElementById("startMemoInput").value.trim();
         var number = document.getElementById("startNumberInput").value.trim();
         // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
-        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは紐づけない。
-        var matchedTask = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-        var task = matchedTask || createTask(project, memo, number);
+        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは自動では紐づけない。
+        var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+
+        // 未完了タスクに一致がなければ、完了済みタスクの中にプロジェクト名・業務内容・番号が
+        // 完全一致するものがないか確認し、あれば再開するかどうかをユーザーに確認する
+        // （気づかないうちに同じ内容のタスクが重複して登録されるのを防ぐため）。
+        if (!task) {
+          var exactMatch = completedTasks().find(function (t) {
+            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
+          });
+          if (exactMatch) {
+            var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
+              exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
+              "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
+              "このタスクを未完了に戻して時間を追加しますか？\n" +
+              "（キャンセルすると、新しい別のタスクとして開始します）";
+            if (window.confirm(msg)) {
+              exactMatch.completed = false;
+              task = exactMatch;
+            }
+          }
+        }
+
+        if (!task) task = createTask(project, memo, number);
         state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
         persistState();
         renderAll();
@@ -1085,8 +1106,8 @@
       return '<tr>' +
         '<td><span class="task-id-badge">' + escapeHtml(t.id) + '</span></td>' +
         '<td class="task-table-name">' + escapeHtml(t.project) + '</td>' +
-        '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
         '<td class="task-table-memo">' + (t.memo ? escapeHtml(t.memo) : '') + '</td>' +
+        '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
         '<td class="task-table-total">' + escapeHtml(formatHM(taskTotalSec(t))) + '</td>' +
         '<td class="task-table-actions"><div class="task-row-actions">' +
         '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
@@ -1106,9 +1127,9 @@
       }).join("");
       openHtml = '<details class="task-list-section" open><summary class="task-list-heading">未完了のタスク（' + openList.length + '件）</summary>' +
         '<div class="task-table-wrap"><table class="task-table">' +
-        '<colgroup><col class="col-id"><col class="col-project"><col class="col-number"><col class="col-memo"><col class="col-total"><col class="col-actions"></colgroup>' +
+        '<colgroup><col class="col-id"><col class="col-project"><col class="col-memo"><col class="col-number"><col class="col-total"><col class="col-actions"></colgroup>' +
         '<thead><tr>' +
-        '<th>ID</th><th>プロジェクト名</th><th>番号</th><th>業務内容</th><th>合計時間</th><th></th>' +
+        '<th>ID</th><th>プロジェクト名</th><th>業務内容</th><th>番号</th><th>合計時間</th><th></th>' +
         '</tr></thead><tbody>' +
         openRowsHtml +
         '</tbody></table></div>' +
