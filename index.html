@@ -884,9 +884,9 @@
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-display" id="elapsedTimer">' + formatHMS(hasPriorTime ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec) + '</div>' +
         (hasPriorTime ? '<div class="timer-caption">このタスクの合計時間</div>' : '') +
+        '<div class="timer-memo" style="margin-bottom:4px;">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">今回：' + formatHMS(sessionElapsedSec) + '</div>' : '') +
-        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
-        '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
+        '<div class="timer-project" style="margin-bottom:14px;">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
         '<div class="status-btn-row">' +
         '<button type="button" class="big-btn break" id="breakBtn">☕ 休憩</button>' +
