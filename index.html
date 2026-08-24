@@ -140,6 +140,8 @@
   .big-btn.break:hover { opacity: 0.92; }
   .big-btn.stop { background: var(--danger); color: #fff; }
   .big-btn.stop:hover { opacity: 0.92; }
+  .big-btn.complete { background: var(--success); color: #fff; }
+  .big-btn.complete:hover { opacity: 0.92; }
   .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
   .status-btn-row .big-btn { margin: 0; }
   .action-card-row { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
@@ -412,6 +414,10 @@
           <label class="field-label">業務内容</label>
           <input type="text" id="planMemoInput" placeholder="例、企画">
           <div class="quick-suggest-row" id="planMemoSuggest"></div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">番号</label>
+          <input type="text" id="planNumberInput" placeholder="例、1_1">
         </div>
         <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
       </div>
@@ -944,22 +950,25 @@
         '</div>' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
         '<div class="status-btn-row">' +
-        '<button type="button" class="big-btn break" id="breakBtn">☕ 休憩</button>' +
-        '<button type="button" class="big-btn stop" id="stopBtn">■ 終了</button>' +
+        '<button type="button" class="big-btn break" id="pauseBtn">■ 中断</button>' +
+        '<button type="button" class="big-btn complete" id="completeFromRunningBtn">✓ 完了</button>' +
         '</div>' +
-        '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝業務全体を一時中断（1タップで再開できます）。終了＝このタスクを一区切りし、未完了タスク一覧に戻します。</p>';
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝このタスクをひとまず一時停止（休憩したいときも、他の作業に切り替えたいときもこちらでOK。ワンタップで再開できます）。完了＝このタスクを完了にして、未完了タスク一覧から外します。</p>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
         running.memo = this.value;
         persistState();
       });
-      document.getElementById("breakBtn").addEventListener("click", function () {
+      document.getElementById("pauseBtn").addEventListener("click", function () {
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         persistState();
         renderAll();
       });
-      document.getElementById("stopBtn").addEventListener("click", function () {
+      document.getElementById("completeFromRunningBtn").addEventListener("click", function () {
+        var total = priorTaskSec + sessionElapsedSec;
+        if (!window.confirm(projectLabel(running) + (runningTask ? "（" + runningTask.id + "）" : "") + "を完了にしますか？\n合計時間：" + formatHM(total))) return;
         endRunningSession(running);
+        if (runningTask) runningTask.completed = true;
         persistState();
         renderAll();
       });
@@ -970,7 +979,7 @@
       card.style.setProperty("--project-color", colorForProject(projectLabel(onBreak)));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
-        '<span class="status-badge on-break">☕ 休憩中</span>' +
+        '<span class="status-badge on-break">■ 中断中</span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
@@ -1169,8 +1178,9 @@
   function wirePlanAddFormOnce() {
     var projectInput = document.getElementById("planProjectInput");
     var memoInput = document.getElementById("planMemoInput");
+    var numberInput = document.getElementById("planNumberInput");
     var addBtn = document.getElementById("planAddBtn");
-    if (!projectInput || !memoInput || !addBtn) return;
+    if (!projectInput || !memoInput || !numberInput || !addBtn) return;
 
     projectInput.addEventListener("input", renderPlanMemoSuggestChips);
 
@@ -1182,10 +1192,12 @@
         return;
       }
       var memo = memoInput.value.trim();
-      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, done: false });
+      var number = numberInput.value.trim();
+      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, number: number, done: false });
       persistState();
       projectInput.value = "";
       memoInput.value = "";
+      numberInput.value = "";
       renderAll();
     });
   }
@@ -1201,7 +1213,7 @@
         return '<div class="plan-row' + (p.done ? ' done' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
-          '<div class="plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + '</div>' +
+          '<div class="plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + (p.number ? ' <span class="number-badge">' + escapeHtml(p.number) + '</span>' : '') + '</div>' +
           (p.memo ? '<div class="plan-row-memo">' + escapeHtml(p.memo) + '</div>' : '') +
           '</div>' +
           '<div class="plan-row-actions">' +
@@ -1237,12 +1249,14 @@
         if (!plan) return;
         var projectInput = document.getElementById("startProjectInput");
         var memoInput = document.getElementById("startMemoInput");
+        var numberInput = document.getElementById("startNumberInput");
         if (!projectInput || !memoInput) {
-          window.alert("すでに作業中か休憩中です。先に終了するか作業に戻ってから、この予定で開始してください。");
+          window.alert("すでに作業中か中断中です。先に完了するか作業に戻ってから、この予定で開始してください。");
           return;
         }
         projectInput.value = plan.project;
         memoInput.value = plan.memo || "";
+        if (numberInput) numberInput.value = plan.number || "";
         if (typeof renderMemoSuggestChips === "function") renderMemoSuggestChips();
         projectInput.scrollIntoView({ behavior: "smooth", block: "center" });
         projectInput.focus();
@@ -1963,7 +1977,7 @@
       var completeTask = getTaskById(histCompleteBtn.getAttribute("data-task-id"));
       if (!completeTask) return;
       if (taskHasOpenSession(completeTask.id)) {
-        window.alert("このタスクは現在作業中または休憩中のため完了にできません。先に終了してください。");
+        window.alert("このタスクは現在作業中または中断中のため、こちらからは完了にできません。「現在の状況」の画面から完了にしてください。");
         return;
       }
       var completeTotal = taskTotalSec(completeTask);
