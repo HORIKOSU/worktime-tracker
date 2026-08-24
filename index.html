@@ -334,6 +334,14 @@
   .sched-add-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
   .sched-add-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
   .sched-add-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  /* スケジュールの記録ブロックをタップしたときに開く操作メニュー（再開／編集） */
+  .schedule-block-menu { position: absolute; left: 54px; right: 8px; z-index: 6; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.14); text-align: left; }
+  .schedule-block-menu-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+  .schedule-block-menu-info strong { color: var(--text-primary); }
+  .schedule-block-menu-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sched-block-resume-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  .sched-block-edit-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  .sched-block-menu-close-btn { appearance: none; border: none; background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; }
 
   @media (max-width: 760px) {
     .dashboard-top-grid { grid-template-columns: 1fr; }
@@ -570,6 +578,7 @@
   var scheduleDayState = null;
   var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
   var scheduleAddFormState = null; // スケジュール（日表示）の空いている場所をクリックしたときの新規追加フォーム。null以外なら { startMin, endMin } を保持
+  var scheduleBlockMenuState = null; // スケジュール（日表示）の記録ブロックをタップしたときの操作メニュー。null以外なら { sessionId, top } を保持
   var HOUR_PX = 48;
   var MIN_BLOCK_HEIGHT = 18; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）
 
@@ -2320,6 +2329,22 @@
         '</div>';
     }
 
+    // 記録ブロックをタップしたときに開く操作メニュー（▶ 再開／編集）。
+    // 手動追加した記録などタスクに紐づいていないセッションもあるため、プロジェクト名・業務内容は
+    // タスクではなくセッション自体から表示する（再開時にタスクを特定／新規作成する処理と合わせるため）。
+    if (scheduleBlockMenuState) {
+      var menuSession = state.sessions.find(function (s) { return s.id === scheduleBlockMenuState.sessionId; });
+      var menuLabel = menuSession ? (projectLabel(menuSession) + (menuSession.number ? "（" + menuSession.number + "）" : "") + (menuSession.memo ? "・" + menuSession.memo : "")) : "";
+      html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
+        '<div class="schedule-block-menu-info"><strong>' + escapeHtml(menuLabel) + '</strong></div>' +
+        '<div class="schedule-block-menu-actions">' +
+        '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' +
+        '<button type="button" class="sched-block-edit-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">編集</button>' +
+        '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
+        '</div>' +
+        '</div>';
+    }
+
     timeline.innerHTML = html;
 
     var totalSec = daySecTotal(scheduleDayState);
@@ -2334,6 +2359,84 @@
     }
 
     wireScheduleAddForm();
+    wireScheduleBlockMenu();
+  }
+
+  // 記録ブロックをタップしたときに開く操作メニュー（▶ 再開／編集／閉じる）の内部の操作を配線する。
+  function wireScheduleBlockMenu() {
+    var menuEl = document.querySelector(".schedule-block-menu");
+    if (!menuEl) return;
+
+    menuEl.querySelector(".sched-block-resume-btn").addEventListener("click", function () {
+      var sessionId = this.getAttribute("data-session-id");
+      var session = state.sessions.find(function (s) { return s.id === sessionId; });
+      scheduleBlockMenuState = null;
+      if (!session) { renderScheduleDayView(true); return; }
+
+      // タップしたブロックが、ちょうど今「中断中」のタスクそのものであれば、
+      // 「▶ 作業に戻る」と同じ処理でそのまま再開する（新しい別タスクとして扱わない）。
+      var onBreak = getOnBreakSession();
+      if (onBreak && (onBreak.id === session.id || (session.taskId && onBreak.taskId === session.taskId))) {
+        resumeSession(onBreak);
+        state.onBreakSessionId = null;
+        persistState();
+        renderAll();
+        return;
+      }
+
+      if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
+        window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから再開してください。");
+        renderScheduleDayView(true);
+        return;
+      }
+      var project = session.project, memo = session.memo || "", number = session.number || "";
+      var task = session.taskId ? getTaskById(session.taskId) : null;
+      if (task) {
+        if (task.completed) {
+          if (!window.confirm(task.project + "（" + task.id + "）は完了済みです。未完了に戻して再開しますか？")) {
+            renderScheduleDayView(true);
+            return;
+          }
+          task.completed = false;
+        }
+      } else {
+        // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
+        // 既存の未完了タスクに紐づけるか、完了済みと完全一致すれば確認のうえ再開、なければ新規タスクにする。
+        task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+        if (!task) {
+          var exactMatch = completedTasks().find(function (t) {
+            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
+          });
+          if (exactMatch && window.confirm(exactMatch.project + "（" + exactMatch.id + "）は完了済みです。未完了に戻して再開しますか？")) {
+            exactMatch.completed = false;
+            task = exactMatch;
+          }
+        }
+        if (!task) task = createTask(project, memo, number);
+      }
+      state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
+      persistState();
+      renderAll();
+    });
+
+    menuEl.querySelector(".sched-block-edit-btn").addEventListener("click", function () {
+      var sessionId = this.getAttribute("data-session-id");
+      scheduleBlockMenuState = null;
+      menuEl.remove(); // タブ切り替え後もスケジュールのDOMは再描画されないまま残るため、その場で消しておく
+      var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+      var histFilterEl = document.getElementById("histProjectFilter");
+      if (histFilterEl) histFilterEl.value = "__all__";
+      historyEditingId = sessionId;
+      historyEditDraftSegments = null;
+      generalBreakEditingId = null;
+      if (historyTabBtn) historyTabBtn.click();
+      renderHistoryList();
+    });
+
+    menuEl.querySelector(".sched-block-menu-close-btn").addEventListener("click", function () {
+      scheduleBlockMenuState = null;
+      renderScheduleDayView(true);
+    });
   }
 
   // 空いている場所をクリックしたときの新規追加フォームの内部の操作（タスク選択の切り替え・追加・キャンセル）を配線する。
@@ -2419,6 +2522,7 @@
     d.setDate(d.getDate() - 1);
     scheduleDayState = dateStrOf(d);
     scheduleAddFormState = null;
+    scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
   document.getElementById("schDayNextBtn").addEventListener("click", function () {
@@ -2426,11 +2530,13 @@
     d.setDate(d.getDate() + 1);
     scheduleDayState = dateStrOf(d);
     scheduleAddFormState = null;
+    scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
   document.getElementById("schDayTodayBtn").addEventListener("click", function () {
     scheduleDayState = todayDateInputValue();
     scheduleAddFormState = null;
+    scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
   document.getElementById("scheduleMonthModeBtn").addEventListener("click", function () { switchScheduleMode("month"); });
@@ -2440,8 +2546,9 @@
     if (resizeJustHappened) { resizeJustHappened = false; return; }
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
     if (!block) {
-      // 新規追加フォーム自体をクリックした場合（入力欄やボタンなど）はここでは何もしない。
+      // 新規追加フォーム・操作メニュー自体をクリックした場合（入力欄やボタンなど）はここでは何もしない。
       if (evt.target.closest && evt.target.closest(".schedule-add-form")) return;
+      if (evt.target.closest && evt.target.closest(".schedule-block-menu")) return;
       // 記録が何もない「空いている場所」をクリックした場合は、その場に新規追加フォームを開く。
       var timelineEl = document.getElementById("dayTimeline");
       var timelineRect = timelineEl.getBoundingClientRect();
@@ -2449,6 +2556,7 @@
       var clickedMin = (offsetY / HOUR_PX) * 60;
       var snappedMin = Math.max(0, Math.min(24 * 60 - 5, Math.round(clickedMin / 5) * 5));
       scheduleAddFormState = { startMin: snappedMin, endMin: Math.min(snappedMin + 30, 24 * 60) };
+      scheduleBlockMenuState = null;
       renderScheduleDayView(true);
       return;
     }
@@ -2461,6 +2569,7 @@
       // 一般休憩は専用の編集フォームを開く。
       var sessionId = block.getAttribute("data-session-id");
       var breakId = block.getAttribute("data-break-id");
+      scheduleBlockMenuState = null;
       if (sessionId) {
         historyEditingId = sessionId;
         historyEditDraftSegments = null;
@@ -2476,11 +2585,25 @@
       renderHistoryList();
       return;
     }
-    historyEditingId = block.getAttribute("data-id");
-    historyEditDraftSegments = null;
-    generalBreakEditingId = null;
-    if (historyTabBtn) historyTabBtn.click();
-    renderHistoryList();
+    // 進行中（作業中）のブロックは再開の対象にならないため、これまでどおり直接編集フォームを開く。
+    if (block.classList.contains("running")) {
+      historyEditingId = block.getAttribute("data-id");
+      historyEditDraftSegments = null;
+      generalBreakEditingId = null;
+      scheduleBlockMenuState = null;
+      if (historyTabBtn) historyTabBtn.click();
+      renderHistoryList();
+      return;
+    }
+    // 通常の記録ブロックをタップした場合は、「▶ 今から再開」「編集」を選べる操作メニューをその場に開く。
+    var tappedSessionId = block.getAttribute("data-session-id");
+    if (scheduleBlockMenuState && scheduleBlockMenuState.sessionId === tappedSessionId) {
+      // 同じブロックを再度タップしたら閉じる。
+      scheduleBlockMenuState = null;
+    } else {
+      scheduleBlockMenuState = { sessionId: tappedSessionId, top: parseFloat(block.style.top) };
+    }
+    renderScheduleDayView(true);
   });
 
   // ---- スケジュール（日表示）：図形の上下の縁をドラッグして開始・終了時刻を調整する ----
