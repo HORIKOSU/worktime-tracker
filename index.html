@@ -133,6 +133,12 @@
   .plan-start-btn:hover { background: var(--series-1); color: #fff; }
   .plan-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-delete-btn:hover { background: var(--series-8); color: #fff; }
+  .plan-edit-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .plan-edit-btn:hover { border-color: var(--series-1); color: var(--series-1); }
+  .plan-row-editing { flex-direction: column; align-items: stretch; }
+  .plan-edit-form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .plan-edit-form .field-block { display: flex; flex-direction: column; gap: 0; }
+  .plan-edit-form input[type="text"] { padding: 8px 10px; border-radius: 8px; }
   .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
   .big-btn.start { background: var(--series-1); color: #fff; }
   .big-btn.start:hover { opacity: 0.92; }
@@ -554,6 +560,7 @@
   var tickInterval = null;
   var historyEditingId = null;
   var generalBreakEditingId = null; // 「記録の履歴」で編集中の一般休憩のID（1件のみ）
+  var planEditingId = null; // 「今日の予定」で編集中の予定のID（1件のみ）
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
   // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
@@ -1210,6 +1217,16 @@
       wrap.innerHTML = '<p class="generated-note" style="text-align:center;">今日の予定はまだ登録されていません。下のフォームから追加してください。</p>';
     } else {
       wrap.innerHTML = plans.map(function (p) {
+        if (p.id === planEditingId) {
+          return '<div class="plan-row plan-row-editing">' +
+            '<div class="plan-edit-form">' +
+            '<div class="field-block"><label class="field-label">プロジェクト名</label><input type="text" class="plan-edit-project-input" list="projectList" value="' + escapeHtml(p.project) + '"></div>' +
+            '<div class="field-block"><label class="field-label">業務内容</label><input type="text" class="plan-edit-memo-input" value="' + escapeHtml(p.memo || "") + '"></div>' +
+            '<div class="field-block"><label class="field-label">番号</label><input type="text" class="plan-edit-number-input" value="' + escapeHtml(p.number || "") + '"></div>' +
+            '<div class="hist-edit-actions"><button type="button" class="hist-save-btn plan-edit-save-btn" data-plan-id="' + escapeHtml(p.id) + '">保存</button><button type="button" class="hist-cancel-btn plan-edit-cancel-btn">キャンセル</button></div>' +
+            '</div>' +
+            '</div>';
+        }
         return '<div class="plan-row' + (p.done ? ' done' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
@@ -1217,6 +1234,7 @@
           (p.memo ? '<div class="plan-row-memo">' + escapeHtml(p.memo) + '</div>' : '') +
           '</div>' +
           '<div class="plan-row-actions">' +
+          '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
           '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ この内容で開始</button>' +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
@@ -1238,6 +1256,40 @@
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-plan-id");
         state.plans = getPlans().filter(function (p) { return p.id !== id; });
+        if (planEditingId === id) planEditingId = null;
+        persistState();
+        renderPlanCard();
+      });
+    });
+
+    wrap.querySelectorAll(".plan-edit-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        planEditingId = btn.getAttribute("data-plan-id");
+        renderPlanCard();
+      });
+    });
+
+    wrap.querySelectorAll(".plan-edit-cancel-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        planEditingId = null;
+        renderPlanCard();
+      });
+    });
+
+    wrap.querySelectorAll(".plan-edit-save-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
+        if (!plan) return;
+        var formEl = btn.closest(".plan-edit-form");
+        var projectVal = formEl.querySelector(".plan-edit-project-input").value.trim();
+        if (!projectVal) {
+          window.alert("プロジェクト名を入力してください。");
+          return;
+        }
+        plan.project = projectVal;
+        plan.memo = formEl.querySelector(".plan-edit-memo-input").value.trim();
+        plan.number = formEl.querySelector(".plan-edit-number-input").value.trim();
+        planEditingId = null;
         persistState();
         renderPlanCard();
       });
