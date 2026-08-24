@@ -128,12 +128,12 @@
   .plan-row-project { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .plan-row-project.done-text { text-decoration: line-through; }
   .plan-row-memo { font-size: 12px; color: var(--text-secondary); }
-  .plan-row-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
-  .plan-start-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .plan-row-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .plan-start-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 10px; font-weight: 700; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-start-btn:hover { background: var(--series-1); color: #fff; }
-  .plan-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .plan-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 10px; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-delete-btn:hover { background: var(--series-8); color: #fff; }
-  .plan-edit-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .plan-edit-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 10px; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-edit-btn:hover { border-color: var(--series-1); color: var(--series-1); }
   .plan-row-editing { flex-direction: column; align-items: stretch; }
   .plan-edit-form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -1235,7 +1235,7 @@
           '</div>' +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
-          '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ この内容で開始</button>' +
+          '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
           '</div>';
