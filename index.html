@@ -960,7 +960,7 @@
         '<button type="button" class="big-btn break" id="pauseBtn">■ 中断</button>' +
         '<button type="button" class="big-btn complete" id="completeFromRunningBtn">✓ 完了</button>' +
         '</div>' +
-        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝このタスクをひとまず一時停止（休憩したいときも、他の作業に切り替えたいときもこちらでOK。ワンタップで再開できます）。完了＝このタスクを完了にして、未完了タスク一覧から外します。</p>';
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝一時停止（休憩・他の作業への切り替えもこちら）。完了＝タスクを完了にします。</p>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
         running.memo = this.value;
         persistState();
