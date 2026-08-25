@@ -829,7 +829,14 @@
   }
   function todayPlans() {
     var today = todayDateInputValue();
-    return getPlans().filter(function (p) { return p.date === today; });
+    return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
+  }
+  // 予定のプロジェクト名・業務内容に一致する完了済みタスクがあれば、その予定は「今日の予定」から自動的に消す
+  // （番号は判定に含めない。「新しいタスクを開始」時の紐づけ判定と同じ基準）。
+  function planMatchesCompletedTask(p) {
+    return completedTasks().some(function (t) {
+      return t.project === p.project && (t.memo || "") === (p.memo || "");
+    });
   }
   // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
   function taskLastActivity(taskId) {
