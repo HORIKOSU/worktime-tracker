@@ -62,6 +62,9 @@
   .dashboard-top-grid .card { margin-bottom: 0; }
   .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+  /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く */
+  .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); border-left: 4px solid var(--series-4); }
+  .card.plan-card h2 { color: #8a6300; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -416,7 +419,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card plan-card">
       <h2>今日の予定</h2>
       <div id="planListWrap"></div>
       <div class="plan-add-form">
@@ -433,6 +436,7 @@
         <div class="field-block">
           <label class="field-label">番号</label>
           <input type="text" id="planNumberInput" placeholder="例、1_1">
+          <div class="quick-suggest-row" id="planNumberSuggest"></div>
         </div>
         <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
       </div>
@@ -914,6 +918,21 @@
     return order;
   }
 
+  function distinctNumbersForProjectAndMemo(projectName, memoName) {
+    var targetProject = (projectName || "").trim();
+    var targetMemo = (memoName || "").trim();
+    if (!targetProject) return [];
+    var seen = {}, order = [];
+    var sorted = state.sessions.slice().sort(function (a, b) { return b.start.localeCompare(a.start); });
+    sorted.forEach(function (s) {
+      var proj = s.project && s.project.trim();
+      var memo = (s.memo || "").trim();
+      var number = s.number && s.number.trim();
+      if (proj === targetProject && memo === targetMemo && number && !seen[number]) { seen[number] = true; order.push(number); }
+    });
+    return order;
+  }
+
   function populateProjectDatalist() {
     var list = document.getElementById("projectList");
     list.innerHTML = distinctProjects().map(function (p) { return '<option value="' + escapeHtml(p) + '">'; }).join("");
@@ -1063,7 +1082,8 @@
         '<div class="quick-suggest-row" id="startProjectSuggest"></div></div>' +
         '<div class="field-block"><label class="field-label">業務内容</label><input type="text" id="startMemoInput" placeholder="例、企画">' +
         '<div class="quick-suggest-row" id="startMemoSuggest"></div></div>' +
-        '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1"></div>' +
+        '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1">' +
+        '<div class="quick-suggest-row" id="startNumberSuggest"></div></div>' +
         '</div>' +
         '<div class="action-card-row">' +
         '<button type="button" class="action-card start" id="startBtn"><span class="action-card-icon">▶</span><span class="action-card-label">新しいタスクを開始</span></button>' +
@@ -1137,6 +1157,25 @@
     memoWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         if (memoInput) memoInput.value = chip.getAttribute("data-memo");
+        renderNumberSuggestChips();
+      });
+    });
+  }
+
+  function renderNumberSuggestChips() {
+    var numberWrap = document.getElementById("startNumberSuggest");
+    if (!numberWrap) return;
+    var projectInput = document.getElementById("startProjectInput");
+    var memoInput = document.getElementById("startMemoInput");
+    var numberInput = document.getElementById("startNumberInput");
+    var numbers = distinctNumbersForProjectAndMemo(projectInput ? projectInput.value : "", memoInput ? memoInput.value : "").slice(0, MAX_SUGGEST_CHIPS);
+    if (!numbers.length) { numberWrap.innerHTML = ""; return; }
+    numberWrap.innerHTML = numbers.map(function (n) {
+      return '<button type="button" class="suggest-chip" data-number="' + escapeHtml(n) + '">' + escapeHtml(n) + '</button>';
+    }).join("");
+    numberWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        if (numberInput) numberInput.value = chip.getAttribute("data-number");
       });
     });
   }
@@ -1144,6 +1183,7 @@
   function wireStartSuggestions() {
     var projectWrap = document.getElementById("startProjectSuggest");
     var projectInput = document.getElementById("startProjectInput");
+    var memoInput = document.getElementById("startMemoInput");
     if (!projectWrap || !projectInput) return;
 
     var projects = distinctProjects().slice(0, MAX_SUGGEST_CHIPS);
@@ -1154,12 +1194,18 @@
       chip.addEventListener("click", function () {
         projectInput.value = chip.getAttribute("data-project");
         renderMemoSuggestChips();
+        renderNumberSuggestChips();
       });
     });
 
-    projectInput.addEventListener("input", renderMemoSuggestChips);
+    projectInput.addEventListener("input", function () {
+      renderMemoSuggestChips();
+      renderNumberSuggestChips();
+    });
+    if (memoInput) memoInput.addEventListener("input", renderNumberSuggestChips);
 
     renderMemoSuggestChips();
+    renderNumberSuggestChips();
   }
 
   // ---- 今日の予定カード（過去の実績から候補ボタンで選ぶか、新規で登録してすぐ使えるようにする） ----
@@ -1175,6 +1221,7 @@
       chip.addEventListener("click", function () {
         input.value = chip.getAttribute("data-project");
         renderPlanMemoSuggestChips();
+        renderPlanNumberSuggestChips();
       });
     });
   }
@@ -1192,13 +1239,32 @@
     wrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         if (memoInput) memoInput.value = chip.getAttribute("data-memo");
+        renderPlanNumberSuggestChips();
+      });
+    });
+  }
+
+  function renderPlanNumberSuggestChips() {
+    var wrap = document.getElementById("planNumberSuggest");
+    var projectInput = document.getElementById("planProjectInput");
+    var memoInput = document.getElementById("planMemoInput");
+    var numberInput = document.getElementById("planNumberInput");
+    if (!wrap || !projectInput) return;
+    var numbers = distinctNumbersForProjectAndMemo(projectInput.value, memoInput ? memoInput.value : "").slice(0, MAX_SUGGEST_CHIPS);
+    if (!numbers.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = numbers.map(function (n) {
+      return '<button type="button" class="suggest-chip" data-number="' + escapeHtml(n) + '">' + escapeHtml(n) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        if (numberInput) numberInput.value = chip.getAttribute("data-number");
       });
     });
   }
 
   // 予定の入力欄・追加ボタンは常にDOMに存在する固定要素のため、イベント登録は最初の1回だけ行う
   // （毎回のrenderAllで登録し直すとクリックが重複してしまうため）。候補ボタンの中身は
-  // renderPlanCard() から毎回 renderPlanProjectSuggestChips()/renderPlanMemoSuggestChips() で更新する。
+  // renderPlanCard() から毎回 renderPlanProjectSuggestChips()/renderPlanMemoSuggestChips()/renderPlanNumberSuggestChips() で更新する。
   function wirePlanAddFormOnce() {
     var projectInput = document.getElementById("planProjectInput");
     var memoInput = document.getElementById("planMemoInput");
@@ -1206,7 +1272,11 @@
     var addBtn = document.getElementById("planAddBtn");
     if (!projectInput || !memoInput || !numberInput || !addBtn) return;
 
-    projectInput.addEventListener("input", renderPlanMemoSuggestChips);
+    projectInput.addEventListener("input", function () {
+      renderPlanMemoSuggestChips();
+      renderPlanNumberSuggestChips();
+    });
+    memoInput.addEventListener("input", renderPlanNumberSuggestChips);
 
     addBtn.addEventListener("click", function () {
       var project = projectInput.value.trim();
@@ -1334,6 +1404,7 @@
 
     renderPlanProjectSuggestChips();
     renderPlanMemoSuggestChips();
+    renderPlanNumberSuggestChips();
   }
 
   // ---- task list card（未完了・完了タスクの一覧。現在の状況カードとは別枠で常に表示） ----
