@@ -580,8 +580,8 @@
   var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
   var scheduleAddFormState = null; // スケジュール（日表示）の空いている場所をクリックしたときの新規追加フォーム。null以外なら { startMin, endMin } を保持
   var scheduleBlockMenuState = null; // スケジュール（日表示）の記録ブロックをタップしたときの操作メニュー。null以外なら { sessionId, top } を保持
-  var HOUR_PX = 48;
-  var MIN_BLOCK_HEIGHT = 18; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）
+  var HOUR_PX = 72; // 1時間あたりの高さ(px)。スケジュール（日表示）の縦の幅を広げたいというご要望で 48→72（1.5倍）に変更
+  var MIN_BLOCK_HEIGHT = 27; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）。HOUR_PXと同じ比率で拡大
 
   function isValidState(obj) {
     return !!obj && Array.isArray(obj.sessions);
