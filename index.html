@@ -62,9 +62,10 @@
   .dashboard-top-grid .card { margin-bottom: 0; }
   .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
-  /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く */
-  .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); border-left: 4px solid var(--series-4); }
-  .card.plan-card h2 { color: #8a6300; }
+  /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く。
+     場所を取りすぎないよう、横幅と余白は他のカードより小さくしてある。 */
+  .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); max-width: 420px; padding: 14px 16px; }
+  .card.plan-card h2 { color: #8a6300; margin-bottom: 8px; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -381,6 +382,29 @@
 
 <main>
   <section id="dashboard" class="panel active">
+    <div class="card plan-card">
+      <h2>今日の予定</h2>
+      <div id="planListWrap"></div>
+      <div class="plan-add-form">
+        <div class="field-block">
+          <label class="field-label">プロジェクト名</label>
+          <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
+          <div class="quick-suggest-row" id="planProjectSuggest"></div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">業務内容</label>
+          <input type="text" id="planMemoInput" placeholder="例、企画">
+          <div class="quick-suggest-row" id="planMemoSuggest"></div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">番号</label>
+          <input type="text" id="planNumberInput" placeholder="例、1_1">
+          <div class="quick-suggest-row" id="planNumberSuggest"></div>
+        </div>
+        <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
+      </div>
+    </div>
+
     <div class="dashboard-top-grid">
       <div class="card status-card" id="statusCard"></div>
 
@@ -416,29 +440,6 @@
             <div class="day-timeline" id="dayTimeline"></div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card plan-card">
-      <h2>今日の予定</h2>
-      <div id="planListWrap"></div>
-      <div class="plan-add-form">
-        <div class="field-block">
-          <label class="field-label">プロジェクト名</label>
-          <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
-          <div class="quick-suggest-row" id="planProjectSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">業務内容</label>
-          <input type="text" id="planMemoInput" placeholder="例、企画">
-          <div class="quick-suggest-row" id="planMemoSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">番号</label>
-          <input type="text" id="planNumberInput" placeholder="例、1_1">
-          <div class="quick-suggest-row" id="planNumberSuggest"></div>
-        </div>
-        <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
       </div>
     </div>
 
