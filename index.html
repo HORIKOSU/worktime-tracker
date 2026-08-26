@@ -845,11 +845,17 @@
     var today = todayDateInputValue();
     return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
   }
-  // 予定のプロジェクト名・業務内容に一致する完了済みタスクがあれば、その予定は「今日の予定」から自動的に消す
-  // （番号は判定に含めない。「新しいタスクを開始」時の紐づけ判定と同じ基準）。
+  // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「今日」完了していれば、その予定は
+  // 「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ判定と同じ基準）。
+  // ※ 完了日を問わずに判定すると、同じプロジェクト名・業務内容を繰り返し使う予定（定例業務など）が
+  //   過去に一度でも完了していると、新しく追加した予定が追加直後から表示されなくなってしまうため、
+  //   「そのタスクを最後に使った（＝完了させた）のが今日かどうか」で絞り込む。
   function planMatchesCompletedTask(p) {
+    var today = todayDateInputValue();
     return completedTasks().some(function (t) {
-      return t.project === p.project && (t.memo || "") === (p.memo || "");
+      if (t.project !== p.project || (t.memo || "") !== (p.memo || "")) return false;
+      var lastActivity = taskLastActivity(t.id);
+      return !!lastActivity && lastActivity.slice(0, 10) === today;
     });
   }
   // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
