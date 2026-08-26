@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taskmark｜作業時間記録ツール</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232a78d6'/%3E%3Crect x='14' y='15' width='36' height='9' rx='3' fill='%23ffffff'/%3E%3Crect x='27.5' y='15' width='9' height='34' rx='3' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234a3aa7'/%3E%3Crect x='14' y='15' width='36' height='9' rx='3' fill='%23ffffff'/%3E%3Crect x='27.5' y='15' width='9' height='34' rx='3' fill='%23ffffff'/%3E%3C/svg%3E">
 <script>/*!
  * Chart.js v4.4.4
  * https://www.chartjs.org
@@ -2423,6 +2423,7 @@
         '<label class="field-label">タスク</label>' +
         '<select class="sched-add-task-select">' +
         '<option value="__new__">＋ 新規タスク</option>' +
+        '<option value="__break__">☕ 休憩</option>' +
         addOpenTasks.map(function (t) {
           return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.id) + ' ' + escapeHtml(t.project) + '</option>';
         }).join("") +
@@ -2566,9 +2567,12 @@
 
     function syncFieldsVisibility() {
       var isNew = taskSelect.value === "__new__";
+      var isBreak = taskSelect.value === "__break__";
       newFields.style.display = isNew ? "" : "none";
-      existingInfo.style.display = isNew ? "none" : "";
-      if (!isNew) {
+      existingInfo.style.display = (isNew || isBreak) ? "none" : "";
+      if (isBreak) {
+        existingInfo.textContent = "";
+      } else if (!isNew) {
         var task = getTaskById(taskSelect.value);
         existingInfo.textContent = task ? (task.project + (task.number ? "（" + task.number + "）" : "") + (task.memo ? "・" + task.memo : "")) : "";
       }
@@ -2588,6 +2592,14 @@
       var start = combineDateTime(scheduleDayState, startTime);
       var end = combineDateTime(scheduleDayState, endTime);
       if (parseLocal(end) <= parseLocal(start)) { window.alert("終了時刻は開始時刻より後にしてください。"); return; }
+
+      if (taskSelect.value === "__break__") {
+        getGeneralBreaks().push({ id: generateId(), start: start, end: end });
+        persistState();
+        scheduleAddFormState = null;
+        renderAll();
+        return;
+      }
 
       var project, memo, number, taskId;
       if (taskSelect.value === "__new__") {
