@@ -2738,6 +2738,42 @@
   var activeResize = null; // ドラッグ中のみ値が入る: { pointerId, blockEl, target, field, minMin, maxMin, startClientY, startValueMin, session, moved }
   var resizeJustHappened = false; // ドラッグ操作の直後に click イベントで編集フォームへ遷移してしまわないようにするためのフラグ
 
+  // その日の中で、指定したセッション・休憩以外がすでに占めている時間帯（分単位）の一覧を返す。
+  // ドラッグでの伸縮が、他の記録・休憩の時間帯に重ならないようにするための判定に使う。
+  function foreignBusyRanges(dateStr, excludeSessionId, excludeBreakId) {
+    var ranges = [];
+    state.sessions.forEach(function (s) {
+      if (s.id === excludeSessionId) return;
+      if (!isSameDate(s.start, dateStr)) return;
+      var segs = ensureSegments(s);
+      if (!segs.length) return;
+      var rangeStart = minutesOfDay(segs[0].start);
+      var lastSeg = segs[segs.length - 1];
+      var rangeEnd = minutesOfDay(lastSeg.end || nowLocalIso());
+      ranges.push({ start: rangeStart, end: rangeEnd });
+    });
+    getGeneralBreaks().forEach(function (b) {
+      if (b.id === excludeBreakId) return;
+      if (!isSameDate(b.start, dateStr)) return;
+      ranges.push({ start: minutesOfDay(b.start), end: minutesOfDay(b.end || nowLocalIso()) });
+    });
+    return ranges;
+  }
+
+  // 伸縮の範囲（minMin〜maxMin）を、他の記録・休憩と重ならないようにさらに絞り込む。
+  // field が "start" のときは、現在値より前にある他の時間帯を越えて縮められないように下限を、
+  // field が "end" のときは、現在値より後にある他の時間帯を越えて伸ばせないように上限を調整する。
+  function clampBoundsAgainstForeignRanges(minMin, maxMin, field, currentValueMin, foreignRanges) {
+    if (field === "start") {
+      var lowerCandidates = foreignRanges.filter(function (r) { return r.end <= currentValueMin; }).map(function (r) { return r.end + 5; });
+      if (lowerCandidates.length) minMin = Math.max(minMin, Math.max.apply(null, lowerCandidates));
+    } else if (field === "end") {
+      var upperCandidates = foreignRanges.filter(function (r) { return r.start >= currentValueMin; }).map(function (r) { return r.start - 5; });
+      if (upperCandidates.length) maxMin = Math.min(maxMin, Math.min.apply(null, upperCandidates));
+    }
+    return { minMin: minMin, maxMin: maxMin };
+  }
+
   function startResizeDrag(blockEl, edge, evt) {
     var kind = blockEl.getAttribute("data-block-kind");
     var sessionId = blockEl.getAttribute("data-session-id");
@@ -2801,6 +2837,15 @@
     }
 
     if (!target || minMin > maxMin) return;
+
+    // 他のタスクの記録・他の休憩と重ならないように、さらに範囲を絞り込む。
+    var excludeSessionId = (kind === "work" || kind === "task-break") ? sessionId : null;
+    var excludeBreakId = (kind === "general-break") ? breakId : null;
+    var foreignRanges = foreignBusyRanges(scheduleDayState, excludeSessionId, excludeBreakId);
+    var currentValueMin = minutesOfDay(target[field]);
+    var clamped = clampBoundsAgainstForeignRanges(minMin, maxMin, field, currentValueMin, foreignRanges);
+    minMin = clamped.minMin; maxMin = clamped.maxMin;
+    if (minMin > maxMin) return;
 
     activeResize = {
       pointerId: evt.pointerId, kind: kind, sessionId: sessionId, breakId: breakId, segIndex: segIndex,
