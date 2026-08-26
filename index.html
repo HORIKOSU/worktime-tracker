@@ -386,29 +386,6 @@
 
 <main>
   <section id="dashboard" class="panel active">
-    <div class="card plan-card">
-      <h2>今日の予定</h2>
-      <div id="planListWrap"></div>
-      <div class="plan-add-form">
-        <div class="field-block">
-          <label class="field-label">プロジェクト名</label>
-          <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
-          <div class="quick-suggest-row" id="planProjectSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">業務内容</label>
-          <input type="text" id="planMemoInput" placeholder="例、企画">
-          <div class="quick-suggest-row" id="planMemoSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">番号</label>
-          <input type="text" id="planNumberInput" placeholder="例、1_1">
-          <div class="quick-suggest-row" id="planNumberSuggest"></div>
-        </div>
-        <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
-      </div>
-    </div>
-
     <div class="dashboard-top-grid">
       <div class="card status-card" id="statusCard"></div>
 
@@ -444,6 +421,29 @@
             <div class="day-timeline" id="dayTimeline"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="card plan-card">
+      <h2>今日の予定</h2>
+      <div id="planListWrap"></div>
+      <div class="plan-add-form">
+        <div class="field-block">
+          <label class="field-label">プロジェクト名</label>
+          <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
+          <div class="quick-suggest-row" id="planProjectSuggest"></div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">業務内容</label>
+          <input type="text" id="planMemoInput" placeholder="例、企画">
+          <div class="quick-suggest-row" id="planMemoSuggest"></div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">番号</label>
+          <input type="text" id="planNumberInput" placeholder="例、1_1">
+          <div class="quick-suggest-row" id="planNumberSuggest"></div>
+        </div>
+        <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
       </div>
     </div>
 
