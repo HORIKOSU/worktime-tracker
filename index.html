@@ -931,13 +931,30 @@
     return html;
   }
 
+  // 候補の並び替えに使うタイムスタンプ。セッションは開始日時（start）、予定は追加日時
+  // （createdAt。古いデータで無い場合は date の 0時0分を代わりに使う）を基準にする。
+  function planSortKey(p) {
+    return p.createdAt || (p.date + "T00:00:00");
+  }
+
+  // プロジェクト名・業務内容・番号の候補は、実際に記録したセッションだけでなく、
+  // 「今日の予定を追加」で登録した内容（まだ一度も開始していないものを含む）からも拾う。
+  // そうすることで、予定として登録しただけの新しいプロジェクト名なども、次回以降の
+  // 候補としてすぐ選べるようになる。
   function distinctProjects() {
     var seen = {}, order = [];
-    // most recently started first
-    var sorted = state.sessions.slice().sort(function (a, b) { return b.start.localeCompare(a.start); });
-    sorted.forEach(function (s) {
+    var combined = [];
+    state.sessions.forEach(function (s) {
       var name = s.project && s.project.trim();
-      if (name && !seen[name]) { seen[name] = true; order.push(name); }
+      if (name) combined.push({ value: name, key: s.start });
+    });
+    getPlans().forEach(function (p) {
+      var name = p.project && p.project.trim();
+      if (name) combined.push({ value: name, key: planSortKey(p) });
+    });
+    combined.sort(function (a, b) { return b.key.localeCompare(a.key); });
+    combined.forEach(function (item) {
+      if (!seen[item.value]) { seen[item.value] = true; order.push(item.value); }
     });
     return order;
   }
@@ -946,11 +963,20 @@
     var target = (projectName || "").trim();
     if (!target) return [];
     var seen = {}, order = [];
-    var sorted = state.sessions.slice().sort(function (a, b) { return b.start.localeCompare(a.start); });
-    sorted.forEach(function (s) {
+    var combined = [];
+    state.sessions.forEach(function (s) {
       var proj = s.project && s.project.trim();
       var memo = s.memo && s.memo.trim();
-      if (proj === target && memo && !seen[memo]) { seen[memo] = true; order.push(memo); }
+      if (proj === target && memo) combined.push({ value: memo, key: s.start });
+    });
+    getPlans().forEach(function (p) {
+      var proj = p.project && p.project.trim();
+      var memo = p.memo && p.memo.trim();
+      if (proj === target && memo) combined.push({ value: memo, key: planSortKey(p) });
+    });
+    combined.sort(function (a, b) { return b.key.localeCompare(a.key); });
+    combined.forEach(function (item) {
+      if (!seen[item.value]) { seen[item.value] = true; order.push(item.value); }
     });
     return order;
   }
@@ -960,12 +986,22 @@
     var targetMemo = (memoName || "").trim();
     if (!targetProject) return [];
     var seen = {}, order = [];
-    var sorted = state.sessions.slice().sort(function (a, b) { return b.start.localeCompare(a.start); });
-    sorted.forEach(function (s) {
+    var combined = [];
+    state.sessions.forEach(function (s) {
       var proj = s.project && s.project.trim();
       var memo = (s.memo || "").trim();
       var number = s.number && s.number.trim();
-      if (proj === targetProject && memo === targetMemo && number && !seen[number]) { seen[number] = true; order.push(number); }
+      if (proj === targetProject && memo === targetMemo && number) combined.push({ value: number, key: s.start });
+    });
+    getPlans().forEach(function (p) {
+      var proj = p.project && p.project.trim();
+      var memo = (p.memo || "").trim();
+      var number = p.number && p.number.trim();
+      if (proj === targetProject && memo === targetMemo && number) combined.push({ value: number, key: planSortKey(p) });
+    });
+    combined.sort(function (a, b) { return b.key.localeCompare(a.key); });
+    combined.forEach(function (item) {
+      if (!seen[item.value]) { seen[item.value] = true; order.push(item.value); }
     });
     return order;
   }
