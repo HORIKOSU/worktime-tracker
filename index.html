@@ -845,23 +845,44 @@
     var today = todayDateInputValue();
     return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
   }
-  // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「今日」完了していれば、その予定は
-  // 「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ判定と同じ基準）。
-  // ※ 完了日を問わずに判定すると、同じプロジェクト名・業務内容を繰り返し使う予定（定例業務など）が
-  //   過去に一度でも完了していると、新しく追加した予定が追加直後から表示されなくなってしまうため、
-  //   「そのタスクを最後に使った（＝完了させた）のが今日かどうか」で絞り込む。
+  // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「その予定を追加した後」に完了していれば、
+  // その予定は「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ
+  // 判定と同じ基準）。
+  // ※ 単純に「完了済みかどうか」や「今日完了したかどうか」だけで判定すると、次のようなケースで
+  //   困ってしまう：
+  //   - 同じプロジェクト名・業務内容を繰り返し使う予定（定例業務など）が過去に一度でも完了していると、
+  //     新しく追加した予定が追加直後から表示されなくなる
+  //   - 一度完了させた内容を、あらためて「今日の予定」に追加しようとしても表示されない
+  //   そこで「予定を追加した時刻より後に、そのタスクが完了（＝最後に使われた）かどうか」で判定する。
+  //   追加前にすでに完了していた場合は表示し、追加後に完了した場合（＝本来の「作業してチェックが
+  //   外れる」動き）だけ自動的に消す。
   function planMatchesCompletedTask(p) {
-    var today = todayDateInputValue();
+    // 秒単位の文字列比較だと「予定を追加した直後に同じ内容を完了させた」ような、
+    // 同じ1秒内で連続して起きる操作の前後関係を正しく判定できないことがあるため、
+    // ミリ秒単位の数値（createdAtMs / startMs）があればそちらを優先して比較する。
+    var addedAtIso = p.createdAt || (p.date + "T00:00:00");
+    var addedAtMs = typeof p.createdAtMs === "number" ? p.createdAtMs : new Date(addedAtIso.replace(" ", "T")).getTime();
     return completedTasks().some(function (t) {
       if (t.project !== p.project || (t.memo || "") !== (p.memo || "")) return false;
-      var lastActivity = taskLastActivity(t.id);
-      return !!lastActivity && lastActivity.slice(0, 10) === today;
+      var lastActivityMs = taskLastActivityMs(t.id);
+      return lastActivityMs !== null && lastActivityMs > addedAtMs;
     });
   }
   // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
   function taskLastActivity(taskId) {
     var max = "";
     state.sessions.forEach(function (s) { if (s.taskId === taskId && s.start > max) max = s.start; });
+    return max;
+  }
+  // taskLastActivity のミリ秒版。開始時刻にミリ秒精度の startMs があればそれを使い、
+  // なければ start（秒精度の文字列）から算出する。
+  function taskLastActivityMs(taskId) {
+    var max = null;
+    state.sessions.forEach(function (s) {
+      if (s.taskId !== taskId) return;
+      var ms = typeof s.startMs === "number" ? s.startMs : (s.start ? new Date(s.start.replace(" ", "T")).getTime() : NaN);
+      if (!isNaN(ms) && (max === null || ms > max)) max = ms;
+    });
     return max;
   }
   // タスク一覧を「業務内容」ごとにグループ分けする（見分けやすくするため）。
@@ -1141,7 +1162,7 @@
         }
 
         if (!task) task = createTask(project, memo, number);
-        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
+        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
         persistState();
         renderAll();
       });
@@ -1303,7 +1324,7 @@
       }
       var memo = memoInput.value.trim();
       var number = numberInput.value.trim();
-      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, number: number, done: false });
+      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, number: number, done: false, createdAt: nowLocalIso(), createdAtMs: Date.now() });
       persistState();
       projectInput.value = "";
       memoInput.value = "";
@@ -2509,7 +2530,7 @@
         }
         if (!task) task = createTask(project, memo, number);
       }
-      state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), end: null, taskId: task.id });
+      state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
       persistState();
       renderAll();
     });
