@@ -336,6 +336,10 @@
   .resize-handle-bottom { bottom: -3px; }
   .day-segment-block:hover .resize-handle::after, .day-segment-block.resizing .resize-handle::after { opacity: 1; }
   .day-segment-block.resizing { box-shadow: 0 0 0 2px var(--series-1); }
+  /* 予定を丸ごとドラッグ移動できるブロックには、つかんで動かせることが分かるカーソルを表示する。
+     user-select: none は、ドラッグ中に文字列選択が始まってしまうのを防ぐため。 */
+  .day-segment-movable { cursor: grab; user-select: none; }
+  .day-segment-movable:active { cursor: grabbing; }
   /* スケジュールの空いている場所をクリックしたときに、その場に開く新規追加フォーム */
   .schedule-add-form { position: absolute; left: 54px; right: 8px; z-index: 6; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.14); text-align: left; }
   .schedule-add-form-heading { font-size: 12px; font-weight: 700; color: var(--series-1); margin-bottom: 8px; }
@@ -2313,7 +2317,7 @@
         var startMin = minutesOfDay(seg.start);
         var endMin = minMaxClamp(startMin, running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end));
         blocks.push({
-          kind: "work", session: s, seg: seg, segIndex: segIdx, running: running, startMin: startMin,
+          kind: "work", session: s, seg: seg, segIndex: segIdx, running: running, startMin: startMin, segsLength: segs.length,
           top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
         });
       });
@@ -2376,7 +2380,9 @@
         var color = colorForProject(projectLabel(b.session));
         var blockMemo = b.session.memo && b.session.memo.trim();
         var blockNameText = projectLabel(b.session) + (blockMemo ? '・' + blockMemo : '');
-        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') +
+        // 中断・再開のない（区間が1つだけの）記録のみ、丸ごとドラッグ移動できる。
+        var workMovable = !b.running && b.segsLength === 1;
+        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + (workMovable ? ' day-segment-movable' : '') +
           '" data-id="' + escapeHtml(b.session.id) + '" data-block-kind="work" data-session-id="' + escapeHtml(b.session.id) + '" data-seg-index="' + b.segIndex + '" title="' + escapeHtml(blockNameText) + '"' +
           ' style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
           resizeHandlesHtml(true, !b.running) +
@@ -2389,7 +2395,10 @@
           (b.sessionId ? ' data-session-id="' + escapeHtml(b.sessionId) + '"' : '') +
           (b.breakId ? ' data-break-id="' + escapeHtml(b.breakId) + '"' : '') +
           (b.segIndex !== undefined ? ' data-seg-index="' + b.segIndex + '"' : '');
-        html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
+        // 一般休憩（タスクに紐づかない休憩）のみ丸ごと移動できる。タスクの一時中断区間（task-break）は
+        // 前後のセグメントから自動的に算出される表示のため、移動対象にはしない。
+        var breakMovable = (b.kind === "general-break") && !b.ongoing;
+        html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + (breakMovable ? ' day-segment-movable' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
           resizeHandlesHtml(true, !b.ongoing) +
           '<div class="day-segment-name">☕ 休憩</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
@@ -2723,7 +2732,8 @@
 
   // ---- スケジュール（日表示）：図形の上下の縁をドラッグして開始・終了時刻を調整する ----
   var activeResize = null; // ドラッグ中のみ値が入る: { pointerId, blockEl, target, field, minMin, maxMin, startClientY, startValueMin, session, moved }
-  var resizeJustHappened = false; // ドラッグ操作の直後に click イベントで編集フォームへ遷移してしまわないようにするためのフラグ
+  var activeMove = null; // 予定を丸ごとドラッグ移動中のみ値が入る: { pointerId, kind, sessionId, breakId, segIndex, session, seg, gb, durationMin, startClientY, startValueMin, originalStartMin, moved }
+  var resizeJustHappened = false; // ドラッグ操作（伸縮・丸ごと移動どちらも）の直後に click イベントで編集フォームへ遷移してしまわないようにするためのフラグ
 
   // その日の中で、指定したセッション・休憩以外がすでに占めている時間帯（分単位）の一覧を返す。
   // ドラッグでの伸縮が、他の記録・休憩の時間帯に重ならないようにするための判定に使う。
@@ -2889,27 +2899,181 @@
     }
   }
 
+  // ---- スケジュール（日表示）：予定の本体をドラッグして丸ごと別の時間へ移動する ----
+  // 縁の伸縮とは異なり、ドラッグ中は他の記録・休憩の位置を飛び越えて自由に動かせる（見た目上は一時的に重なってもよい）。
+  // 手を離した時点（finishMoveDrag）で初めて、他の予定と重ならない位置かどうかを確認し、
+  // 重なっていれば最も近い空いている位置に自動的に寄せる。
+  function startMoveDrag(blockEl, evt) {
+    if (blockEl.classList.contains("running")) return; // 進行中の記録・休憩は終了時刻が未確定のため移動不可
+    var kind = blockEl.getAttribute("data-block-kind");
+    var sessionId = blockEl.getAttribute("data-session-id");
+    var breakId = blockEl.getAttribute("data-break-id");
+    var segIndexAttr = blockEl.getAttribute("data-seg-index");
+    var segIndex = (segIndexAttr !== null && segIndexAttr !== "") ? parseInt(segIndexAttr, 10) : null;
+
+    var session = null, seg = null, gb = null, durationMin = 0, startValueMin = 0;
+
+    if (kind === "work") {
+      session = state.sessions.find(function (s) { return s.id === sessionId; });
+      if (!session) return;
+      var segs = ensureSegments(session);
+      // 中断・再開があり区間が2つ以上ある記録は、区間同士の前後関係が崩れる恐れがあるため、
+      // 丸ごと移動の対象外とする（これまでどおり縁の伸縮・タップでの編集のみ対応）。
+      if (segs.length !== 1) return;
+      seg = segs[0];
+      if (!seg.end) return; // 進行中
+      startValueMin = minutesOfDay(seg.start);
+      durationMin = minutesOfDay(seg.end) - startValueMin;
+    } else if (kind === "general-break") {
+      gb = getGeneralBreaks().find(function (b) { return b.id === breakId; });
+      if (!gb || !gb.end) return; // 進行中の休憩は移動不可
+      startValueMin = minutesOfDay(gb.start);
+      durationMin = minutesOfDay(gb.end) - startValueMin;
+    } else {
+      return; // task-break（タスクの一時中断区間）は前後の区間から自動算出されるため移動対象外
+    }
+
+    if (durationMin <= 0) return;
+    // pointerdown の時点で preventDefault すると、ドラッグせずタップしただけの場合でも
+    // ブラウザの click イベントが発火しなくなり、従来の「タップで操作メニューを開く」が
+    // 効かなくなってしまう。そのため、ここでは preventDefault せず、実際に動かした
+    // （moved=true）時点で初めて pointermove 側から preventDefault する。
+
+    activeMove = {
+      pointerId: evt.pointerId, kind: kind, sessionId: sessionId, breakId: breakId, segIndex: segIndex,
+      session: session, seg: seg, gb: gb, durationMin: durationMin,
+      startClientY: evt.clientY, startValueMin: startValueMin, originalStartMin: startValueMin, moved: false
+    };
+    blockEl.classList.add("resizing");
+  }
+
+  function reapplyMovingClass() {
+    var sel = '.day-segment-block[data-block-kind="' + activeMove.kind + '"]';
+    if (activeMove.sessionId) sel += '[data-session-id="' + activeMove.sessionId + '"]';
+    if (activeMove.breakId) sel += '[data-break-id="' + activeMove.breakId + '"]';
+    if (activeMove.segIndex !== null) sel += '[data-seg-index="' + activeMove.segIndex + '"]';
+    var el = document.querySelector(sel);
+    if (el) el.classList.add("resizing");
+  }
+
+  function updateMoveDrag(evt) {
+    var deltaY = evt.clientY - activeMove.startClientY;
+    if (Math.abs(deltaY) > 2) activeMove.moved = true;
+    var deltaMin = (deltaY / HOUR_PX) * 60;
+    var rawStart = activeMove.startValueMin + deltaMin;
+    var snappedStart = Math.round(rawStart / 5) * 5;
+    // ドラッグ中は日をまたがない範囲でのみ制限し、他の予定の位置は自由に飛び越えられるようにする。
+    snappedStart = Math.max(0, Math.min(24 * 60 - activeMove.durationMin, snappedStart));
+    var newStartIso = minutesToIsoOnDate(scheduleDayState, snappedStart);
+    var newEndIso = minutesToIsoOnDate(scheduleDayState, snappedStart + activeMove.durationMin);
+    if (activeMove.kind === "work") {
+      activeMove.seg.start = newStartIso;
+      activeMove.seg.end = newEndIso;
+    } else {
+      activeMove.gb.start = newStartIso;
+      activeMove.gb.end = newEndIso;
+    }
+    renderScheduleDayView(true);
+    reapplyMovingClass();
+  }
+
+  // ドラッグを離した位置が他の記録・休憩と重なっていた場合に、最も近い空いている位置を探す。
+  // ぶつかった相手の直前・直後のどちらか近い方に自動的に寄せる。どちらにも収まる余地がなければ null を返す
+  // （呼び出し側で元の位置に戻す）。
+  function resolveNonOverlappingStart(rawStart, durationMin, foreignRanges) {
+    var dayMax = 24 * 60;
+    rawStart = Math.max(0, Math.min(dayMax - durationMin, rawStart));
+    var rawEnd = rawStart + durationMin;
+    var overlapping = foreignRanges.filter(function (r) { return r.start < rawEnd && r.end > rawStart; });
+    if (!overlapping.length) return rawStart;
+    var maxEnd = Math.max.apply(null, overlapping.map(function (r) { return r.end; }));
+    var minStart = Math.min.apply(null, overlapping.map(function (r) { return r.start; }));
+    var afterCandidate = (maxEnd + durationMin <= dayMax) ? maxEnd : null;
+    var beforeCandidate = (minStart - durationMin >= 0) ? (minStart - durationMin) : null;
+    var candidates = [afterCandidate, beforeCandidate].filter(function (c) { return c !== null; });
+    // 候補の位置も、さらに別の予定と重ならないかを確認する（3つ以上並んでいる場合を考慮）。
+    candidates = candidates.filter(function (c) {
+      var cEnd = c + durationMin;
+      return !foreignRanges.some(function (r) { return r.start < cEnd && r.end > c; });
+    });
+    if (!candidates.length) return null;
+    candidates.sort(function (a, b) { return Math.abs(a - rawStart) - Math.abs(b - rawStart); });
+    return candidates[0];
+  }
+
+  function finishMoveDrag() {
+    var wasMoved = activeMove.moved;
+    if (!wasMoved) {
+      // 実際には動かさず、その場でつまんだだけ（＝タップ）だった場合は、ここでは何も変更・再描画しない。
+      // 再描画してDOM要素を作り直してしまうと、この後に発生する予定の click イベント（操作メニューを開く
+      // 処理）の対象要素が失われ、従来どおりの「タップでメニューを開く」動作が効かなくなってしまうため。
+      activeMove = null;
+      return;
+    }
+    var currentStartMin = minutesOfDay(activeMove.kind === "work" ? activeMove.seg.start : activeMove.gb.start);
+    var excludeSessionId = activeMove.kind === "work" ? activeMove.sessionId : null;
+    var excludeBreakId = activeMove.kind === "general-break" ? activeMove.breakId : null;
+    var foreignRanges = foreignBusyRanges(scheduleDayState, excludeSessionId, excludeBreakId);
+    var resolvedStart = resolveNonOverlappingStart(currentStartMin, activeMove.durationMin, foreignRanges);
+    if (resolvedStart === null) resolvedStart = activeMove.originalStartMin; // 近くに空きがなければ元の時刻に戻す
+    var finalStartIso = minutesToIsoOnDate(scheduleDayState, resolvedStart);
+    var finalEndIso = minutesToIsoOnDate(scheduleDayState, resolvedStart + activeMove.durationMin);
+    if (activeMove.kind === "work") {
+      activeMove.seg.start = finalStartIso;
+      activeMove.seg.end = finalEndIso;
+      syncSessionFromSegments(activeMove.session);
+    } else {
+      activeMove.gb.start = finalStartIso;
+      activeMove.gb.end = finalEndIso;
+    }
+    persistState();
+    activeMove = null;
+    resizeJustHappened = true;
+    setTimeout(function () { resizeJustHappened = false; }, 0);
+    var scrollBox = document.getElementById("dayTimelineScroll");
+    var keptScrollTop = scrollBox ? scrollBox.scrollTop : null;
+    renderAll();
+    if (keptScrollTop !== null) {
+      var scrollBoxAfter = document.getElementById("dayTimelineScroll");
+      if (scrollBoxAfter) scrollBoxAfter.scrollTop = keptScrollTop;
+    }
+  }
+
   document.getElementById("dayTimeline").addEventListener("pointerdown", function (evt) {
+    if (activeResize || activeMove) return;
     var handle = evt.target.closest ? evt.target.closest(".resize-handle") : null;
-    if (!handle) return;
-    var block = handle.closest(".day-segment-block");
-    if (!block) return;
-    evt.preventDefault();
-    var edge = handle.classList.contains("resize-handle-top") ? "top" : "bottom";
-    startResizeDrag(block, edge, evt);
+    if (handle) {
+      var block = handle.closest(".day-segment-block");
+      if (!block) return;
+      evt.preventDefault();
+      var edge = handle.classList.contains("resize-handle-top") ? "top" : "bottom";
+      startResizeDrag(block, edge, evt);
+      return;
+    }
+    // 図形の本体（縁のつまみ以外）をつかんだ場合は、予定を丸ごと別の時間へ移動する。
+    var moveBlock = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
+    if (!moveBlock) return;
+    startMoveDrag(moveBlock, evt);
   });
   document.addEventListener("pointermove", function (evt) {
-    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
-    evt.preventDefault();
-    updateResizeDrag(evt);
+    if (activeResize && evt.pointerId === activeResize.pointerId) {
+      evt.preventDefault();
+      updateResizeDrag(evt);
+      return;
+    }
+    if (activeMove && evt.pointerId === activeMove.pointerId) {
+      evt.preventDefault();
+      updateMoveDrag(evt);
+      return;
+    }
   });
   document.addEventListener("pointerup", function (evt) {
-    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
-    finishResizeDrag();
+    if (activeResize && evt.pointerId === activeResize.pointerId) { finishResizeDrag(); return; }
+    if (activeMove && evt.pointerId === activeMove.pointerId) { finishMoveDrag(); return; }
   });
   document.addEventListener("pointercancel", function (evt) {
-    if (!activeResize || evt.pointerId !== activeResize.pointerId) return;
-    finishResizeDrag();
+    if (activeResize && evt.pointerId === activeResize.pointerId) { finishResizeDrag(); return; }
+    if (activeMove && evt.pointerId === activeMove.pointerId) { finishMoveDrag(); return; }
   });
 
   function renderSchedule() {
