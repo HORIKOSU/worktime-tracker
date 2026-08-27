@@ -136,6 +136,8 @@
   .plan-row.done { opacity: 0.55; }
   .plan-row-checkbox { flex-shrink: 0; width: 18px; height: 18px; cursor: pointer; }
   .plan-row-main { flex: 1; min-width: 0; }
+  .plan-row-field + .plan-row-field { margin-top: 5px; }
+  .plan-row-tag { display: block; font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-bottom: 1px; }
   .plan-row-project { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .plan-row-project.done-text { text-decoration: line-through; }
   .plan-row-memo { font-size: 12px; color: var(--text-secondary); }
@@ -1332,8 +1334,9 @@
         return '<div class="plan-row' + (p.done ? ' done' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
-          '<div class="plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + (p.number ? ' <span class="number-badge">' + escapeHtml(p.number) + '</span>' : '') + '</div>' +
-          (p.memo ? '<div class="plan-row-memo">' + escapeHtml(p.memo) + '</div>' : '') +
+          '<div class="plan-row-field"><span class="plan-row-tag">プロジェクト</span><div class="plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + '</div></div>' +
+          (p.number ? '<div class="plan-row-field"><span class="plan-row-tag">番号</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
+          (p.memo ? '<div class="plan-row-field"><span class="plan-row-tag">業務内容</span><div class="plan-row-memo">' + escapeHtml(p.memo) + '</div></div>' : '') +
           '</div>' +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
@@ -2743,12 +2746,13 @@
   // 伸縮の範囲（minMin〜maxMin）を、他の記録・休憩と重ならないようにさらに絞り込む。
   // field が "start" のときは、現在値より前にある他の時間帯を越えて縮められないように下限を、
   // field が "end" のときは、現在値より後にある他の時間帯を越えて伸ばせないように上限を調整する。
+  // 他の記録・休憩とは、間に余裕を空けず完全に隣接するところまで伸縮できる（0分）。
   function clampBoundsAgainstForeignRanges(minMin, maxMin, field, currentValueMin, foreignRanges) {
     if (field === "start") {
-      var lowerCandidates = foreignRanges.filter(function (r) { return r.end <= currentValueMin; }).map(function (r) { return r.end + 5; });
+      var lowerCandidates = foreignRanges.filter(function (r) { return r.end <= currentValueMin; }).map(function (r) { return r.end; });
       if (lowerCandidates.length) minMin = Math.max(minMin, Math.max.apply(null, lowerCandidates));
     } else if (field === "end") {
-      var upperCandidates = foreignRanges.filter(function (r) { return r.start >= currentValueMin; }).map(function (r) { return r.start - 5; });
+      var upperCandidates = foreignRanges.filter(function (r) { return r.start >= currentValueMin; }).map(function (r) { return r.start; });
       if (upperCandidates.length) maxMin = Math.min(maxMin, Math.min.apply(null, upperCandidates));
     }
     return { minMin: minMin, maxMin: maxMin };
