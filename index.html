@@ -340,19 +340,6 @@
      user-select: none は、ドラッグ中に文字列選択が始まってしまうのを防ぐため。 */
   .day-segment-movable { cursor: grab; user-select: none; }
   .day-segment-movable:active { cursor: grabbing; }
-  /* スケジュールの空いている場所をクリックしたときに、その場に開く新規追加フォーム */
-  .schedule-add-form { position: absolute; left: 54px; right: 8px; z-index: 6; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.14); text-align: left; }
-  .schedule-add-form-heading { font-size: 12px; font-weight: 700; color: var(--series-1); margin-bottom: 8px; }
-  .schedule-add-form .field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin: 8px 0 3px; }
-  .schedule-add-form select, .schedule-add-form input[type="text"] { width: 100%; box-sizing: border-box; font-size: 13px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
-  .sched-add-new-fields { display: flex; flex-wrap: wrap; gap: 8px; }
-  .sched-add-new-fields > div { flex: 1 1 140px; min-width: 120px; }
-  .sched-add-existing-info { font-size: 12px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-top: 8px; }
-  .schedule-add-form .datetime-row { margin-top: 10px; }
-  .schedule-add-form .datetime-pair { flex: 1 1 120px; min-width: 100px; padding: 8px 10px; }
-  .sched-add-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-  .sched-add-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
-  .sched-add-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
   /* スケジュールの記録ブロックをタップしたときに開く操作メニュー（再開／編集） */
   .schedule-block-menu { position: absolute; left: 54px; right: 8px; z-index: 6; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.14); text-align: left; }
   .schedule-block-menu-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
@@ -608,7 +595,6 @@
   var scheduleMonthState = null;
   var scheduleDayState = null;
   var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
-  var scheduleAddFormState = null; // スケジュール（日表示）の空いている場所をクリックしたときの新規追加フォーム。null以外なら { startMin, endMin } を保持
   var scheduleBlockMenuState = null; // スケジュール（日表示）の記録ブロックをタップしたときの操作メニュー。null以外なら { sessionId, top } を保持
   var HOUR_PX = 72; // 1時間あたりの高さ(px)。スケジュール（日表示）の縦の幅を広げたいというご要望で 48→72（1.5倍）に変更
   var MIN_BLOCK_HEIGHT = 27; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）。HOUR_PXと同じ比率で拡大
@@ -2411,37 +2397,6 @@
       html += '<div id="dayNowLine" class="day-now-line" style="top:' + ((minutesOfDay(nowLocalIso()) / 60) * HOUR_PX) + 'px;"></div>';
     }
 
-    // 空いている場所をクリックしたときの新規追加フォーム（既存のタスクから選ぶ／新規タスクを切り替えられる）。
-    if (scheduleAddFormState) {
-      var addOpenTasks = getTasks().filter(function (t) { return !t.completed; });
-      html += '<div class="schedule-add-form" style="top:' + ((scheduleAddFormState.startMin / 60) * HOUR_PX) + 'px;">' +
-        '<div class="schedule-add-form-heading">この時間に記録を追加</div>' +
-        '<label class="field-label">タスク</label>' +
-        '<select class="sched-add-task-select">' +
-        '<option value="__new__">＋ 新規タスク</option>' +
-        '<option value="__break__">☕ 休憩</option>' +
-        addOpenTasks.map(function (t) {
-          return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.id) + ' ' + escapeHtml(t.project) + '</option>';
-        }).join("") +
-        '</select>' +
-        '<div class="sched-add-new-fields">' +
-        '<div><label class="field-label">プロジェクト名</label><input type="text" class="sched-add-project" list="projectList" placeholder="例、H案件"></div>' +
-        '<div><label class="field-label">業務内容</label><input type="text" class="sched-add-memo" placeholder="例、企画"></div>' +
-        '<div><label class="field-label">番号</label><input type="text" class="sched-add-number" placeholder="例、1_1"></div>' +
-        '</div>' +
-        '<div class="sched-add-existing-info" style="display:none;"></div>' +
-        '<div class="datetime-row">' +
-        '<div class="datetime-pair start"><div class="datetime-pair-label">開始</div><div class="datetime-pair-inputs"><input type="time" step="1" class="sched-add-start-time" value="' + minutesToTimeInputStr(scheduleAddFormState.startMin) + '"></div></div>' +
-        '<span class="datetime-arrow">→</span>' +
-        '<div class="datetime-pair end"><div class="datetime-pair-label">終了</div><div class="datetime-pair-inputs"><input type="time" step="1" class="sched-add-end-time" value="' + minutesToTimeInputStr(scheduleAddFormState.endMin) + '"></div></div>' +
-        '</div>' +
-        '<div class="sched-add-actions">' +
-        '<button type="button" class="sched-add-confirm-btn">追加</button>' +
-        '<button type="button" class="sched-add-cancel-btn">キャンセル</button>' +
-        '</div>' +
-        '</div>';
-    }
-
     // 記録ブロックをタップしたときに開く操作メニュー（▶ 再開／編集）。
     // 手動追加した記録などタスクに紐づいていないセッションもあるため、プロジェクト名・業務内容は
     // タスクではなくセッション自体から表示する（再開時にタスクを特定／新規作成する処理と合わせるため）。
@@ -2471,7 +2426,6 @@
       scrollBox.scrollTop = Math.max(0, (scrollToMin / 60) * HOUR_PX - 120);
     }
 
-    wireScheduleAddForm();
     wireScheduleBlockMenu();
   }
 
@@ -2552,74 +2506,6 @@
     });
   }
 
-  // 空いている場所をクリックしたときの新規追加フォームの内部の操作（タスク選択の切り替え・追加・キャンセル）を配線する。
-  function wireScheduleAddForm() {
-    var formEl = document.querySelector(".schedule-add-form");
-    if (!formEl) return;
-
-    var taskSelect = formEl.querySelector(".sched-add-task-select");
-    var newFields = formEl.querySelector(".sched-add-new-fields");
-    var existingInfo = formEl.querySelector(".sched-add-existing-info");
-
-    function syncFieldsVisibility() {
-      var isNew = taskSelect.value === "__new__";
-      var isBreak = taskSelect.value === "__break__";
-      newFields.style.display = isNew ? "" : "none";
-      existingInfo.style.display = (isNew || isBreak) ? "none" : "";
-      if (isBreak) {
-        existingInfo.textContent = "";
-      } else if (!isNew) {
-        var task = getTaskById(taskSelect.value);
-        existingInfo.textContent = task ? (task.project + (task.number ? "（" + task.number + "）" : "") + (task.memo ? "・" + task.memo : "")) : "";
-      }
-    }
-    taskSelect.addEventListener("change", syncFieldsVisibility);
-    syncFieldsVisibility();
-
-    formEl.querySelector(".sched-add-cancel-btn").addEventListener("click", function () {
-      scheduleAddFormState = null;
-      renderScheduleDayView(true);
-    });
-
-    formEl.querySelector(".sched-add-confirm-btn").addEventListener("click", function () {
-      var startTime = formEl.querySelector(".sched-add-start-time").value;
-      var endTime = formEl.querySelector(".sched-add-end-time").value;
-      if (!startTime || !endTime) { window.alert("開始・終了の時刻を入力してください。"); return; }
-      var start = combineDateTime(scheduleDayState, startTime);
-      var end = combineDateTime(scheduleDayState, endTime);
-      if (parseLocal(end) <= parseLocal(start)) { window.alert("終了時刻は開始時刻より後にしてください。"); return; }
-
-      if (taskSelect.value === "__break__") {
-        getGeneralBreaks().push({ id: generateId(), start: start, end: end });
-        persistState();
-        scheduleAddFormState = null;
-        renderAll();
-        return;
-      }
-
-      var project, memo, number, taskId;
-      if (taskSelect.value === "__new__") {
-        project = formEl.querySelector(".sched-add-project").value.trim();
-        if (!project) { window.alert("プロジェクト名を入力してください。"); return; }
-        memo = formEl.querySelector(".sched-add-memo").value.trim();
-        number = formEl.querySelector(".sched-add-number").value.trim();
-        taskId = createTask(project, memo, number).id;
-      } else {
-        var existingTask = getTaskById(taskSelect.value);
-        if (!existingTask) { window.alert("タスクが見つかりませんでした。"); return; }
-        project = existingTask.project;
-        memo = existingTask.memo;
-        number = existingTask.number;
-        taskId = existingTask.id;
-      }
-
-      state.sessions.push({ id: generateId(), project: project, memo: memo, number: number, start: start, end: end, taskId: taskId });
-      persistState();
-      scheduleAddFormState = null;
-      renderAll();
-    });
-  }
-
   function updateScheduleLiveGauge() {
     var isToday = scheduleDayState === todayDateInputValue();
     var nowLine = document.getElementById("dayNowLine");
@@ -2645,7 +2531,6 @@
     var d = new Date(scheduleDayState + "T00:00:00");
     d.setDate(d.getDate() - 1);
     scheduleDayState = dateStrOf(d);
-    scheduleAddFormState = null;
     scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
@@ -2653,13 +2538,11 @@
     var d = new Date(scheduleDayState + "T00:00:00");
     d.setDate(d.getDate() + 1);
     scheduleDayState = dateStrOf(d);
-    scheduleAddFormState = null;
     scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
   document.getElementById("schDayTodayBtn").addEventListener("click", function () {
     scheduleDayState = todayDateInputValue();
-    scheduleAddFormState = null;
     scheduleBlockMenuState = null;
     renderScheduleDayView();
   });
@@ -2670,18 +2553,14 @@
     if (resizeJustHappened) { resizeJustHappened = false; return; }
     var block = evt.target.closest ? evt.target.closest(".day-segment-block") : null;
     if (!block) {
-      // 新規追加フォーム・操作メニュー自体をクリックした場合（入力欄やボタンなど）はここでは何もしない。
-      if (evt.target.closest && evt.target.closest(".schedule-add-form")) return;
+      // 操作メニュー自体をクリックした場合（ボタンなど）はここでは何もしない。
       if (evt.target.closest && evt.target.closest(".schedule-block-menu")) return;
-      // 記録が何もない「空いている場所」をクリックした場合は、その場に新規追加フォームを開く。
-      var timelineEl = document.getElementById("dayTimeline");
-      var timelineRect = timelineEl.getBoundingClientRect();
-      var offsetY = evt.clientY - timelineRect.top;
-      var clickedMin = (offsetY / HOUR_PX) * 60;
-      var snappedMin = Math.max(0, Math.min(24 * 60 - 5, Math.round(clickedMin / 5) * 5));
-      scheduleAddFormState = { startMin: snappedMin, endMin: Math.min(snappedMin + 30, 24 * 60) };
-      scheduleBlockMenuState = null;
-      renderScheduleDayView(true);
+      // 記録が何もない「空いている場所」をタップしても、新規追加フォームは開かない
+      // （記録の追加は「タスクを登録」や履歴タブの手動追加から行う）。開いている操作メニューがあれば閉じる。
+      if (scheduleBlockMenuState) {
+        scheduleBlockMenuState = null;
+        renderScheduleDayView(true);
+      }
       return;
     }
     var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
