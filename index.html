@@ -124,8 +124,11 @@
   .plan-add-form { max-width: 480px; margin: 10px 0 0; text-align: left; display: flex; flex-direction: column; gap: 14px; }
   .plan-add-form .field-block { display: flex; flex-direction: column; gap: 0; }
   .plan-add-form input[type="text"] { padding: 10px 12px; border-radius: 8px; }
-  .plan-add-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer; align-self: flex-start; }
-  .plan-add-btn:hover { opacity: 0.9; }
+  .plan-add-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .start-now-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  .start-now-btn:hover { opacity: 0.9; }
+  .plan-add-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  .plan-add-btn:hover { background: var(--series-1); color: #fff; }
   /* 一覧は2カラムのグリッドで表示（新規追加フォームは一覧の下に固定配置） */
   #planListWrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; }
   #planListWrap > .generated-note { grid-column: 1 / -1; }
@@ -431,7 +434,7 @@
     </div>
 
     <div class="card">
-      <h2>今日の予定を追加</h2>
+      <h2>タスクを登録<span class="sub">今すぐ始めるか、後で使う予定として追加するか選べます</span></h2>
       <div class="plan-add-form">
         <div class="field-block">
           <label class="field-label">プロジェクト名</label>
@@ -448,7 +451,10 @@
           <input type="text" id="planNumberInput" placeholder="例、1_1">
           <div class="quick-suggest-row" id="planNumberSuggest"></div>
         </div>
-        <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定を追加</button>
+        <div class="plan-add-btn-row">
+          <button type="button" class="start-now-btn" id="startBtn">▶ 今すぐ開始</button>
+          <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定に追加（後で開始）</button>
+        </div>
       </div>
     </div>
 
@@ -1150,138 +1156,23 @@
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<span class="status-badge idle">停止中</span>' +
-        '<div class="status-form">' +
-        '<div class="field-block"><label class="field-label">プロジェクト名</label><input type="text" id="startProjectInput" list="projectList" placeholder="例、H案件">' +
-        '<div class="quick-suggest-row" id="startProjectSuggest"></div></div>' +
-        '<div class="field-block"><label class="field-label">業務内容</label><input type="text" id="startMemoInput" placeholder="例、企画">' +
-        '<div class="quick-suggest-row" id="startMemoSuggest"></div></div>' +
-        '<div><label class="field-label">番号</label><input type="text" id="startNumberInput" placeholder="例、1_1">' +
-        '<div class="quick-suggest-row" id="startNumberSuggest"></div></div>' +
-        '</div>' +
+        '<p class="generated-note" style="text-align:center; margin: 10px 0;">下の「タスクを登録」から、プロジェクト名などを入力してすぐに開始できます。</p>' +
         '<div class="action-card-row">' +
-        '<button type="button" class="action-card start" id="startBtn"><span class="action-card-icon">▶</span><span class="action-card-label">新しいタスクを開始</span></button>' +
         '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">☕</span><span class="action-card-label">休憩を開始</span></button>' +
         '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝タスクを選ばずに業務全体を一時中断（作業時間としては記録されません）。</p>';
-
-      document.getElementById("startBtn").addEventListener("click", function () {
-        var project = document.getElementById("startProjectInput").value.trim();
-        if (!project) {
-          window.alert("プロジェクト名を入力してください。");
-          document.getElementById("startProjectInput").focus();
-          return;
-        }
-        var memo = document.getElementById("startMemoInput").value.trim();
-        var number = document.getElementById("startNumberInput").value.trim();
-        // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
-        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは自動では紐づけない。
-        var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-
-        // 未完了タスクに一致がなければ、完了済みタスクの中にプロジェクト名・業務内容・番号が
-        // 完全一致するものがないか確認し、あれば再開するかどうかをユーザーに確認する
-        // （気づかないうちに同じ内容のタスクが重複して登録されるのを防ぐため）。
-        if (!task) {
-          var exactMatch = completedTasks().find(function (t) {
-            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
-          });
-          if (exactMatch) {
-            var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
-              exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
-              "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
-              "このタスクを未完了に戻して時間を追加しますか？\n" +
-              "（キャンセルすると、新しい別のタスクとして開始します）";
-            if (window.confirm(msg)) {
-              exactMatch.completed = false;
-              task = exactMatch;
-            }
-          }
-        }
-
-        if (!task) task = createTask(project, memo, number);
-        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
-        persistState();
-        renderAll();
-      });
 
       document.getElementById("generalBreakBtn").addEventListener("click", function () {
         getGeneralBreaks().push({ id: generateId(), start: nowLocalIso(), end: null });
         persistState();
         renderAll();
       });
-
-      wireStartSuggestions();
     }
   }
 
-  // ---- 「新しいタスクを開始」フォームのプロジェクト名・業務内容の候補ボタン ----
   var MAX_SUGGEST_CHIPS = 8;
 
-  function renderMemoSuggestChips() {
-    var memoWrap = document.getElementById("startMemoSuggest");
-    if (!memoWrap) return;
-    var projectInput = document.getElementById("startProjectInput");
-    var memoInput = document.getElementById("startMemoInput");
-    var currentProject = projectInput ? projectInput.value : "";
-    var memos = distinctMemosForProject(currentProject).slice(0, MAX_SUGGEST_CHIPS);
-    if (!memos.length) { memoWrap.innerHTML = ""; return; }
-    memoWrap.innerHTML = memos.map(function (m) {
-      return '<button type="button" class="suggest-chip" data-memo="' + escapeHtml(m) + '">' + escapeHtml(m) + '</button>';
-    }).join("");
-    memoWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        if (memoInput) memoInput.value = chip.getAttribute("data-memo");
-        renderNumberSuggestChips();
-      });
-    });
-  }
-
-  function renderNumberSuggestChips() {
-    var numberWrap = document.getElementById("startNumberSuggest");
-    if (!numberWrap) return;
-    var projectInput = document.getElementById("startProjectInput");
-    var memoInput = document.getElementById("startMemoInput");
-    var numberInput = document.getElementById("startNumberInput");
-    var numbers = distinctNumbersForProjectAndMemo(projectInput ? projectInput.value : "", memoInput ? memoInput.value : "").slice(0, MAX_SUGGEST_CHIPS);
-    if (!numbers.length) { numberWrap.innerHTML = ""; return; }
-    numberWrap.innerHTML = numbers.map(function (n) {
-      return '<button type="button" class="suggest-chip" data-number="' + escapeHtml(n) + '">' + escapeHtml(n) + '</button>';
-    }).join("");
-    numberWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        if (numberInput) numberInput.value = chip.getAttribute("data-number");
-      });
-    });
-  }
-
-  function wireStartSuggestions() {
-    var projectWrap = document.getElementById("startProjectSuggest");
-    var projectInput = document.getElementById("startProjectInput");
-    var memoInput = document.getElementById("startMemoInput");
-    if (!projectWrap || !projectInput) return;
-
-    var projects = distinctProjects().slice(0, MAX_SUGGEST_CHIPS);
-    projectWrap.innerHTML = projects.map(function (p) {
-      return '<button type="button" class="suggest-chip" data-project="' + escapeHtml(p) + '">' + escapeHtml(p) + '</button>';
-    }).join("");
-    projectWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        projectInput.value = chip.getAttribute("data-project");
-        renderMemoSuggestChips();
-        renderNumberSuggestChips();
-      });
-    });
-
-    projectInput.addEventListener("input", function () {
-      renderMemoSuggestChips();
-      renderNumberSuggestChips();
-    });
-    if (memoInput) memoInput.addEventListener("input", renderNumberSuggestChips);
-
-    renderMemoSuggestChips();
-    renderNumberSuggestChips();
-  }
-
-  // ---- 今日の予定カード（過去の実績から候補ボタンで選ぶか、新規で登録してすぐ使えるようにする） ----
+  // ---- 「タスクを登録」カード（過去の実績から候補ボタンで選ぶか、新規で登録してすぐ使えるようにする） ----
   function renderPlanProjectSuggestChips() {
     var wrap = document.getElementById("planProjectSuggest");
     var input = document.getElementById("planProjectInput");
@@ -1343,6 +1234,7 @@
     var memoInput = document.getElementById("planMemoInput");
     var numberInput = document.getElementById("planNumberInput");
     var addBtn = document.getElementById("planAddBtn");
+    var startBtn = document.getElementById("startBtn");
     if (!projectInput || !memoInput || !numberInput || !addBtn) return;
 
     projectInput.addEventListener("input", function () {
@@ -1367,6 +1259,56 @@
       numberInput.value = "";
       renderAll();
     });
+
+    // 「▶ 今すぐ開始」：同じ入力欄から、予定に追加するのではなくその場でタスクを開始する。
+    // すでに作業中・中断中・休憩中の場合は、先にそちらを終わらせてもらう（同時に2つは開始できないため）。
+    if (startBtn) {
+      startBtn.addEventListener("click", function () {
+        if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
+          window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから開始してください。");
+          return;
+        }
+        var project = projectInput.value.trim();
+        if (!project) {
+          window.alert("プロジェクト名を入力してください。");
+          projectInput.focus();
+          return;
+        }
+        var memo = memoInput.value.trim();
+        var number = numberInput.value.trim();
+        // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
+        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは自動では紐づけない。
+        var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+
+        // 未完了タスクに一致がなければ、完了済みタスクの中にプロジェクト名・業務内容・番号が
+        // 完全一致するものがないか確認し、あれば再開するかどうかをユーザーに確認する
+        // （気づかないうちに同じ内容のタスクが重複して登録されるのを防ぐため）。
+        if (!task) {
+          var exactMatch = completedTasks().find(function (t) {
+            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
+          });
+          if (exactMatch) {
+            var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
+              exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
+              "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
+              "このタスクを未完了に戻して時間を追加しますか？\n" +
+              "（キャンセルすると、新しい別のタスクとして開始します）";
+            if (window.confirm(msg)) {
+              exactMatch.completed = false;
+              task = exactMatch;
+            }
+          }
+        }
+
+        if (!task) task = createTask(project, memo, number);
+        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+        persistState();
+        projectInput.value = "";
+        memoInput.value = "";
+        numberInput.value = "";
+        renderAll();
+      });
+    }
   }
 
   function renderPlanCard() {
@@ -1459,17 +1401,19 @@
       btn.addEventListener("click", function () {
         var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
         if (!plan) return;
-        var projectInput = document.getElementById("startProjectInput");
-        var memoInput = document.getElementById("startMemoInput");
-        var numberInput = document.getElementById("startNumberInput");
-        if (!projectInput || !memoInput) {
-          window.alert("すでに作業中か中断中です。先に完了するか作業に戻ってから、この予定で開始してください。");
+        if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
+          window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから、この予定で開始してください。");
           return;
         }
+        var projectInput = document.getElementById("planProjectInput");
+        var memoInput = document.getElementById("planMemoInput");
+        var numberInput = document.getElementById("planNumberInput");
+        if (!projectInput || !memoInput) return;
         projectInput.value = plan.project;
         memoInput.value = plan.memo || "";
         if (numberInput) numberInput.value = plan.number || "";
-        if (typeof renderMemoSuggestChips === "function") renderMemoSuggestChips();
+        renderPlanMemoSuggestChips();
+        renderPlanNumberSuggestChips();
         projectInput.scrollIntoView({ behavior: "smooth", block: "center" });
         projectInput.focus();
       });
@@ -1568,7 +1512,7 @@
     }
 
     wrap.innerHTML = (openHtml || doneHtml) ? (openHtml + doneHtml) :
-      '<p class="generated-note" style="text-align:center;">未完了・完了のタスクはまだありません。「現在の状況」で新しいタスクを開始すると、ここに表示されます。</p>';
+      '<p class="generated-note" style="text-align:center;">未完了・完了のタスクはまだありません。「タスクを登録」で新しいタスクを開始すると、ここに表示されます。</p>';
 
     wrap.querySelectorAll(".task-resume-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
