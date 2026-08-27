@@ -60,6 +60,8 @@
      .task-table-wrap 側の横スクロールに閉じ込める。 */
   .dashboard-top-grid > .card { min-width: 0; }
   .dashboard-top-grid .card { margin-bottom: 0; }
+  /* 左カラム（現在の状況＋タスクを登録）は縦に並べる */
+  .dashboard-left-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
   /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く。
@@ -398,7 +400,34 @@
     </div>
 
     <div class="dashboard-top-grid">
-      <div class="card status-card" id="statusCard"></div>
+      <div class="dashboard-left-col">
+        <div class="card status-card" id="statusCard"></div>
+
+        <div class="card">
+          <h2>タスクを登録<span class="sub">今すぐ始めるか、後で使う予定として追加するか選べます</span></h2>
+          <div class="plan-add-form">
+            <div class="field-block">
+              <label class="field-label">プロジェクト名</label>
+              <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
+              <div class="quick-suggest-row" id="planProjectSuggest"></div>
+            </div>
+            <div class="field-block">
+              <label class="field-label">業務内容</label>
+              <input type="text" id="planMemoInput" placeholder="例、企画">
+              <div class="quick-suggest-row" id="planMemoSuggest"></div>
+            </div>
+            <div class="field-block">
+              <label class="field-label">番号</label>
+              <input type="text" id="planNumberInput" placeholder="例、1_1">
+              <div class="quick-suggest-row" id="planNumberSuggest"></div>
+            </div>
+            <div class="plan-add-btn-row">
+              <button type="button" class="start-now-btn" id="startBtn">▶ 今すぐ開始</button>
+              <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定に追加（後で開始）</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="card">
         <div class="toolbar-row">
@@ -431,31 +460,6 @@
           <div class="day-timeline-scroll" id="dayTimelineScroll">
             <div class="day-timeline" id="dayTimeline"></div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>タスクを登録<span class="sub">今すぐ始めるか、後で使う予定として追加するか選べます</span></h2>
-      <div class="plan-add-form">
-        <div class="field-block">
-          <label class="field-label">プロジェクト名</label>
-          <input type="text" id="planProjectInput" list="projectList" placeholder="例、H案件">
-          <div class="quick-suggest-row" id="planProjectSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">業務内容</label>
-          <input type="text" id="planMemoInput" placeholder="例、企画">
-          <div class="quick-suggest-row" id="planMemoSuggest"></div>
-        </div>
-        <div class="field-block">
-          <label class="field-label">番号</label>
-          <input type="text" id="planNumberInput" placeholder="例、1_1">
-          <div class="quick-suggest-row" id="planNumberSuggest"></div>
-        </div>
-        <div class="plan-add-btn-row">
-          <button type="button" class="start-now-btn" id="startBtn">▶ 今すぐ開始</button>
-          <button type="button" class="plan-add-btn" id="planAddBtn">＋ 予定に追加（後で開始）</button>
         </div>
       </div>
     </div>
@@ -1334,7 +1338,7 @@
         return '<div class="plan-row' + (p.done ? ' done' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
-          '<div class="plan-row-field"><span class="plan-row-tag">プロジェクト</span><div class="plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + '</div></div>' +
+          '<div class="plan-row-field plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + '</div>' +
           (p.number ? '<div class="plan-row-field"><span class="plan-row-tag">番号</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           (p.memo ? '<div class="plan-row-field"><span class="plan-row-tag">業務内容</span><div class="plan-row-memo">' + escapeHtml(p.memo) + '</div></div>' : '') +
           '</div>' +
