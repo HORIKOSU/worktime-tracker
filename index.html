@@ -518,10 +518,25 @@
   </section>
 
   <section id="stats" class="panel">
+    <div class="card">
+      <div class="toolbar-row"><h2>集計の期間<span class="sub" id="statsPeriodLabel">全期間</span></h2></div>
+      <div class="filter-row">
+        <div class="filter-item"><label class="field-label">開始日</label><input type="date" id="statsPeriodStartInput"></div>
+        <div class="filter-item"><label class="field-label">終了日</label><input type="date" id="statsPeriodEndInput"></div>
+      </div>
+      <div class="quick-suggest-row" id="statsPeriodPresets">
+        <button type="button" class="suggest-chip" data-preset="today">今日</button>
+        <button type="button" class="suggest-chip" data-preset="week">今週</button>
+        <button type="button" class="suggest-chip" data-preset="month">今月</button>
+        <button type="button" class="suggest-chip" data-preset="lastmonth">先月</button>
+        <button type="button" class="suggest-chip active" data-preset="all">全期間</button>
+      </div>
+    </div>
+
     <div class="stat-row" id="statsStatRow"></div>
 
     <div class="card">
-      <div class="toolbar-row"><h2>日別の作業時間<span class="sub">直近30日</span></h2></div>
+      <div class="toolbar-row"><h2>日別の作業時間<span class="sub" id="dailyChartSub">直近30日</span></h2></div>
       <div class="filter-row">
         <div class="filter-item"><label class="field-label">プロジェクト</label>
           <select id="dailyProjectFilter"><option value="__all__">すべてのプロジェクト</option></select>
@@ -532,7 +547,7 @@
     </div>
 
     <div class="card">
-      <div class="toolbar-row"><h2>週別の作業時間<span class="sub">直近12週（月曜始まり）</span></h2></div>
+      <div class="toolbar-row"><h2>週別の作業時間<span class="sub" id="weeklyChartSub">直近12週（月曜始まり）</span></h2></div>
       <div class="filter-row">
         <div class="filter-item"><label class="field-label">プロジェクト</label>
           <select id="weeklyProjectFilter"><option value="__all__">すべてのプロジェクト</option></select>
@@ -543,7 +558,7 @@
     </div>
 
     <div class="card">
-      <h2>プロジェクト別の内訳<span class="sub">全期間の合計作業時間</span></h2>
+      <h2>プロジェクト別の内訳<span class="sub" id="projectChartSub">全期間の合計作業時間</span></h2>
       <div class="chart-wrap" id="projectChartWrap"><canvas id="projectChart"></canvas></div>
       <details class="table-toggle"><summary>表で見る</summary><div id="projectTableWrap"></div></details>
     </div>
@@ -3007,6 +3022,71 @@
   var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null;
   var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2", "#00897b", "#ad1477", "#92400e", "#7cb342"];
 
+  // 集計タブの期間フィルター（開始日・終了日とも空文字なら「全期間」＝これまでの挙動と同じ）
+  var statsPeriodStart = "";
+  var statsPeriodEnd = "";
+
+  function statsPeriodMatches(dateStr) {
+    if (statsPeriodStart && dateStr < statsPeriodStart) return false;
+    if (statsPeriodEnd && dateStr > statsPeriodEnd) return false;
+    return true;
+  }
+  function sessionOverlapsStatsPeriod(s) {
+    return getSegments(s).some(function (seg) { return statsPeriodMatches(seg.start.slice(0, 10)); });
+  }
+  function toDateInputValue(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function firstDayOfMonth(base) { return new Date(base.getFullYear(), base.getMonth(), 1); }
+  function lastDayOfMonth(base) { return new Date(base.getFullYear(), base.getMonth() + 1, 0); }
+  function statsPeriodLabelText() {
+    if (!statsPeriodStart && !statsPeriodEnd) return "全期間";
+    var startText = statsPeriodStart ? formatDateHeading(statsPeriodStart) : "開始日未指定";
+    var endText = statsPeriodEnd ? formatDateHeading(statsPeriodEnd) : "終了日未指定";
+    return startText + "〜" + endText;
+  }
+  function applyStatsPeriodPreset(preset) {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    if (preset === "today") {
+      var t = toDateInputValue(today);
+      statsPeriodStart = t; statsPeriodEnd = t;
+    } else if (preset === "week") {
+      var monday = mondayOf(today), sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      statsPeriodStart = toDateInputValue(monday); statsPeriodEnd = toDateInputValue(sunday);
+    } else if (preset === "month") {
+      statsPeriodStart = toDateInputValue(firstDayOfMonth(today)); statsPeriodEnd = toDateInputValue(lastDayOfMonth(today));
+    } else if (preset === "lastmonth") {
+      var prevBase = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      statsPeriodStart = toDateInputValue(firstDayOfMonth(prevBase)); statsPeriodEnd = toDateInputValue(lastDayOfMonth(prevBase));
+    } else {
+      statsPeriodStart = ""; statsPeriodEnd = "";
+    }
+    document.getElementById("statsPeriodStartInput").value = statsPeriodStart;
+    document.getElementById("statsPeriodEndInput").value = statsPeriodEnd;
+    document.querySelectorAll("#statsPeriodPresets .suggest-chip").forEach(function (chip) {
+      chip.classList.toggle("active", chip.getAttribute("data-preset") === preset);
+    });
+    renderStats();
+  }
+  function datesBetween(startStr, endStr) {
+    var out = [];
+    var d = new Date(startStr + "T00:00:00");
+    var end = new Date(endStr + "T00:00:00");
+    while (d <= end) {
+      out.push(d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+  function weekStartsBetween(startStr, endStr) {
+    var out = [];
+    var d = mondayOf(new Date(startStr + "T00:00:00"));
+    var endMonday = mondayOf(new Date(endStr + "T00:00:00"));
+    while (d <= endMonday) {
+      out.push(new Date(d));
+      d.setDate(d.getDate() + 7);
+    }
+    return out;
+  }
+
   function last30Days() {
     var days = [], base = new Date(); base.setHours(0, 0, 0, 0);
     for (var i = 29; i >= 0; i--) {
@@ -3027,22 +3107,26 @@
     return filter === "__all__" || projectLabel(s) === filter;
   }
   function secForDate(dateStr, filter) {
+    if (!statsPeriodMatches(dateStr)) return 0;
     return sumSegmentSecWhere(function (seg, s) { return isSameDate(seg.start, dateStr) && projectMatches(s, filter); });
   }
   function secForWeek(weekStart, filter) {
     var end = new Date(weekStart); end.setDate(weekStart.getDate() + 7);
     return sumSegmentSecWhere(function (seg, s) {
-      var d = new Date(seg.start.slice(0, 10) + "T00:00:00");
-      return d >= weekStart && d < end && projectMatches(s, filter);
+      var dateStr = seg.start.slice(0, 10);
+      var d = new Date(dateStr + "T00:00:00");
+      return d >= weekStart && d < end && projectMatches(s, filter) && statsPeriodMatches(dateStr);
     });
   }
 
   function renderDailyChart() {
     var filter = document.getElementById("dailyProjectFilter").value;
-    var days = last30Days();
+    var customRange = !!(statsPeriodStart && statsPeriodEnd);
+    var days = customRange ? datesBetween(statsPeriodStart, statsPeriodEnd) : last30Days();
     var secs = days.map(function (d) { return secForDate(d, filter); });
     var hours = secs.map(function (s) { return +(s / 3600).toFixed(2); });
     var labels = days.map(function (d) { var p = d.split("-"); return p[1] + "/" + p[2]; });
+    document.getElementById("dailyChartSub").textContent = customRange ? statsPeriodLabelText() : "直近30日";
 
     var ctx = document.getElementById("dailyChart").getContext("2d");
     if (dailyChartInstance) dailyChartInstance.destroy();
@@ -3067,10 +3151,12 @@
 
   function renderWeeklyChart() {
     var filter = document.getElementById("weeklyProjectFilter").value;
-    var weeks = last12WeekStarts();
+    var customRange = !!(statsPeriodStart && statsPeriodEnd);
+    var weeks = customRange ? weekStartsBetween(statsPeriodStart, statsPeriodEnd) : last12WeekStarts();
     var secs = weeks.map(function (w) { return secForWeek(w, filter); });
     var hours = secs.map(function (s) { return +(s / 3600).toFixed(2); });
     var labels = weeks.map(function (w) { return (w.getMonth() + 1) + "/" + w.getDate() + "〜"; });
+    document.getElementById("weeklyChartSub").textContent = customRange ? statsPeriodLabelText() : "直近12週（月曜始まり）";
 
     var ctx = document.getElementById("weeklyChart").getContext("2d");
     if (weeklyChartInstance) weeklyChartInstance.destroy();
@@ -3095,7 +3181,13 @@
 
   function totalsByProjectMap() {
     var map = {};
-    state.sessions.forEach(function (s) { var key = projectLabel(s); map[key] = (map[key] || 0) + durationSecOf(s); });
+    state.sessions.forEach(function (s) {
+      var key = projectLabel(s);
+      getSegments(s).forEach(function (seg) {
+        if (!statsPeriodMatches(seg.start.slice(0, 10))) return;
+        map[key] = (map[key] || 0) + segmentDurationSec(seg);
+      });
+    });
     return map;
   }
 
@@ -3103,6 +3195,7 @@
     var map = totalsByProjectMap();
     var entries = Object.keys(map).map(function (k) { return { name: k, sec: map[k] }; }).sort(function (a, b) { return b.sec - a.sec; });
     var wrap = document.getElementById("projectChartWrap");
+    document.getElementById("projectChartSub").textContent = (statsPeriodStart || statsPeriodEnd) ? statsPeriodLabelText() + "の合計作業時間" : "全期間の合計作業時間";
 
     if (entries.length === 0) {
       wrap.innerHTML = '<div class="empty-state">記録がありません。</div>';
@@ -3139,18 +3232,28 @@
   }
 
   function renderStatsStatRow() {
-    var totalSec = totalSecFiltered(function () { return true; });
-    var finished = state.sessions.filter(function (s) { return s.end; }).length;
+    var hasPeriod = !!(statsPeriodStart || statsPeriodEnd);
+    var totalSec = 0;
+    var recordCount = 0, finished = 0;
+    state.sessions.forEach(function (s) {
+      if (!sessionOverlapsStatsPeriod(s)) return;
+      recordCount++;
+      if (s.end) finished++;
+      getSegments(s).forEach(function (seg) {
+        if (statsPeriodMatches(seg.start.slice(0, 10))) totalSec += segmentDurationSec(seg);
+      });
+    });
     var row = document.getElementById("statsStatRow");
     row.innerHTML =
-      '<div class="stat-tile"><div class="label">全期間の合計作業時間</div><div class="value">' + formatHM(totalSec) + '</div></div>' +
-      '<div class="stat-tile"><div class="label">記録件数</div><div class="value">' + state.sessions.length + ' 件</div></div>' +
+      '<div class="stat-tile"><div class="label">' + (hasPeriod ? "指定期間の合計作業時間" : "全期間の合計作業時間") + '</div><div class="value">' + formatHM(totalSec) + '</div></div>' +
+      '<div class="stat-tile"><div class="label">記録件数</div><div class="value">' + recordCount + ' 件</div></div>' +
       '<div class="stat-tile"><div class="label">完了した記録</div><div class="value">' + finished + ' 件</div></div>';
   }
 
   function renderStats() {
     populateProjectFilterOptions(document.getElementById("dailyProjectFilter"));
     populateProjectFilterOptions(document.getElementById("weeklyProjectFilter"));
+    document.getElementById("statsPeriodLabel").textContent = statsPeriodLabelText();
     renderStatsStatRow();
     renderDailyChart();
     renderWeeklyChart();
@@ -3158,6 +3261,19 @@
   }
   document.getElementById("dailyProjectFilter").addEventListener("change", renderDailyChart);
   document.getElementById("weeklyProjectFilter").addEventListener("change", renderWeeklyChart);
+  document.getElementById("statsPeriodStartInput").addEventListener("change", function () {
+    statsPeriodStart = this.value;
+    document.querySelectorAll("#statsPeriodPresets .suggest-chip").forEach(function (chip) { chip.classList.remove("active"); });
+    renderStats();
+  });
+  document.getElementById("statsPeriodEndInput").addEventListener("change", function () {
+    statsPeriodEnd = this.value;
+    document.querySelectorAll("#statsPeriodPresets .suggest-chip").forEach(function (chip) { chip.classList.remove("active"); });
+    renderStats();
+  });
+  document.querySelectorAll("#statsPeriodPresets .suggest-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () { applyStatsPeriodPreset(chip.getAttribute("data-preset")); });
+  });
 
   // ---- data import / export ----
   function importFromRawText(raw, mode) {
