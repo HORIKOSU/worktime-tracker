@@ -100,10 +100,14 @@
   .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; }
 
   /* status card / timer */
-  .status-card { text-align: center; padding: 26px 18px; min-height: 328px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px dashed var(--text-secondary); }
-  .status-card.running, .status-card.on-break { justify-content: center; border: 2px dashed var(--text-secondary); }
-  .status-card.running { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
-  .status-card.on-break { background: linear-gradient(180deg, #fffaf0, var(--surface-1)); }
+  .status-card { text-align: center; padding: 26px 18px; min-height: 328px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
+  .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
+  .status-card.running { border-color: var(--project-color, var(--series-2)); background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
+  .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #fffaf0, var(--surface-1)); }
+  .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
+  .status-icon-circle.idle { background: var(--text-secondary); }
+  .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
+  .status-icon-circle.on-break { background: var(--series-4); }
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
   .status-badge.on-break { background: var(--series-4); color: #fff; }
@@ -1057,6 +1061,7 @@
       card.style.setProperty("--project-color", colorForProject(projectLabel(running)));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">合計：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(hasPriorTime ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec) + '</span></div>' +
@@ -1096,6 +1101,7 @@
       card.style.setProperty("--project-color", colorForProject(projectLabel(onBreak)));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle on-break">■</div>' +
         '<span class="status-badge on-break">■ 中断中</span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
@@ -1134,6 +1140,7 @@
       card.style.removeProperty("--project-color");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle on-break">☕</div>' +
         '<span class="status-badge on-break">☕ 休憩中</span>' +
         '<div class="timer-project">業務全体の休憩中</div>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
@@ -1150,6 +1157,7 @@
 
       card.innerHTML =
         '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle idle">⏸</div>' +
         '<span class="status-badge idle">停止中</span>' +
         '<p class="generated-note" style="text-align:center; margin: 10px 0;">下の「タスクを登録」から、プロジェクト名などを入力してすぐに開始できます。</p>' +
         '<div class="action-card-row">' +
