@@ -140,6 +140,8 @@
   #planListWrap > .generated-note { grid-column: 1 / -1; }
   .plan-row { display: flex; align-items: center; gap: 10px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .plan-row.done { opacity: 0.55; }
+  .plan-row.plan-row-active { background: #eaf2fc; border: 1px solid var(--series-1); }
+  .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-1); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
   .plan-row-checkbox { flex-shrink: 0; width: 18px; height: 18px; cursor: pointer; }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; min-height: 64px; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
@@ -865,6 +867,13 @@
     var today = todayDateInputValue();
     return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
   }
+  // 「今日の予定」の項目が、いま実際に作業中（実施中）のセッションと同じ内容（プロジェクト名・業務内容）かどうか。
+  // 一致すれば、一覧上でその項目だけ色を変えて目立たせる（番号は判定に含めない）。
+  function planMatchesRunningSession(p) {
+    var running = getRunningSession();
+    if (!running) return false;
+    return running.project === p.project && (running.memo || "") === (p.memo || "");
+  }
   // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「その予定を追加した後」に完了していれば、
   // その予定は「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ
   // 判定と同じ基準）。
@@ -1347,10 +1356,11 @@
             '</div>' +
             '</div>';
         }
-        return '<div class="plan-row' + (p.done ? ' done' : '') + '">' +
+        var isActivePlan = !p.done && planMatchesRunningSession(p);
+        return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
-          '<div class="plan-row-field plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + '</div>' +
+          '<div class="plan-row-field plan-row-project' + (p.done ? ' done-text' : '') + '">' + escapeHtml(p.project) + (isActivePlan ? ' <span class="plan-row-active-badge">● 実施中</span>' : '') + '</div>' +
           (p.memo ? '<div class="plan-row-field plan-row-memo">' + escapeHtml(p.memo) + '</div>' : '') +
           (p.number ? '<div class="plan-row-field"><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           '</div>' +
