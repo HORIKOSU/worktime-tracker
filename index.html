@@ -2334,9 +2334,10 @@
         var running = !seg.end;
         var startMin = minutesOfDay(seg.start);
         var endMin = minMaxClamp(startMin, running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end));
+        var workTrueHeight = ((endMin - startMin) / 60) * HOUR_PX;
         blocks.push({
           kind: "work", session: s, seg: seg, segIndex: segIdx, running: running, startMin: startMin, segsLength: segs.length,
-          top: (startMin / 60) * HOUR_PX, height: Math.max(((endMin - startMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+          top: (startMin / 60) * HOUR_PX, trueHeight: workTrueHeight, height: Math.max(workTrueHeight, MIN_BLOCK_HEIGHT)
         });
       });
       // タスクを一時中断している間（セグメントとセグメントの間）は「休憩」として特別に表示する。
@@ -2346,18 +2347,20 @@
         if (!gapStart || !isSameDate(gapStart, scheduleDayState)) continue;
         var gStartMin = minutesOfDay(gapStart);
         var gEndMin = minMaxClamp(gStartMin, minutesOfDay(gapEnd));
+        var taskBreakTrueHeight = ((gEndMin - gStartMin) / 60) * HOUR_PX;
         blocks.push({
           kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false, sessionId: s.id, segIndex: gi,
-          top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+          top: (gStartMin / 60) * HOUR_PX, trueHeight: taskBreakTrueHeight, height: Math.max(taskBreakTrueHeight, MIN_BLOCK_HEIGHT)
         });
       }
       // 現在まさに休憩中のタスクは、休憩の終わりがまだ決まっていないので「進行中」として表示する。
       if (state.onBreakSessionId === s.id && s.end && isSameDate(s.end, scheduleDayState)) {
         var oStartMin = minutesOfDay(s.end);
         var oEndMin = minMaxClamp(oStartMin, minutesOfDay(nowLocalIso()));
+        var ongoingTaskBreakTrueHeight = ((oEndMin - oStartMin) / 60) * HOUR_PX;
         blocks.push({
           kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock", sessionId: s.id, segIndex: segs.length - 1,
-          top: (oStartMin / 60) * HOUR_PX, height: Math.max(((oEndMin - oStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+          top: (oStartMin / 60) * HOUR_PX, trueHeight: ongoingTaskBreakTrueHeight, height: Math.max(ongoingTaskBreakTrueHeight, MIN_BLOCK_HEIGHT)
         });
       }
     });
@@ -2368,10 +2371,11 @@
       var ongoing = !b.end;
       var gStartMin = minutesOfDay(b.start);
       var gEndMin = minMaxClamp(gStartMin, ongoing ? minutesOfDay(nowLocalIso()) : minutesOfDay(b.end));
+      var generalBreakTrueHeight = ((gEndMin - gStartMin) / 60) * HOUR_PX;
       blocks.push({
         kind: "general-break", startMin: gStartMin, startIso: b.start, endIso: b.end, ongoing: ongoing, breakId: b.id,
         elId: ongoing ? "liveGeneralBreakBlock" : null,
-        top: (gStartMin / 60) * HOUR_PX, height: Math.max(((gEndMin - gStartMin) / 60) * HOUR_PX, MIN_BLOCK_HEIGHT)
+        top: (gStartMin / 60) * HOUR_PX, trueHeight: generalBreakTrueHeight, height: Math.max(generalBreakTrueHeight, MIN_BLOCK_HEIGHT)
       });
     });
 
@@ -2379,10 +2383,13 @@
 
     // 最小の高さを確保すると、直後の記録と間隔が近い場合に見た目上重なってしまうことがあるため、
     // 次のブロックの開始位置を超えないようにその場で高さを詰める（文字は消さず、重なりだけを防ぐ）。
+    // ただし、詰めた結果が実際の時間の長さ（trueHeight）を下回ると、枠の大きさが実際の時間と
+    // 乖離して見えてしまうため、詰める下限は「実際の時間の高さ」までとする（本当にデータ上
+    // 記録が重なっている場合を除き、実際の時間より小さくは詰めない）。
     for (var bi = 0; bi < blocks.length - 1; bi++) {
       var maxHeight = blocks[bi + 1].top - blocks[bi].top;
       if (maxHeight > 0 && blocks[bi].height > maxHeight) {
-        blocks[bi].height = Math.max(maxHeight, 4);
+        blocks[bi].height = Math.max(maxHeight, blocks[bi].trueHeight);
       }
     }
 
