@@ -260,6 +260,8 @@
   .hist-date-body { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
   .hist-entry { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
   .hist-entry.is-running { border-color: var(--series-2); }
+  .hist-entry.is-editing-elsewhere { opacity: 0.6; border-style: dashed; }
+  .hist-entry-name .part-tag { font-size: 10px; font-weight: 700; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
   .hist-break-entry { background: #fffaf0; border-color: var(--series-4); }
   .hist-break-entry.is-running { border-color: var(--series-4); }
   /* 最近の記録：同じタスクの記録を日付をまたいで1つのくくりにまとめた表示 */
@@ -777,6 +779,26 @@
     if (s.end) html += '<div class="hist-seg-total">合計 ' + escapeHtml(formatHM(durationSecOf(s))) + '</div>';
     return html;
   }
+  // 履歴の日付ごと表示用: セッション全体ではなく、特定の日にかかる区間(segs)だけを表示する。
+  // 日をまたいで再開したセッションは、日付ごとにこの関数でその日の分だけ切り出して表示する。
+  function segsDetailHtml(segs) {
+    var showTotal = !!segs[segs.length - 1].end;
+    if (segs.length <= 1) {
+      var seg = segs[0];
+      var line = escapeHtml(formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""));
+      if (showTotal) line += escapeHtml("（" + formatHM(segmentDurationSec(seg)) + "）");
+      return line;
+    }
+    var html = segs.map(function (seg) {
+      return '<div class="hist-seg-line">' + escapeHtml(formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : "")) + '</div>';
+    }).join("");
+    if (showTotal) {
+      var total = 0;
+      segs.forEach(function (seg) { total += segmentDurationSec(seg); });
+      html += '<div class="hist-seg-total">合計 ' + escapeHtml(formatHM(total)) + '</div>';
+    }
+    return html;
+  }
   function formatDateHeading(d) {
     var p = d.split("-");
     var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
@@ -902,6 +924,23 @@
     var max = "";
     state.sessions.forEach(function (s) { if (s.taskId === taskId && s.start > max) max = s.start; });
     return max;
+  }
+  // 「新しいタスクを開始」やスケジュールからの「▶ 再開」で、プロジェクト名・業務内容が
+  // 完全一致する未完了タスクが見つかった場合に、自動でそのタスクへ紐づけてよいかどうかを判定する。
+  // そのタスクを最後に使ったのが「今日」であれば、同じ作業の続き（休憩を挟んだだけ等）とみなし
+  // これまでどおり確認なしで続行する。今日以外（日をまたいでいる）場合は、時間帯が明らかに
+  // 離れているとみなし、いったんユーザーに確認する（同じプロジェクト名・業務内容・番号でも、
+  // 時間帯が分かれていれば独立した別の記録として開始できるようにするため）。
+  function confirmOpenTaskLink(task) {
+    var lastAct = taskLastActivity(task.id);
+    if (lastAct && isSameDate(lastAct, todayDateInputValue())) return true;
+    var lastActText = lastAct ? formatDateHeading(lastAct.slice(0, 10)) : "なし";
+    var msg = "同じプロジェクト名・業務内容の未完了タスクがあります（最後の記録：" + lastActText + "）。\n" +
+      task.id + "　" + task.project + (task.number ? "（" + task.number + "）" : "") + (task.memo ? "・" + task.memo : "") + "\n" +
+      "これまでの合計時間：" + formatHM(taskTotalSec(task)) + "\n\n" +
+      "このタスクに続けて時間を追加しますか？\n" +
+      "（キャンセルすると、新しい別のタスクとして開始します）";
+    return window.confirm(msg);
   }
   // taskLastActivity のミリ秒版。開始時刻にミリ秒精度の startMs があればそれを使い、
   // なければ start（秒精度の文字列）から算出する。
@@ -1360,7 +1399,10 @@
         var number = numberInput.value.trim();
         // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
         // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは自動では紐づけない。
+        // ただし、そのタスクを最後に使ったのが今日でなければ（時間帯が明らかに離れていれば）、
+        // 自動では紐づけずに確認する。
         var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+        if (task && !confirmOpenTaskLink(task)) task = null;
 
         // 未完了タスクに一致がなければ、完了済みタスクの中にプロジェクト名・業務内容・番号が
         // 完全一致するものがないか確認し、あれば再開するかどうかをユーザーに確認する
@@ -1971,7 +2013,33 @@
 
     // タスクに紐づかない一般休憩は特定のプロジェクトに属さないため、
     // プロジェクトで絞り込んでいないとき（すべて表示）だけ記録のログに混ぜて表示する。
-    var entries = filtered.map(function (s) { return { type: "session", start: s.start, session: s }; });
+    //
+    // 中断・再開で日をまたいだセッションは、区間(segments)を実際の日付ごとに分け、
+    // それぞれの日の分だけを独立した行として表示する（1つのセッションが複数の日付
+    // 見出しの下にまたがって表示されることになる。合計時間の合算は集計タブ側で
+    // taskId・プロジェクト名単位に行われるため、ここでの表示分割による影響はない）。
+    var entries = [];
+    filtered.forEach(function (s) {
+      var segs = getSegments(s);
+      var segsByDate = {}, dateOrderForSession = [];
+      segs.forEach(function (seg) {
+        var d = seg.start.slice(0, 10);
+        if (!segsByDate[d]) { segsByDate[d] = []; dateOrderForSession.push(d); }
+        segsByDate[d].push(seg);
+      });
+      var multiDate = dateOrderForSession.length > 1;
+      dateOrderForSession.forEach(function (d, idx) {
+        entries.push({
+          type: "session",
+          start: segsByDate[d][0].start,
+          session: s,
+          segs: segsByDate[d],
+          isPart: multiDate,
+          partIndex: idx + 1,
+          partCount: dateOrderForSession.length
+        });
+      });
+    });
     if (filter === "__all__") {
       getGeneralBreaks().forEach(function (b) { entries.push({ type: "general-break", start: b.start, gb: b }); });
     }
@@ -1987,10 +2055,16 @@
       byDate[d].push(e);
     });
 
+    var editFormShown = false;
     var html = '<div class="hist-groups">';
     dateOrder.forEach(function (date) {
       var dayEntries = byDate[date];
-      var dayTotal = dayEntries.reduce(function (sum, e) { return e.type === "session" ? sum + durationSecOf(e.session) : sum; }, 0);
+      var dayTotal = dayEntries.reduce(function (sum, e) {
+        if (e.type !== "session") return sum;
+        var t = 0;
+        e.segs.forEach(function (seg) { t += segmentDurationSec(seg); });
+        return sum + t;
+      }, 0);
       html += '<div class="hist-date-group"><div class="hist-date-heading"><span class="hist-date-label">' +
         escapeHtml(formatDateHeading(date)) + '</span><span class="hist-date-count">' + dayEntries.length + '件</span>' +
         '<span class="hist-date-total">合計 ' + formatHM(dayTotal) + '</span></div><div class="hist-date-body">';
@@ -2017,7 +2091,8 @@
         }
 
         var s = e.session;
-        if (s.id === historyEditingId) {
+        if (s.id === historyEditingId && !editFormShown) {
+          editFormShown = true;
           var draftSegs = historyEditDraftSegments || getSegments(s).map(function (seg) { return { start: seg.start, end: seg.end }; });
           html += '<div class="hist-entry-edit" data-id="' + escapeHtml(s.id) + '">' +
             '<div class="hist-edit-fields">' +
@@ -2026,16 +2101,26 @@
             '<div class="hist-edit-field"><label>番号</label><input type="text" class="e-number" value="' + escapeHtml(s.number || "") + '"></div>' +
             '<div class="hist-edit-field"><label>タスクID</label>' + renderTaskIdSelect(s.taskId || "") + '</div>' +
             '</div>' +
+            (e.isPart ? '<div class="hist-entry-detail">※この記録は複数の日にまたがっています。ここでまとめて編集できます。</div>' : '') +
             renderSegmentEditFields(draftSegs) +
             '<div class="hist-edit-actions"><button type="button" class="hist-save-btn">保存</button><button type="button" class="hist-cancel-btn">キャンセル</button></div>' +
             '</div>';
-        } else {
-          var running = !s.end;
-          var histTask = s.taskId ? getTaskById(s.taskId) : null;
-          html += '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
+        } else if (s.id === historyEditingId) {
+          // 同じセッションの別の日の分。編集フォームは1箇所にまとめて表示済みなので、
+          // ここには編集中であることが分かる簡易表示のみ出す（重複編集フォームを防ぐため）。
+          html += '<div class="hist-entry is-editing-elsewhere">' +
             '<div class="hist-entry-main">' +
-            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
-            '<div class="hist-entry-detail">' + sessionDetailHtml(s) + '</div>' +
+            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + '<span class="part-tag">編集中</span></div>' +
+            '<div class="hist-entry-detail">他の日の記録とまとめて編集中です</div>' +
+            '</div></div>';
+        } else {
+          var segs = e.segs;
+          var partRunning = !segs[segs.length - 1].end;
+          var histTask = s.taskId ? getTaskById(s.taskId) : null;
+          html += '<div class="hist-entry' + (partRunning ? ' is-running' : '') + '">' +
+            '<div class="hist-entry-main">' +
+            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (e.isPart ? '<span class="part-tag">' + e.partIndex + '/' + e.partCount + '日目</span>' : '') + (partRunning ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+            '<div class="hist-entry-detail">' + segsDetailHtml(segs) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
@@ -2577,6 +2662,7 @@
         // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
         // 既存の未完了タスクに紐づけるか、完了済みと完全一致すれば確認のうえ再開、なければ新規タスクにする。
         task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+        if (task && !confirmOpenTaskLink(task)) task = null;
         if (!task) {
           var exactMatch = completedTasks().find(function (t) {
             return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
