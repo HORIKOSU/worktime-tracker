@@ -1253,6 +1253,61 @@
     });
   }
 
+  // 「今日の予定」の編集フォーム用の候補ボタン。編集フォームは常に1件だけ（planEditingId）
+  // 表示され、renderPlanCard() のたびに作り直されるため、追加フォームの固定要素とは違い
+  // 毎回イベントを登録し直してよい。
+  function renderPlanEditProjectSuggestChips() {
+    var wrap = document.getElementById("planEditProjectSuggest");
+    var input = document.querySelector(".plan-edit-project-input");
+    if (!wrap || !input) return;
+    var projects = distinctProjects().slice(0, MAX_SUGGEST_CHIPS);
+    if (!projects.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = projects.map(function (p) {
+      return '<button type="button" class="suggest-chip" data-project="' + escapeHtml(p) + '">' + escapeHtml(p) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        input.value = chip.getAttribute("data-project");
+        renderPlanEditMemoSuggestChips();
+        renderPlanEditNumberSuggestChips();
+      });
+    });
+  }
+  function renderPlanEditMemoSuggestChips() {
+    var wrap = document.getElementById("planEditMemoSuggest");
+    var projectInput = document.querySelector(".plan-edit-project-input");
+    var memoInput = document.querySelector(".plan-edit-memo-input");
+    if (!wrap || !projectInput) return;
+    var memos = distinctMemosForProject(projectInput.value).slice(0, MAX_SUGGEST_CHIPS);
+    if (!memos.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = memos.map(function (m) {
+      return '<button type="button" class="suggest-chip" data-memo="' + escapeHtml(m) + '">' + escapeHtml(m) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        if (memoInput) memoInput.value = chip.getAttribute("data-memo");
+        renderPlanEditNumberSuggestChips();
+      });
+    });
+  }
+  function renderPlanEditNumberSuggestChips() {
+    var wrap = document.getElementById("planEditNumberSuggest");
+    var projectInput = document.querySelector(".plan-edit-project-input");
+    var memoInput = document.querySelector(".plan-edit-memo-input");
+    var numberInput = document.querySelector(".plan-edit-number-input");
+    if (!wrap || !projectInput) return;
+    var numbers = distinctNumbersForProjectAndMemo(projectInput.value, memoInput ? memoInput.value : "").slice(0, MAX_SUGGEST_CHIPS);
+    if (!numbers.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = numbers.map(function (n) {
+      return '<button type="button" class="suggest-chip" data-number="' + escapeHtml(n) + '">' + escapeHtml(n) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        if (numberInput) numberInput.value = chip.getAttribute("data-number");
+      });
+    });
+  }
+
   // 予定の入力欄・追加ボタンは常にDOMに存在する固定要素のため、イベント登録は最初の1回だけ行う
   // （毎回のrenderAllで登録し直すとクリックが重複してしまうため）。候補ボタンの中身は
   // renderPlanCard() から毎回 renderPlanProjectSuggestChips()/renderPlanMemoSuggestChips()/renderPlanNumberSuggestChips() で更新する。
@@ -1349,9 +1404,9 @@
         if (p.id === planEditingId) {
           return '<div class="plan-row plan-row-editing">' +
             '<div class="plan-edit-form">' +
-            '<div class="field-block"><label class="field-label">プロジェクト名</label><input type="text" class="plan-edit-project-input" list="projectList" value="' + escapeHtml(p.project) + '"></div>' +
-            '<div class="field-block"><label class="field-label">業務内容</label><input type="text" class="plan-edit-memo-input" value="' + escapeHtml(p.memo || "") + '"></div>' +
-            '<div class="field-block"><label class="field-label">番号</label><input type="text" class="plan-edit-number-input" value="' + escapeHtml(p.number || "") + '"></div>' +
+            '<div class="field-block"><label class="field-label">プロジェクト名</label><input type="text" class="plan-edit-project-input" list="projectList" value="' + escapeHtml(p.project) + '"><div class="quick-suggest-row" id="planEditProjectSuggest"></div></div>' +
+            '<div class="field-block"><label class="field-label">業務内容</label><input type="text" class="plan-edit-memo-input" value="' + escapeHtml(p.memo || "") + '"><div class="quick-suggest-row" id="planEditMemoSuggest"></div></div>' +
+            '<div class="field-block"><label class="field-label">番号</label><input type="text" class="plan-edit-number-input" value="' + escapeHtml(p.number || "") + '"><div class="quick-suggest-row" id="planEditNumberSuggest"></div></div>' +
             '<div class="hist-edit-actions"><button type="button" class="hist-save-btn plan-edit-save-btn" data-plan-id="' + escapeHtml(p.id) + '">保存</button><button type="button" class="hist-cancel-btn plan-edit-cancel-btn">キャンセル</button></div>' +
             '</div>' +
             '</div>';
@@ -1371,6 +1426,19 @@
           '</div>' +
           '</div>';
       }).join("");
+    }
+
+    var planEditProjectInputEl = wrap.querySelector(".plan-edit-project-input");
+    if (planEditProjectInputEl) {
+      renderPlanEditProjectSuggestChips();
+      renderPlanEditMemoSuggestChips();
+      renderPlanEditNumberSuggestChips();
+      planEditProjectInputEl.addEventListener("input", function () {
+        renderPlanEditMemoSuggestChips();
+        renderPlanEditNumberSuggestChips();
+      });
+      var planEditMemoInputEl = wrap.querySelector(".plan-edit-memo-input");
+      if (planEditMemoInputEl) planEditMemoInputEl.addEventListener("input", renderPlanEditNumberSuggestChips);
     }
 
     wrap.querySelectorAll(".plan-row-checkbox").forEach(function (cb) {
