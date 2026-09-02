@@ -2557,7 +2557,8 @@
       if (b.kind === "work") {
         var color = colorForProject(projectLabel(b.session));
         var blockMemo = b.session.memo && b.session.memo.trim();
-        var blockNameText = projectLabel(b.session) + (blockMemo ? '・' + blockMemo : '');
+        var blockNumber = b.session.number && b.session.number.trim();
+        var blockNameText = projectLabel(b.session) + (blockNumber ? '（' + blockNumber + '）' : '') + (blockMemo ? '・' + blockMemo : '');
         // 中断・再開のない（区間が1つだけの）記録のみ、丸ごとドラッグ移動できる。
         var workMovable = !b.running && b.segsLength === 1;
         html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + (workMovable ? ' day-segment-movable' : '') +
