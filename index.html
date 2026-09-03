@@ -1127,7 +1127,7 @@
       }
       var taskFirstStartDateDisplay = formatDateHeading(splitIso(taskFirstStart).date);
       card.className = "card status-card running";
-      card.style.setProperty("--project-color", colorForProject(projectLabel(running)));
+      card.style.setProperty("--project-color", colorForProjectAndMemo(projectLabel(running), running.memo));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
@@ -1167,7 +1167,7 @@
       var onBreak = getOnBreakSession();
       var onBreakTask = onBreak.taskId ? getTaskById(onBreak.taskId) : null;
       card.className = "card status-card on-break";
-      card.style.setProperty("--project-color", colorForProject(projectLabel(onBreak)));
+      card.style.setProperty("--project-color", colorForProjectAndMemo(projectLabel(onBreak), onBreak.memo));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">■</div>' +
@@ -1827,7 +1827,7 @@
     var running = !s.end;
     return '<div class="hist-entry' + (running ? ' is-running' : '') + '">' +
       '<div class="hist-entry-main">' +
-      '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+      '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(s), s.memo) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (running ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
       '<div class="hist-entry-detail">' + (getSegments(s).length > 1
         ? '<div class="hist-seg-line">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '</div>' + sessionDetailHtml(s)
         : escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + sessionDetailHtml(s)) + '</div>' +
@@ -1877,7 +1877,7 @@
       var groupNumber = (groupTask && groupTask.number) || g.sessions[0].number;
       html += '<details class="recent-task-group' + (anyRunning ? ' is-running' : '') + '">' +
         '<summary class="recent-task-group-heading">' +
-        '<span class="project-dot" style="background:' + colorForProject(projectLabel(g.sessions[0])) + '"></span>' +
+        '<span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(g.sessions[0]), g.sessions[0].memo) + '"></span>' +
         '<span class="task-id-badge">' + escapeHtml(g.taskId) + '</span>' +
         '<span class="recent-task-group-name">' + escapeHtml(projectLabel(g.sessions[0])) + '</span>' +
         (groupNumber ? '<span class="number-badge">' + escapeHtml(groupNumber) + '</span>' : '') +
@@ -2114,7 +2114,7 @@
           // ここには編集中であることが分かる簡易表示のみ出す（重複編集フォームを防ぐため）。
           html += '<div class="hist-entry is-editing-elsewhere">' +
             '<div class="hist-entry-main">' +
-            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + escapeHtml(projectLabel(s)) + '<span class="part-tag">編集中</span></div>' +
+            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(s), s.memo) + '"></span>' + escapeHtml(projectLabel(s)) + '<span class="part-tag">編集中</span></div>' +
             '<div class="hist-entry-detail">他の日の記録とまとめて編集中です</div>' +
             '</div></div>';
         } else {
@@ -2123,7 +2123,7 @@
           var histTask = s.taskId ? getTaskById(s.taskId) : null;
           html += '<div class="hist-entry' + (partRunning ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
-            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProject(projectLabel(s)) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (e.isPart ? '<span class="part-tag">' + e.partIndex + '/' + e.partCount + '日目</span>' : '') + (partRunning ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
+            '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(s), s.memo) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (e.isPart ? '<span class="part-tag">' + e.partIndex + '/' + e.partCount + '日目</span>' : '') + (partRunning ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
             '<div class="hist-entry-detail">' + segsDetailHtml(segs) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
@@ -2367,8 +2367,10 @@
     businessOrderCache = order;
     return order;
   }
+  var memoOrderCache = {};
   function invalidateBusinessOrderCache() {
     businessOrderCache = null;
+    memoOrderCache = {};
   }
   function colorForProject(name) {
     var key = businessLabel(name) || name || "";
@@ -2376,6 +2378,72 @@
     var idx = order.indexOf(key);
     if (idx === -1) idx = order.length;
     return SERIES_COLORS[idx % SERIES_COLORS.length];
+  }
+  // 同じプロジェクト（業務）内で、業務内容（メモ）が違う記録を「近い色だが別の色」で見分けられるようにする。
+  // 基本の色（colorForProject）はそのまま活かし、そのプロジェクト内で業務内容が最初に登場した順に
+  // 明るさ（L）だけをずらしていく。最初に登場した業務内容（またはメモなし）は基本の色のまま。
+  function memoAppearanceOrderForBusiness(business) {
+    if (memoOrderCache[business]) return memoOrderCache[business];
+    var seen = {};
+    var order = [];
+    var sorted = state.sessions.slice().sort(function (a, b) { return a.start.localeCompare(b.start); });
+    sorted.forEach(function (s) {
+      if (businessLabel(projectLabel(s)) !== business) return;
+      var m = (s.memo || "").trim();
+      if (!seen[m]) { seen[m] = true; order.push(m); }
+    });
+    memoOrderCache[business] = order;
+    return order;
+  }
+  // #rrggbb <-> HSL（Lは0〜1）の簡易相互変換。濃淡をずらすためだけに使う。
+  function hexToHsl(hex) {
+    var r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h = 0, s = 0, l = (max + min) / 2;
+    var d = max - min;
+    if (d !== 0) {
+      s = d / (1 - Math.abs(2 * l - 1));
+      if (max === r) h = 60 * (((g - b) / d) % 6);
+      else if (max === g) h = 60 * ((b - r) / d + 2);
+      else h = 60 * ((r - g) / d + 4);
+    }
+    if (h < 0) h += 360;
+    return { h: h, s: s, l: l };
+  }
+  function hslToHex(h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    var m = l - c / 2;
+    var r, g, b;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    function toHex(v) { var n = Math.round((v + m) * 255); return pad2(Math.max(0, Math.min(255, n)).toString(16)); }
+    return "#" + toHex(r) + toHex(g) + toHex(b);
+  }
+  // 明るさ（L）をずらす量。1件目（idx=0）は基本色のまま、2件目以降は少しずつ交互に濃く・薄くする。
+  var SHADE_LIGHTNESS_DELTAS = [-0.14, 0.13, -0.26, 0.24, -0.36, 0.32];
+  function shadeHexColor(hex, idx) {
+    if (idx <= 0) return hex;
+    var hsl = hexToHsl(hex);
+    var delta = SHADE_LIGHTNESS_DELTAS[(idx - 1) % SHADE_LIGHTNESS_DELTAS.length];
+    var newL = hsl.l + delta;
+    if (newL < 0.18) newL = 0.18;
+    if (newL > 0.68) newL = 0.68;
+    return hslToHex(hsl.h, hsl.s, newL);
+  }
+  // プロジェクト名・業務内容の組み合わせで色を決める（表示用）。集計グラフなど、業務内容の区別が
+  // 不要な「プロジェクト単位」の表示では、これではなく colorForProject をそのまま使う。
+  function colorForProjectAndMemo(project, memo) {
+    var base = colorForProject(project);
+    var business = businessLabel(project) || project || "";
+    var order = memoAppearanceOrderForBusiness(business);
+    var idx = order.indexOf((memo || "").trim());
+    if (idx === -1) idx = order.length;
+    return shadeHexColor(base, idx);
   }
   function minutesOfDay(iso) {
     var t = splitIsoSeconds(iso).time.split(":");
@@ -2559,7 +2627,7 @@
 
     blocks.forEach(function (b) {
       if (b.kind === "work") {
-        var color = colorForProject(projectLabel(b.session));
+        var color = colorForProjectAndMemo(projectLabel(b.session), b.session.memo);
         var blockMemo = b.session.memo && b.session.memo.trim();
         var blockNumber = b.session.number && b.session.number.trim();
         // 表示順は「プロジェクト名→業務内容→番号」（他の画面の表示順と統一）。
