@@ -889,12 +889,15 @@
     var today = todayDateInputValue();
     return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
   }
-  // 「今日の予定」の項目が、いま実際に作業中（実施中）のセッションと同じ内容（プロジェクト名・業務内容）かどうか。
-  // 一致すれば、一覧上でその項目だけ色を変えて目立たせる（番号は判定に含めない）。
+  // 「今日の予定」の項目が、いま実際に作業中（実施中）のセッションと同じ内容
+  // （プロジェクト名・業務内容・番号）かどうか。一致すれば、一覧上でその項目だけ色を変えて目立たせる。
+  // ※ タスクの自動紐づけ判定などとは異なり、こちらは「実施中の1件だけを特定して目立たせる」表示
+  //   なので、番号も判定に含める（業務内容までは同じで番号だけ違う予定が複数ある場合、番号まで
+  //   見ないとすべて同時に「実施中」扱いになってしまうため）。
   function planMatchesRunningSession(p) {
     var running = getRunningSession();
     if (!running) return false;
-    return running.project === p.project && (running.memo || "") === (p.memo || "");
+    return running.project === p.project && (running.memo || "") === (p.memo || "") && (running.number || "") === (p.number || "");
   }
   // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「その予定を追加した後」に完了していれば、
   // その予定は「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ
