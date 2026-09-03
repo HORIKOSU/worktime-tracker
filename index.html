@@ -377,6 +377,19 @@
     .day-timeline-scroll { max-height: 460px; }
     .day-segment-block { left: 44px; }
   }
+  /* 名称の一括編集（名称管理タブ） */
+  .name-list { display: flex; flex-direction: column; gap: 6px; }
+  .name-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
+  .name-row-text { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
+  .name-row-count { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; flex-shrink: 0; white-space: nowrap; }
+  .name-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex-shrink: 0; }
+  .name-edit-btn:hover { background: var(--series-1); color: #fff; }
+  .name-row-edit { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 8px; }
+  .name-edit-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .name-row-actions { display: flex; gap: 8px; }
+  .name-save-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .name-save-btn:hover { opacity: 0.9; }
+  .name-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
 </style>
 </head>
 <body class="viz-root">
@@ -390,6 +403,7 @@
   <button data-tab="dashboard" class="active">ダッシュボード</button>
   <button data-tab="history">履歴</button>
   <button data-tab="stats">集計</button>
+  <button data-tab="names">名称管理</button>
   <button data-tab="data">データ管理</button>
 </nav>
 
@@ -571,6 +585,25 @@
     </div>
   </section>
 
+  <section id="names" class="panel">
+    <div class="card">
+      <h2>名称の一括編集<span class="sub">プロジェクト名・業務内容・番号の表記を、過去の記録もまとめて修正できます</span></h2>
+      <p class="generated-note">一覧の1件を編集して保存すると、同じ文字列を使っているすべての記録（履歴・タスク一覧・今日の予定）が一括で置き換わります。取り消しはできないのでご注意ください。</p>
+    </div>
+    <div class="card">
+      <h2>プロジェクト名一覧</h2>
+      <div id="projectNameListWrap"></div>
+    </div>
+    <div class="card">
+      <h2>業務内容一覧</h2>
+      <div id="memoNameListWrap"></div>
+    </div>
+    <div class="card">
+      <h2>番号一覧</h2>
+      <div id="numberNameListWrap"></div>
+    </div>
+  </section>
+
   <section id="data" class="panel">
     <div class="card">
       <h2>データの読み込み・書き出し<span class="sub">このブラウザだけに保存されます（サーバーには送信されません）</span></h2>
@@ -612,6 +645,8 @@
   var historyEditingId = null;
   var generalBreakEditingId = null; // 「記録の履歴」で編集中の一般休憩のID（1件のみ）
   var planEditingId = null; // 「今日の予定」で編集中の予定のID（1件のみ）
+  var namesEditingKind = null; // 「名称管理」で編集中の種類（"project"|"memo"|"number"）。1件のみ
+  var namesEditingValue = null; // 編集中の元の値（置き換え対象を特定するため）
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
   // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
@@ -2335,6 +2370,110 @@
     if (delBtn) deleteSessionById(delBtn.getAttribute("data-id"));
   });
 
+  // ---- 名称管理タブ（プロジェクト名・業務内容・番号の一括リネーム） ----
+  // 履歴・タスク一覧・今日の予定のいずれかで使われている値を、フィールドごとに重複なく一覧化する。
+  // 一覧に出す対象（存在チェック）は3つとも見るが、件数バッジは「履歴（実際の記録）で何件使われているか」
+  // だけを表示する（タスク・予定は履歴から自動生成される付随データのため、二重カウントを避ける）。
+  // 空文字は「未入力」なので一覧には出さない。
+  function nameUsageList(field) {
+    var present = {}, sessionCount = {};
+    function markPresent(v) { v = (v || "").trim(); if (v) present[v] = true; }
+    state.sessions.forEach(function (s) {
+      var v = (s[field] || "").trim();
+      if (!v) return;
+      present[v] = true;
+      sessionCount[v] = (sessionCount[v] || 0) + 1;
+    });
+    getTasks().forEach(function (t) { markPresent(t[field]); });
+    getPlans().forEach(function (p) { markPresent(p[field]); });
+    var list = Object.keys(present).map(function (k) { return { value: k, count: sessionCount[k] || 0 }; });
+    list.sort(function (a, b) { return a.value.localeCompare(b.value, "ja"); });
+    return list;
+  }
+  // 指定したフィールド（project/memo/number）の値を、履歴・タスク・予定すべてでまとめて置き換える。
+  function renameFieldValueEverywhere(field, oldVal, newVal) {
+    state.sessions.forEach(function (s) { if ((s[field] || "").trim() === oldVal) s[field] = newVal; });
+    getTasks().forEach(function (t) { if ((t[field] || "").trim() === oldVal) t[field] = newVal; });
+    getPlans().forEach(function (p) { if ((p[field] || "").trim() === oldVal) p[field] = newVal; });
+  }
+  var NAME_KIND_LABELS = { project: "プロジェクト名", memo: "業務内容", number: "番号" };
+  function nameListHtml(kind, emptyMsg) {
+    var list = nameUsageList(kind);
+    if (list.length === 0) return '<div class="empty-state">' + emptyMsg + '</div>';
+    var html = '<div class="name-list">';
+    list.forEach(function (item) {
+      if (namesEditingKind === kind && namesEditingValue === item.value) {
+        html += '<div class="name-row-edit" data-kind="' + kind + '" data-value="' + escapeHtml(item.value) + '">' +
+          '<input type="text" class="name-edit-input" value="' + escapeHtml(item.value) + '">' +
+          '<div class="name-row-actions"><button type="button" class="name-save-btn">保存</button><button type="button" class="name-cancel-btn">キャンセル</button></div>' +
+          '</div>';
+      } else {
+        html += '<div class="name-row">' +
+          '<span class="name-row-text">' + escapeHtml(item.value) + '</span>' +
+          '<span class="name-row-count">' + item.count + '件</span>' +
+          '<button type="button" class="name-edit-btn" data-kind="' + kind + '" data-value="' + escapeHtml(item.value) + '">編集</button>' +
+          '</div>';
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+  function renderNamesTab() {
+    document.getElementById("projectNameListWrap").innerHTML = nameListHtml("project", "まだプロジェクト名の記録がありません。");
+    document.getElementById("memoNameListWrap").innerHTML = nameListHtml("memo", "まだ業務内容の記録がありません。");
+    document.getElementById("numberNameListWrap").innerHTML = nameListHtml("number", "まだ番号の記録がありません。");
+  }
+  function saveNameEdit(row) {
+    var kind = row.getAttribute("data-kind");
+    var oldVal = row.getAttribute("data-value");
+    var input = row.querySelector(".name-edit-input");
+    var newVal = input.value.trim();
+    if (!newVal) { window.alert("空にはできません。空にしたい場合は、履歴の編集から記録ごとに変更してください。"); return; }
+    if (newVal === oldVal) { namesEditingKind = null; namesEditingValue = null; renderNamesTab(); return; }
+    var label = NAME_KIND_LABELS[kind] || kind;
+    if (!window.confirm('「' + oldVal + '」を「' + newVal + '」に一括で置き換えます。\n' + label + 'が「' + oldVal + '」になっているすべての記録・タスク・予定が対象です。\nこの操作は取り消せません。よろしいですか？')) return;
+    renameFieldValueEverywhere(kind, oldVal, newVal);
+    invalidateBusinessOrderCache();
+    persistState();
+    namesEditingKind = null;
+    namesEditingValue = null;
+    renderAll();
+  }
+  function wireNamesTabOnce() {
+    var wrap = document.getElementById("names");
+    wrap.addEventListener("click", function (evt) {
+      var editBtn = evt.target.closest ? evt.target.closest(".name-edit-btn") : null;
+      if (editBtn) {
+        namesEditingKind = editBtn.getAttribute("data-kind");
+        namesEditingValue = editBtn.getAttribute("data-value");
+        renderNamesTab();
+        var input = wrap.querySelector(".name-row-edit .name-edit-input");
+        if (input) { input.focus(); input.select(); }
+        return;
+      }
+      var cancelBtn = evt.target.closest ? evt.target.closest(".name-cancel-btn") : null;
+      if (cancelBtn) {
+        namesEditingKind = null;
+        namesEditingValue = null;
+        renderNamesTab();
+        return;
+      }
+      var saveBtn = evt.target.closest ? evt.target.closest(".name-save-btn") : null;
+      if (saveBtn) { saveNameEdit(saveBtn.closest(".name-row-edit")); return; }
+    });
+    wrap.addEventListener("keydown", function (evt) {
+      if (!evt.target.classList || !evt.target.classList.contains("name-edit-input")) return;
+      if (evt.key === "Enter") {
+        evt.preventDefault();
+        saveNameEdit(evt.target.closest(".name-row-edit"));
+      } else if (evt.key === "Escape") {
+        namesEditingKind = null;
+        namesEditingValue = null;
+        renderNamesTab();
+      }
+    });
+  }
+
   // ---- schedule tab (month calendar + Google-Calendar-like day timeline) ----
   function daySecTotal(dateStr) {
     return sumSegmentSecWhere(function (seg) { return isSameDate(seg.start, dateStr); });
@@ -3617,6 +3756,7 @@
     renderSchedule();
     renderHistory();
     renderStats();
+    renderNamesTab();
     updateDataStatusLine();
 
     if (!document.getElementById("manualStartDate").value) {
@@ -3629,6 +3769,7 @@
   tickInterval = setInterval(tick, 1000);
 
   wirePlanAddFormOnce();
+  wireNamesTabOnce();
   renderAll();
 })();
 </script>
