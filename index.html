@@ -168,6 +168,9 @@
   .big-btn.stop:hover { opacity: 0.92; }
   .big-btn.complete { background: var(--success); color: #fff; }
   .big-btn.complete:hover { opacity: 0.92; }
+  .big-btn.secondary { background: var(--surface-1); color: var(--series-1); border: 2px solid var(--series-1); box-sizing: border-box; }
+  .big-btn.secondary:hover { background: var(--page-plane); }
+  .big-btn + .big-btn.secondary { margin-top: 10px; }
   .status-btn-row { display: flex; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
   .status-btn-row .big-btn { margin: 0; }
   .action-card-row { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 380px; margin: 20px auto 0; }
@@ -1172,10 +1175,8 @@
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
-        '<div class="break-alt-action">' +
-        (onBreakTask ? '<a href="#" id="breakCompleteLink">✓ このタスクを完了にする</a><span class="break-alt-sep">・</span>' : '') +
-        '<a href="#" id="breakNewLink">別の作業を始める</a>' +
-        '</div>';
+        '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>' +
+        (onBreakTask ? '<div class="break-alt-action"><a href="#" id="breakCompleteLink">✓ このタスクを完了にする</a></div>' : '');
       document.getElementById("resumeBreakBtn").addEventListener("click", function () {
         resumeSession(onBreak);
         state.onBreakSessionId = null;
