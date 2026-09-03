@@ -2561,7 +2561,8 @@
         var color = colorForProject(projectLabel(b.session));
         var blockMemo = b.session.memo && b.session.memo.trim();
         var blockNumber = b.session.number && b.session.number.trim();
-        var blockNameText = projectLabel(b.session) + (blockNumber ? '（' + blockNumber + '）' : '') + (blockMemo ? '・' + blockMemo : '');
+        // 表示順は「プロジェクト名→業務内容→番号」（他の画面の表示順と統一）。
+        var blockNameText = projectLabel(b.session) + (blockMemo ? '・' + blockMemo : '') + (blockNumber ? '（' + blockNumber + '）' : '');
         // 中断・再開のない（区間が1つだけの）記録のみ、丸ごとドラッグ移動できる。
         var workMovable = !b.running && b.segsLength === 1;
         html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + (workMovable ? ' day-segment-movable' : '') +
@@ -2598,7 +2599,7 @@
     // タスクではなくセッション自体から表示する（再開時にタスクを特定／新規作成する処理と合わせるため）。
     if (scheduleBlockMenuState) {
       var menuSession = state.sessions.find(function (s) { return s.id === scheduleBlockMenuState.sessionId; });
-      var menuLabel = menuSession ? (projectLabel(menuSession) + (menuSession.number ? "（" + menuSession.number + "）" : "") + (menuSession.memo ? "・" + menuSession.memo : "")) : "";
+      var menuLabel = menuSession ? (projectLabel(menuSession) + (menuSession.memo ? "・" + menuSession.memo : "") + (menuSession.number ? "（" + menuSession.number + "）" : "")) : "";
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
         '<div class="schedule-block-menu-info"><strong>' + escapeHtml(menuLabel) + '</strong></div>' +
         '<div class="schedule-block-menu-actions">' +
