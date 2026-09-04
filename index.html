@@ -904,6 +904,14 @@
     getTasks().push(task);
     return task;
   }
+  // プロジェクト名・業務内容の一致で既存タスクに自動的に紐づけた際、番号は判定に使っていないため
+  // 既存タスクの番号のまま開始してしまうと、入力欄にせっかく別の番号を入力してもその場で消えて
+  // 別の番号に置き換わったように見えてしまう。今回入力された番号が既存タスクの番号と違い、かつ
+  // 空でなければ、その入力された番号でタスク側を更新する（＝番号を最新の入力に合わせて上書きする）。
+  // 入力欄が空のときは、既存タスクの番号を誤って消してしまわないよう、そのまま既存の番号を使う。
+  function applyTypedNumberToTask(task, typedNumber) {
+    if (task && typedNumber && task.number !== typedNumber) task.number = typedNumber;
+  }
   function getTaskById(id) {
     return getTasks().find(function (t) { return t.id === id; });
   }
@@ -1483,6 +1491,7 @@
         }
 
         if (!task) task = createTask(project, memo, number);
+        else applyTypedNumberToTask(task, number);
         state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
         persistState();
         projectInput.value = "";
@@ -2989,6 +2998,7 @@
         }
         if (!task) task = createTask(project, memo, number);
       }
+      applyTypedNumberToTask(task, number);
       state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
       persistState();
       renderAll();
