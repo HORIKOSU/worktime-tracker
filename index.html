@@ -379,6 +379,8 @@
   }
   /* 名称の一括編集（名称管理タブ） */
   .name-list { display: flex; flex-direction: column; gap: 6px; }
+  .name-group-header { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .name-group-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .name-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
   .name-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .name-row-text { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
@@ -2392,45 +2394,68 @@
   // 一覧に出す対象（存在チェック）は3つとも見るが、件数バッジは「履歴（実際の記録）で何件使われているか」
   // だけを表示する（タスク・予定は履歴から自動生成される付随データのため、二重カウントを避ける）。
   // 空文字は「未入力」なので一覧には出さない。
-  // 業務内容・番号は同じ値が複数のプロジェクトにまたがって使われることがあるため、
-  // どのプロジェクトに属する値なのかが分かるよう、関連するプロジェクト名も合わせて集計する
-  // （プロジェクト名の一覧自体には不要なので、field が "project" のときは集計しない）。
+  // 業務内容・番号は同じ値が複数のプロジェクト（・業務内容）にまたがって使われることがあるため、
+  // 「プロジェクト＞業務内容＞番号」のようなパンくず形式で、どこに属する値なのかが分かるように
+  // 合わせて集計する（プロジェクト名の一覧自体には不要なので、field が "project" のときは集計しない。
+  // 番号の場合は業務内容も経由するので3階層、業務内容の場合はプロジェクトのみなので2階層になる）。
   function nameUsageList(field) {
-    var present = {}, sessionCount = {}, relatedProjects = {};
-    function noteProject(v, projectVal) {
+    var present = {}, sessionCount = {}, breadcrumbSets = {}, groupKeySets = {};
+    function noteBreadcrumb(v, rec) {
       if (field === "project") return;
-      var p = (projectVal || "").trim();
-      if (!p) return;
-      if (!relatedProjects[v]) relatedProjects[v] = {};
-      relatedProjects[v][p] = true;
+      var parts = [];
+      var project = ((rec && rec.project) || "").trim();
+      if (project) parts.push(project);
+      if (field === "number") {
+        var memo = ((rec && rec.memo) || "").trim();
+        if (memo) parts.push(memo);
+      }
+      if (!parts.length) return;
+      // グループ化のキー（＝パンくずから値自体を除いた部分。業務内容ならプロジェクト名、
+      // 番号ならプロジェクト名＞業務内容）。一覧の並び順をこのキーでまとめるのに使う。
+      var groupKey = parts.join("＞");
+      if (!groupKeySets[v]) groupKeySets[v] = {};
+      groupKeySets[v][groupKey] = true;
+      parts.push(v);
+      var breadcrumb = parts.join("＞");
+      if (!breadcrumbSets[v]) breadcrumbSets[v] = {};
+      breadcrumbSets[v][breadcrumb] = true;
     }
-    function markPresent(v, projectVal) {
+    function markPresent(v, rec) {
       v = (v || "").trim();
       if (!v) return;
       present[v] = true;
-      noteProject(v, projectVal);
+      noteBreadcrumb(v, rec);
     }
     state.sessions.forEach(function (s) {
       var v = (s[field] || "").trim();
       if (!v) return;
       present[v] = true;
       sessionCount[v] = (sessionCount[v] || 0) + 1;
-      noteProject(v, s.project);
+      noteBreadcrumb(v, s);
     });
-    getTasks().forEach(function (t) { markPresent(t[field], t.project); });
-    getPlans().forEach(function (p) { markPresent(p[field], p.project); });
+    getTasks().forEach(function (t) { markPresent(t[field], t); });
+    getPlans().forEach(function (p) { markPresent(p[field], p); });
     var list = Object.keys(present).map(function (k) {
-      var projects = relatedProjects[k] ? Object.keys(relatedProjects[k]).sort(function (a, b) { return a.localeCompare(b, "ja"); }) : null;
-      return { value: k, count: sessionCount[k] || 0, projects: projects };
+      var breadcrumbs = breadcrumbSets[k] ? Object.keys(breadcrumbSets[k]).sort(function (a, b) { return a.localeCompare(b, "ja"); }) : null;
+      var groupKeys = groupKeySets[k] ? Object.keys(groupKeySets[k]).sort(function (a, b) { return a.localeCompare(b, "ja"); }) : null;
+      // 複数のプロジェクト（・業務内容）にまたがる値は、五十音順で最初に来るものを代表グループとして並び順に使う。
+      var groupKey = groupKeys && groupKeys.length ? groupKeys[0] : null;
+      return { value: k, count: sessionCount[k] || 0, breadcrumbs: breadcrumbs, groupKey: groupKey };
     });
-    list.sort(function (a, b) { return a.value.localeCompare(b.value, "ja"); });
+    // プロジェクトごとにまとまるよう、まずグループキー（プロジェクト名、番号ならプロジェクト名＞業務内容）で、
+    // 次に値自体の五十音順で並べる。プロジェクト名一覧（groupKeyなし）は従来どおり値の五十音順のみ。
+    list.sort(function (a, b) {
+      var ak = a.groupKey || "", bk = b.groupKey || "";
+      if (ak !== bk) return ak.localeCompare(bk, "ja");
+      return a.value.localeCompare(b.value, "ja");
+    });
     return list;
   }
-  // 関連プロジェクトが多い場合は省略して表示する（一覧の行が間延びしないように）。
-  function formatRelatedProjects(projects) {
-    if (!projects || !projects.length) return "";
-    var shown = projects.slice(0, 3).join("・");
-    return projects.length > 3 ? shown + " ほか" + (projects.length - 3) + "件" : shown;
+  // パンくずが多い場合は省略して表示する（一覧の行が間延びしないように）。
+  function formatBreadcrumbs(breadcrumbs) {
+    if (!breadcrumbs || !breadcrumbs.length) return "";
+    var shown = breadcrumbs.slice(0, 3).join("、");
+    return breadcrumbs.length > 3 ? shown + " ほか" + (breadcrumbs.length - 3) + "件" : shown;
   }
   // 指定したフィールド（project/memo/number）の値を、履歴・タスク・予定すべてでまとめて置き換える。
   function renameFieldValueEverywhere(field, oldVal, newVal) {
@@ -2442,8 +2467,17 @@
   function nameListHtml(kind, list, emptyMsg) {
     if (list.length === 0) return '<div class="empty-state">' + emptyMsg + '</div>';
     var html = '<div class="name-list">';
+    var prevGroupLabel; // undefined = まだ1件も出していない（先頭で必ずヘッダーを出す）
     list.forEach(function (item) {
-      var relatedText = formatRelatedProjects(item.projects);
+      if (kind !== "project") {
+        // グループキーの先頭区分（プロジェクト名部分）が変わるたびに見出しを挟み、プロジェクトごとにまとまって見えるようにする。
+        var groupLabel = item.groupKey ? item.groupKey.split("＞")[0] : "（プロジェクト未設定）";
+        if (groupLabel !== prevGroupLabel) {
+          html += '<div class="name-group-header">プロジェクト：' + escapeHtml(groupLabel) + '</div>';
+          prevGroupLabel = groupLabel;
+        }
+      }
+      var relatedText = formatBreadcrumbs(item.breadcrumbs);
       if (namesEditingKind === kind && namesEditingValue === item.value) {
         html += '<div class="name-row-edit" data-kind="' + kind + '" data-value="' + escapeHtml(item.value) + '">' +
           (relatedText ? '<div class="name-row-projects">' + escapeHtml(relatedText) + '</div>' : '') +
