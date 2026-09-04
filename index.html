@@ -2830,6 +2830,23 @@
 
     blocks.sort(function (a, b) { return a.startMin - b.startMin; });
 
+    // 縁をドラッグして伸縮している最中は、最小の高さの下限（MIN_BLOCK_HEIGHT）を外し、実際の時間の
+    // 変化がそのまま高さに反映されるようにする。下限がかかったままだと、短い時間の範囲内でどれだけ
+    // 伸縮しても見た目の高さが変わらず、「ドラッグしても何も起きていない」ように見えてしまうため
+    // （時刻の表示自体は下限に関係なく常に更新されるので、時間だけ変わって高さが変わらないように見えていた）。
+    // 対象の記録に属するブロックはすべて連動して変わりうる（例：休憩の縁を伸ばすと前後の作業区間も
+    // 縮む）ため、同じ記録に属するブロックはまとめて下限を外す。ドラッグを離すと通常の表示に戻る。
+    if (activeResize) {
+      blocks.forEach(function (b) {
+        var sameSession = (b.kind === "work" && b.session && b.session.id === activeResize.sessionId) ||
+          (b.kind === "task-break" && b.sessionId === activeResize.sessionId);
+        var sameBreak = b.kind === "general-break" && b.breakId === activeResize.breakId;
+        if ((activeResize.kind === "general-break" && sameBreak) || (activeResize.kind !== "general-break" && sameSession)) {
+          b.height = b.trueHeight;
+        }
+      });
+    }
+
     // 最小の高さを確保すると、直後の記録と間隔が近い場合に見た目上重なってしまうことがあるため、
     // 次のブロックの開始位置を超えないようにその場で高さを詰める（文字は消さず、重なりだけを防ぐ）。
     // ただし、詰めた結果が実際の時間の長さ（trueHeight）を下回ると、枠の大きさが実際の時間と
