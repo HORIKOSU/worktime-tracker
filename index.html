@@ -390,6 +390,19 @@
   .name-save-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
   .name-save-btn:hover { opacity: 0.9; }
   .name-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .names-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
+  .names-grid > .card { margin-bottom: 0; min-width: 0; }
+  .names-toggle-card summary { cursor: pointer; list-style: none; }
+  .names-toggle-card summary::-webkit-details-marker { display: none; }
+  .names-toggle-summary { display: flex; align-items: center; gap: 8px; }
+  .names-toggle-title { font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+  .names-toggle-count { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; flex-shrink: 0; }
+  .names-toggle-chevron { font-size: 11px; color: var(--text-secondary); transition: transform 0.15s ease; flex-shrink: 0; display: inline-block; }
+  details.names-toggle-card[open] .names-toggle-chevron { transform: rotate(90deg); }
+  details.names-toggle-card[open] .names-toggle-summary { margin-bottom: 12px; }
+  @media (max-width: 900px) {
+    .names-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body class="viz-root">
@@ -590,17 +603,19 @@
       <h2>名称の一括編集<span class="sub">プロジェクト名・業務内容・番号の表記を、過去の記録もまとめて修正できます</span></h2>
       <p class="generated-note">一覧の1件を編集して保存すると、同じ文字列を使っているすべての記録（履歴・タスク一覧・今日の予定）が一括で置き換わります。取り消しはできないのでご注意ください。</p>
     </div>
-    <div class="card">
-      <h2>プロジェクト名一覧</h2>
-      <div id="projectNameListWrap"></div>
-    </div>
-    <div class="card">
-      <h2>業務内容一覧</h2>
-      <div id="memoNameListWrap"></div>
-    </div>
-    <div class="card">
-      <h2>番号一覧</h2>
-      <div id="numberNameListWrap"></div>
+    <div class="names-grid">
+      <details class="card names-toggle-card" open>
+        <summary class="names-toggle-summary"><span class="names-toggle-title">プロジェクト名一覧</span><span class="names-toggle-count" id="projectNameCount"></span><span class="names-toggle-chevron">▶</span></summary>
+        <div id="projectNameListWrap"></div>
+      </details>
+      <details class="card names-toggle-card" open>
+        <summary class="names-toggle-summary"><span class="names-toggle-title">業務内容一覧</span><span class="names-toggle-count" id="memoNameCount"></span><span class="names-toggle-chevron">▶</span></summary>
+        <div id="memoNameListWrap"></div>
+      </details>
+      <details class="card names-toggle-card" open>
+        <summary class="names-toggle-summary"><span class="names-toggle-title">番号一覧</span><span class="names-toggle-count" id="numberNameCount"></span><span class="names-toggle-chevron">▶</span></summary>
+        <div id="numberNameListWrap"></div>
+      </details>
     </div>
   </section>
 
@@ -2397,8 +2412,7 @@
     getPlans().forEach(function (p) { if ((p[field] || "").trim() === oldVal) p[field] = newVal; });
   }
   var NAME_KIND_LABELS = { project: "プロジェクト名", memo: "業務内容", number: "番号" };
-  function nameListHtml(kind, emptyMsg) {
-    var list = nameUsageList(kind);
+  function nameListHtml(kind, list, emptyMsg) {
     if (list.length === 0) return '<div class="empty-state">' + emptyMsg + '</div>';
     var html = '<div class="name-list">';
     list.forEach(function (item) {
@@ -2418,10 +2432,15 @@
     html += '</div>';
     return html;
   }
+  function renderNamesTabField(kind, listElId, countElId, emptyMsg) {
+    var list = nameUsageList(kind);
+    document.getElementById(listElId).innerHTML = nameListHtml(kind, list, emptyMsg);
+    document.getElementById(countElId).textContent = list.length + "種類";
+  }
   function renderNamesTab() {
-    document.getElementById("projectNameListWrap").innerHTML = nameListHtml("project", "まだプロジェクト名の記録がありません。");
-    document.getElementById("memoNameListWrap").innerHTML = nameListHtml("memo", "まだ業務内容の記録がありません。");
-    document.getElementById("numberNameListWrap").innerHTML = nameListHtml("number", "まだ番号の記録がありません。");
+    renderNamesTabField("project", "projectNameListWrap", "projectNameCount", "まだプロジェクト名の記録がありません。");
+    renderNamesTabField("memo", "memoNameListWrap", "memoNameCount", "まだ業務内容の記録がありません。");
+    renderNamesTabField("number", "numberNameListWrap", "numberNameCount", "まだ番号の記録がありません。");
   }
   function saveNameEdit(row) {
     var kind = row.getAttribute("data-kind");
