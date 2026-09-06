@@ -138,6 +138,9 @@
   /* 一覧は2カラムのグリッドで表示（新規追加フォームは一覧の下に固定配置） */
   #planListWrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; }
   #planListWrap > .generated-note { grid-column: 1 / -1; }
+  .plan-done-section { grid-column: 1 / -1; max-width: 100%; margin: 4px 0 0; text-align: left; }
+  .plan-done-section summary { font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 6px 2px; text-align: left; }
+  .plan-done-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px; }
   .plan-row { display: flex; align-items: center; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   /* チェック済みは「白いカード」から「背景に沈んだ点線の枠」に変わり、文字も薄く・打ち消し線付きになることで、
      未チェックのもの（白背景・通常の文字）とひと目で区別できるようにする。チェックボックス自体は
@@ -366,13 +369,13 @@
 
   @media (max-width: 760px) {
     .dashboard-top-grid { grid-template-columns: 1fr; }
-    #planListWrap { grid-template-columns: 1fr 1fr; }
+    #planListWrap, .plan-done-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 600px) {
     main { padding: 14px 12px; }
     header.app-header { padding: 16px 14px 12px; }
     .card { padding: 14px; }
-    #planListWrap { grid-template-columns: 1fr; }
+    #planListWrap, .plan-done-grid { grid-template-columns: 1fr; }
     .filter-item { min-width: 0; flex: 1 1 140px; }
     .hist-row-actions { width: 100%; justify-content: flex-end; }
     .hist-edit-field { flex: 1 1 100%; }
@@ -1514,7 +1517,9 @@
     if (!plans.length) {
       wrap.innerHTML = '<p class="generated-note" style="text-align:center;">今日の予定はまだ登録されていません。下のフォームから追加してください。</p>';
     } else {
-      wrap.innerHTML = plans.map(function (p) {
+      // チェックを付けた予定は、未チェックの一覧に混ざったままだと見分けにくいため、
+      // 「完了」専用の折りたたみセクションに分けて表示する（未完了タスクと完了したタスクを分けているのと同じ考え方）。
+      function planRowHtml(p) {
         if (p.id === planEditingId) {
           return '<div class="plan-row plan-row-editing">' +
             '<div class="plan-edit-form">' +
@@ -1539,7 +1544,19 @@
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
           '</div>';
-      }).join("");
+      }
+      var openPlans = plans.filter(function (p) { return !p.done; });
+      var donePlans = plans.filter(function (p) { return p.done; });
+      var openHtml = openPlans.map(planRowHtml).join("");
+      var doneHtml = "";
+      if (donePlans.length) {
+        // 編集中の完了予定がこの中に含まれる場合も、折りたたみを開いた状態にして編集フォームが見える位置にする。
+        var doneHasEditing = donePlans.some(function (p) { return p.id === planEditingId; });
+        doneHtml = '<details class="plan-done-section"' + (doneHasEditing ? ' open' : '') + '><summary>完了（' + donePlans.length + '件）</summary>' +
+          '<div class="plan-done-grid">' + donePlans.map(planRowHtml).join("") + '</div>' +
+          '</details>';
+      }
+      wrap.innerHTML = openHtml + doneHtml;
     }
 
     var planEditProjectInputEl = wrap.querySelector(".plan-edit-project-input");
