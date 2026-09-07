@@ -55,9 +55,9 @@
   section.panel.active { display: block; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .dashboard-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
-  /* グリッドのアイテムは既定で min-width:auto となり、中の表（table）のような縮まない要素があると
+  /* グリッドのアイテムは既定で min-width:auto となり、中に縮まない要素（表など）があると
      グリッド自体がはみ出してしまう（いわゆる grid blowout）。0 にして、はみ出た分は
-     .task-table-wrap 側の横スクロールに閉じ込める。 */
+     各要素側の横スクロールに閉じ込める。 */
   .dashboard-top-grid > .card { min-width: 0; }
   .dashboard-top-grid .card { margin-bottom: 0; }
   /* 左カラム（現在の状況＋タスクを登録）は縦に並べる */
@@ -195,56 +195,6 @@
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
-  .task-list-section { max-width: 100%; margin: 0 auto 18px; text-align: left; }
-  .task-list-heading { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; cursor: pointer; padding: 6px 0; text-align: left; }
-  .task-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-  .task-table { width: 100%; min-width: 560px; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
-  .task-table col.col-id { width: 9%; }
-  .task-table col.col-project { width: 20%; }
-  .task-table col.col-number { width: 10%; }
-  .task-table col.col-memo { width: 19%; }
-  .task-table col.col-total { width: 12%; }
-  .task-table col.col-actions { width: 30%; }
-  .task-table td.task-table-name, .task-table td.task-table-memo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .task-table th { text-align: left; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--page-plane); padding: 7px 10px; white-space: nowrap; border-bottom: 1px solid var(--border); }
-  .task-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .task-table tbody tr:last-child td { border-bottom: none; }
-  .task-table tbody tr:hover td { background: var(--page-plane); }
-  .task-table td.task-table-name { font-weight: 700; color: var(--text-primary); }
-  .task-table td.task-table-memo { color: var(--text-secondary); }
-  .task-table td.task-table-total { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-secondary); }
-  .task-table td.task-table-actions { text-align: right; }
-  .task-table .task-row-actions { justify-content: flex-end; flex-wrap: wrap; }
-  .task-table-resume-row td { background: var(--surface-1); }
-  .task-table-resume-row .task-resume-form { margin-top: 0; padding-top: 0; border-top: none; }
-  .task-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-  .task-row.done { background: var(--surface-1); }
-  .task-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
-  .task-row-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-  .task-row-memo { font-size: 11px; color: var(--text-secondary); }
-  .task-row-total { font-size: 11px; color: var(--text-secondary); }
-  .task-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .task-resume-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .task-resume-btn:hover { background: var(--series-1); color: #fff; }
-  .task-complete-btn, .task-reopen-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .task-complete-btn:hover { border-color: var(--success); color: var(--success); }
-  .task-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .task-delete-btn:hover { background: var(--series-8); color: #fff; }
-  .task-delete-hard-btn { appearance: none; border: 1px solid var(--danger); background: var(--danger); color: #fff; font-size: 11px; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .task-delete-hard-btn:hover { background: #9a2f2f; border-color: #9a2f2f; }
-  .task-resume-form { flex-basis: 100%; width: 100%; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
-  .task-resume-form-row { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 10px; }
-  .task-resume-form-row .field-label { display: block; font-size: 11px; margin-bottom: 4px; }
-  .task-resume-form-actions { display: flex; gap: 8px; }
-  .task-resume-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
-  .task-resume-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
-  .task-group-row td { background: var(--page-plane); font-size: 11px; font-weight: 700; color: var(--text-secondary); padding: 7px 10px; border-bottom: 1px solid var(--border); }
-  .task-group-row:not(:first-child) td { border-top: 1px solid var(--border); }
-  .task-done-group-heading { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin: 14px 0 6px; padding-top: 10px; border-top: 1px dashed var(--border); }
-  .task-done-group-heading:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-  .task-done-section { max-width: 100%; margin: 6px 0 0; text-align: left; }
-  .task-done-section summary { font-size: 15px; font-weight: 700; color: var(--text-primary); cursor: pointer; padding: 6px 0; text-align: left; }
-  .task-done-section .task-row { opacity: 0.8; }
   .running-memo-field input[type="text"] { padding: 12px 14px; border-radius: 10px; }
 
   /* data io (import/export) */
@@ -504,11 +454,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>タスク一覧</h2>
-      <div id="taskListWrap"></div>
-    </div>
-
     <div class="stat-row" id="statRow"></div>
 
     <div class="card">
@@ -681,7 +626,6 @@
   var scheduleViewMode = "day";
   var scheduleMonthState = null;
   var scheduleDayState = null;
-  var resumeFormTaskId = null; // 「▶ 再開」で日時入力フォームを開いているタスクID（1つのみ）
   var scheduleBlockMenuState = null; // スケジュール（日表示）の記録ブロックをタップしたときの操作メニュー。null以外なら { sessionId, top } を保持
   var HOUR_PX = 72; // 1時間あたりの高さ(px)。スケジュール（日表示）の縦の幅を広げたいというご要望で 48→72（1.5倍）に変更
   var MIN_BLOCK_HEIGHT = 27; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）。HOUR_PXと同じ比率で拡大
@@ -923,19 +867,6 @@
   function getTaskById(id) {
     return getTasks().find(function (t) { return t.id === id; });
   }
-  // タスクを削除する。記録（session）自体は履歴に残したいので、
-  // 各記録の taskId だけ外し（＝「タスクなし」の記録に戻す）、タスクの器だけを消す。
-  // 時間の記録そのものは失われない。
-  function deleteTaskById(id) {
-    state.sessions.forEach(function (s) { if (s.taskId === id) delete s.taskId; });
-    state.tasks = getTasks().filter(function (t) { return t.id !== id; });
-  }
-  // タスクを「記録ごと」完全に削除する。deleteTaskById() と異なり、このタスクに紐づく
-  // 記録（session）自体もすべて削除するため、実際の作業時間の記録も失われる（元に戻せない操作）。
-  function deleteTaskCompletely(id) {
-    state.sessions = state.sessions.filter(function (s) { return s.taskId !== id; });
-    state.tasks = getTasks().filter(function (t) { return t.id !== id; });
-  }
   function taskTotalSec(task) {
     var total = 0;
     state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
@@ -1028,26 +959,6 @@
       if (!isNaN(ms) && (max === null || ms > max)) max = ms;
     });
     return max;
-  }
-  // タスク一覧を「業務内容」ごとにグループ分けする（見分けやすくするため）。
-  // グループの並び順は、そのグループの中で最も直近に使われたタスクがある順（最近使った業務内容が上に来る）。
-  function groupTasksByMemo(taskList) {
-    var map = {}, order = [];
-    taskList.forEach(function (t) {
-      var key = (t.memo || "").trim();
-      if (!map[key]) { map[key] = { key: key, label: key || "（業務内容未設定）", tasks: [] }; order.push(key); }
-      map[key].tasks.push(t);
-    });
-    order.forEach(function (key) {
-      var maxAct = "";
-      map[key].tasks.forEach(function (t) {
-        var act = taskLastActivity(t.id);
-        if (act > maxAct) maxAct = act;
-      });
-      map[key].sortKey = maxAct;
-    });
-    order.sort(function (a, b) { return map[b].sortKey.localeCompare(map[a].sortKey); });
-    return order.map(function (key) { return map[key]; });
   }
   // 現在「作業中」または「休憩中」のセッションがこのタスクを参照しているか。
   // 参照していれば、そのタスクをうっかり完了にしてしまわないようにするためのチェックに使う。
@@ -1653,195 +1564,6 @@
   }
 
   // ---- task list card（未完了・完了タスクの一覧。現在の状況カードとは別枠で常に表示） ----
-  function renderTaskList() {
-    var wrap = document.getElementById("taskListWrap");
-    var openList = openTasks();
-    var doneList = completedTasks();
-
-    function openTaskRowHtml(t) {
-      var formOpen = (resumeFormTaskId === t.id);
-      var resumeRowHtml = "";
-      if (formOpen) {
-        var nowParts = nowDateTimeParts();
-        resumeRowHtml =
-          '<tr class="task-table-resume-row"><td colspan="6">' +
-          '<div class="task-resume-form">' +
-          '<div class="task-resume-form-row">' +
-          '<div><label class="field-label">開始日時</label>' +
-          '<input type="date" id="resumeStartDate" value="' + nowParts.date + '"> ' +
-          '<input type="time" step="1" id="resumeStartTime" value="' + nowParts.time + '"></div>' +
-          '<div><label class="field-label">終了日時（空欄なら作業中として開始）</label>' +
-          '<input type="date" id="resumeEndDate"> ' +
-          '<input type="time" step="1" id="resumeEndTime"></div>' +
-          '</div>' +
-          '<div class="task-resume-form-actions">' +
-          '<button type="button" class="task-resume-confirm-btn" data-task-id="' + escapeHtml(t.id) + '">この日時で記録</button>' +
-          '<button type="button" class="task-resume-cancel-btn">キャンセル</button>' +
-          '</div>' +
-          '</div>' +
-          '</td></tr>';
-      }
-      return '<tr>' +
-        '<td><span class="task-id-badge">' + escapeHtml(t.id) + '</span></td>' +
-        '<td class="task-table-name">' + escapeHtml(t.project) + '</td>' +
-        '<td class="task-table-memo">' + (t.memo ? escapeHtml(t.memo) : '') + '</td>' +
-        '<td>' + (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') + '</td>' +
-        '<td class="task-table-total">' + escapeHtml(formatHM(taskTotalSec(t))) + '</td>' +
-        '<td class="task-table-actions"><div class="task-row-actions">' +
-        '<button type="button" class="task-resume-btn" data-task-id="' + escapeHtml(t.id) + '">▶ 再開</button>' +
-        '<button type="button" class="task-complete-btn" data-task-id="' + escapeHtml(t.id) + '">✓ 完了</button>' +
-        '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
-        '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button>' +
-        '</div></td>' +
-        '</tr>' +
-        resumeRowHtml;
-    }
-
-    var openHtml = "";
-    if (openList.length) {
-      var openRowsHtml = groupTasksByMemo(openList).map(function (g) {
-        return '<tr class="task-group-row"><td colspan="6">業務内容：' + escapeHtml(g.label) + '（' + g.tasks.length + '件）</td></tr>' +
-          g.tasks.map(openTaskRowHtml).join("");
-      }).join("");
-      openHtml = '<details class="task-list-section" open><summary class="task-list-heading">未完了のタスク（' + openList.length + '件）</summary>' +
-        '<div class="task-table-wrap"><table class="task-table">' +
-        '<colgroup><col class="col-id"><col class="col-project"><col class="col-memo"><col class="col-number"><col class="col-total"><col class="col-actions"></colgroup>' +
-        '<thead><tr>' +
-        '<th>ID</th><th>プロジェクト名</th><th>業務内容</th><th>番号</th><th>合計時間</th><th></th>' +
-        '</tr></thead><tbody>' +
-        openRowsHtml +
-        '</tbody></table></div>' +
-        '</details>';
-    }
-
-    function doneTaskRowHtml(t) {
-      return '<div class="task-row done">' +
-        '<div class="task-row-main">' +
-        '<span class="task-id-badge">' + escapeHtml(t.id) + '</span>' +
-        '<span class="task-row-name">' + escapeHtml(t.project) + '</span>' +
-        (t.number ? '<span class="number-badge">' + escapeHtml(t.number) + '</span>' : '') +
-        '<span class="task-row-total">合計 ' + escapeHtml(formatHM(taskTotalSec(t))) + '</span>' +
-        '</div>' +
-        '<div class="task-row-actions"><button type="button" class="task-reopen-btn" data-task-id="' + escapeHtml(t.id) + '">未完了に戻す</button>' +
-        '<button type="button" class="task-delete-btn" data-task-id="' + escapeHtml(t.id) + '">削除</button>' +
-        '<button type="button" class="task-delete-hard-btn" data-task-id="' + escapeHtml(t.id) + '">完全に削除</button></div>' +
-        '</div>';
-    }
-
-    var doneHtml = "";
-    if (doneList.length) {
-      var doneRowsHtml = groupTasksByMemo(doneList).map(function (g) {
-        return '<div class="task-done-group-heading">業務内容：' + escapeHtml(g.label) + '（' + g.tasks.length + '件）</div>' +
-          g.tasks.map(doneTaskRowHtml).join("");
-      }).join("");
-      doneHtml = '<details class="task-done-section"><summary>完了したタスク（' + doneList.length + '件）</summary>' +
-        doneRowsHtml +
-        '</details>';
-    }
-
-    wrap.innerHTML = (openHtml || doneHtml) ? (openHtml + doneHtml) :
-      '<p class="generated-note" style="text-align:center;">未完了・完了のタスクはまだありません。「タスクを登録」で新しいタスクを開始すると、ここに表示されます。</p>';
-
-    wrap.querySelectorAll(".task-resume-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var taskId = btn.getAttribute("data-task-id");
-        resumeFormTaskId = (resumeFormTaskId === taskId) ? null : taskId;
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-resume-confirm-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var task = getTaskById(btn.getAttribute("data-task-id"));
-        if (!task) return;
-        var startDate = document.getElementById("resumeStartDate").value;
-        var startTime = document.getElementById("resumeStartTime").value;
-        var endDate = document.getElementById("resumeEndDate").value;
-        var endTime = document.getElementById("resumeEndTime").value;
-
-        var start = combineDateTime(startDate, startTime);
-        if (!start) { window.alert("開始日時を入力してください。"); return; }
-
-        if ((endDate && !endTime) || (!endDate && endTime)) {
-          window.alert("終了日時は日付・時刻の両方を入力するか、両方空欄にしてください。");
-          return;
-        }
-        var end = combineDateTime(endDate, endTime);
-        if (end && parseLocal(end) <= parseLocal(start)) {
-          window.alert("終了時刻は開始時刻より後にしてください。");
-          return;
-        }
-        if (!end && getRunningSession()) {
-          window.alert("すでに作業中の記録があります。終了日時も入力してください。");
-          return;
-        }
-
-        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: start, end: end, taskId: task.id });
-        persistState();
-        resumeFormTaskId = null;
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-resume-cancel-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        resumeFormTaskId = null;
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-complete-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var task = getTaskById(btn.getAttribute("data-task-id"));
-        if (!task) return;
-        var total = taskTotalSec(task);
-        if (!window.confirm(task.project + "（" + task.id + "）を完了にしますか？\n合計時間：" + formatHM(total))) return;
-        task.completed = true;
-        persistState();
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-reopen-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var task = getTaskById(btn.getAttribute("data-task-id"));
-        if (!task) return;
-        task.completed = false;
-        persistState();
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-delete-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var task = getTaskById(btn.getAttribute("data-task-id"));
-        if (!task) return;
-        var total = taskTotalSec(task);
-        var msg = task.project + "（" + task.id + "）のタスクを削除しますか？\n" +
-          "※記録（合計 " + formatHM(total) + "の作業時間）は履歴にそのまま残ります。タスクとしての管理から外れるだけです。";
-        if (!window.confirm(msg)) return;
-        deleteTaskById(task.id);
-        persistState();
-        renderAll();
-      });
-    });
-
-    wrap.querySelectorAll(".task-delete-hard-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var task = getTaskById(btn.getAttribute("data-task-id"));
-        if (!task) return;
-        var total = taskTotalSec(task);
-        var sessCount = state.sessions.filter(function (s) { return s.taskId === task.id; }).length;
-        var msg = task.project + "（" + task.id + "）を記録ごと完全に削除しますか？\n" +
-          "※このタスクに紐づく記録" + sessCount + "件（合計 " + formatHM(total) + "の作業時間）もすべて削除され、履歴・集計からも消えます。この操作は元に戻せません。";
-        if (!window.confirm(msg)) return;
-        deleteTaskCompletely(task.id);
-        persistState();
-        renderAll();
-      });
-    });
-  }
-
   function tick() {
     var running = getRunningSession();
     if (running) {
@@ -3884,7 +3606,6 @@
     populateProjectDatalist();
     renderStatusCard();
     renderPlanCard();
-    renderTaskList();
     renderStatRow();
     renderRecentList();
     renderSchedule();
