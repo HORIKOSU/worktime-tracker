@@ -1116,10 +1116,10 @@
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
-        '<div class="timer-total-line"><span class="timer-total-label">合計：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(hasPriorTime ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec) + '</span></div>' +
+        '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
-        (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">今回：' + formatHMS(sessionElapsedSec) + '</div>' : '') +
+        (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '</div>' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
@@ -1576,9 +1576,9 @@
         state.sessions.forEach(function (s) { if (s.taskId === runningTask.id && s.id !== running.id) priorTaskSec += durationSecOf(s); });
       }
       var timerEl = document.getElementById("elapsedTimer");
-      if (timerEl) timerEl.textContent = formatHMS(priorTaskSec > 0 ? (priorTaskSec + sessionElapsedSec) : sessionElapsedSec);
+      if (timerEl) timerEl.textContent = formatHMS(sessionElapsedSec);
       var sessionEl = document.getElementById("sessionElapsedTimer");
-      if (sessionEl) sessionEl.textContent = "今回：" + formatHMS(sessionElapsedSec);
+      if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
       renderStatRow();
     }
     updateScheduleLiveGauge();
