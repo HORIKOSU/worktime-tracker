@@ -315,6 +315,8 @@
   .schedule-block-menu-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .sched-block-resume-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
   .sched-block-edit-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  .sched-block-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 12px; padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  .sched-block-delete-btn:hover { background: var(--series-8); color: #fff; }
   .sched-block-menu-close-btn { appearance: none; border: none; background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; }
 
   @media (max-width: 760px) {
@@ -2668,6 +2670,7 @@
         '<div class="schedule-block-menu-actions">' +
         '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' +
         '<button type="button" class="sched-block-edit-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">編集</button>' +
+        '<button type="button" class="sched-block-delete-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">削除</button>' +
         '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
         '</div>' +
         '</div>';
@@ -2760,6 +2763,16 @@
       generalBreakEditingId = null;
       if (historyTabBtn) historyTabBtn.click();
       renderHistoryList();
+    });
+
+    menuEl.querySelector(".sched-block-delete-btn").addEventListener("click", function () {
+      var sessionId = this.getAttribute("data-session-id");
+      scheduleBlockMenuState = null;
+      deleteSessionById(sessionId);
+      // 確認ダイアログでキャンセルされた場合は削除されず renderAll() も呼ばれないため、
+      // メニューを閉じた状態を反映させるためにここで再描画しておく。
+      var stillExists = state.sessions.some(function (s) { return s.id === sessionId; });
+      if (stillExists) renderScheduleDayView(true);
     });
 
     menuEl.querySelector(".sched-block-menu-close-btn").addEventListener("click", function () {
