@@ -951,6 +951,42 @@
       "（キャンセルすると、新しい別のタスクとして開始します）";
     return window.confirm(msg);
   }
+  // プロジェクト名・業務内容・番号を指定して、その場でタスクを開始する共通処理。
+  // 「▶ 今すぐ開始」ボタンと、「今日の予定」の各項目の「▶ 開始」ボタンから共通で呼び出す
+  // （どちらも「入力欄に転記してから改めて開始ボタンを押す」のではなく、その場で即座に開始する）。
+  // 既存の未完了タスクへの自動紐づけ・完了済みタスクとの一致確認は「今すぐ開始」と同じ基準で行う。
+  // 開始できた場合は true、作業中・中断中・休憩中で開始できなかった場合は false を返す。
+  function startTaskNow(project, memo, number) {
+    if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
+      window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから開始してください。");
+      return false;
+    }
+    var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+    if (task && !confirmOpenTaskLink(task)) task = null;
+
+    if (!task) {
+      var exactMatch = completedTasks().find(function (t) {
+        return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
+      });
+      if (exactMatch) {
+        var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
+          exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
+          "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
+          "このタスクを未完了に戻して時間を追加しますか？\n" +
+          "（キャンセルすると、新しい別のタスクとして開始します）";
+        if (window.confirm(msg)) {
+          exactMatch.completed = false;
+          task = exactMatch;
+        }
+      }
+    }
+
+    if (!task) task = createTask(project, memo, number);
+    else applyTypedNumberToTask(task, number);
+    state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+    persistState();
+    return true;
+  }
   // taskLastActivity のミリ秒版。開始時刻にミリ秒精度の startMs があればそれを使い、
   // なければ start（秒精度の文字列）から算出する。
   function taskLastActivityMs(taskId) {
@@ -1372,10 +1408,6 @@
     // すでに作業中・中断中・休憩中の場合は、先にそちらを終わらせてもらう（同時に2つは開始できないため）。
     if (startBtn) {
       startBtn.addEventListener("click", function () {
-        if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-          window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから開始してください。");
-          return;
-        }
         var project = projectInput.value.trim();
         if (!project) {
           window.alert("プロジェクト名を入力してください。");
@@ -1384,37 +1416,7 @@
         }
         var memo = memoInput.value.trim();
         var number = numberInput.value.trim();
-        // プロジェクト名・業務内容が未完了タスクと完全一致する場合は、新規タスクを作らず
-        // その既存タスクに時間を紐づける（＝「▶ 再開」と同じ扱い）。完了済みタスクとは自動では紐づけない。
-        // ただし、そのタスクを最後に使ったのが今日でなければ（時間帯が明らかに離れていれば）、
-        // 自動では紐づけずに確認する。
-        var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-        if (task && !confirmOpenTaskLink(task)) task = null;
-
-        // 未完了タスクに一致がなければ、完了済みタスクの中にプロジェクト名・業務内容・番号が
-        // 完全一致するものがないか確認し、あれば再開するかどうかをユーザーに確認する
-        // （気づかないうちに同じ内容のタスクが重複して登録されるのを防ぐため）。
-        if (!task) {
-          var exactMatch = completedTasks().find(function (t) {
-            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
-          });
-          if (exactMatch) {
-            var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
-              exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
-              "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
-              "このタスクを未完了に戻して時間を追加しますか？\n" +
-              "（キャンセルすると、新しい別のタスクとして開始します）";
-            if (window.confirm(msg)) {
-              exactMatch.completed = false;
-              task = exactMatch;
-            }
-          }
-        }
-
-        if (!task) task = createTask(project, memo, number);
-        else applyTypedNumberToTask(task, number);
-        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
-        persistState();
+        if (!startTaskNow(project, memo, number)) return;
         projectInput.value = "";
         memoInput.value = "";
         numberInput.value = "";
@@ -1542,21 +1544,9 @@
       btn.addEventListener("click", function () {
         var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
         if (!plan) return;
-        if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-          window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから、この予定で開始してください。");
-          return;
-        }
-        var projectInput = document.getElementById("planProjectInput");
-        var memoInput = document.getElementById("planMemoInput");
-        var numberInput = document.getElementById("planNumberInput");
-        if (!projectInput || !memoInput) return;
-        projectInput.value = plan.project;
-        memoInput.value = plan.memo || "";
-        if (numberInput) numberInput.value = plan.number || "";
-        renderPlanMemoSuggestChips();
-        renderPlanNumberSuggestChips();
-        projectInput.scrollIntoView({ behavior: "smooth", block: "center" });
-        projectInput.focus();
+        // 入力欄に転記して改めて「今すぐ開始」を押してもらうのではなく、その場で即座に開始する。
+        if (!startTaskNow(plan.project, plan.memo || "", plan.number || "")) return;
+        renderAll();
       });
     });
 
