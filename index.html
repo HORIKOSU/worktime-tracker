@@ -152,6 +152,10 @@
   .plan-row.plan-row-active { background: #eaf2fc; border: 1px solid var(--series-1); }
   .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-1); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
+  /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
+     四角いバッジ（number-badge）とは違う丸い形にしている。 */
+  .plan-row-seq { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; background: var(--page-plane); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .plan-row.done .plan-row-seq { color: var(--text-muted); }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 64px; justify-content: center; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
   /* 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式で横に並べ、どれも一度に目に入るようにする
@@ -1441,6 +1445,11 @@
     if (!plans.length) {
       wrap.innerHTML = '<p class="generated-note" style="text-align:center;">今日の予定はまだ登録されていません。下のフォームから追加してください。</p>';
     } else {
+      // 「番号」欄（プロジェクト名＞業務内容＞番号の番号）は自由入力の識別ラベルとして別用途で
+      // 使われているため上書きせず、登録した順番だけを示す連番を別に用意して表示する
+      // （完了セクションに移動しても、登録した時点の順番のまま変わらないようにする）。
+      var seqById = {};
+      plans.forEach(function (p, i) { seqById[p.id] = i + 1; });
       // チェックを付けた予定は、未チェックの一覧に混ざったままだと見分けにくいため、
       // 「完了」専用の折りたたみセクションに分けて表示する（未完了タスクと完了したタスクを分けているのと同じ考え方）。
       function planRowHtml(p) {
@@ -1459,6 +1468,7 @@
         // フルの横幅で配置する（1行目の中にボタンが割り込んで文字が窮屈になるのを防ぐため）。
         return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
+          '<div class="plan-row-seq" title="今日の予定に登録した順番">' + seqById[p.id] + '</div>' +
           '<div class="plan-row-main">' +
           '<div class="plan-row-title-line">' +
           '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + '</div>' +
