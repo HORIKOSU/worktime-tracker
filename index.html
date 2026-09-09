@@ -141,7 +141,7 @@
   .plan-done-section { grid-column: 1 / -1; max-width: 100%; margin: 4px 0 0; text-align: left; }
   .plan-done-section summary { font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 6px 2px; text-align: left; }
   .plan-done-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px; }
-  .plan-row { display: flex; align-items: center; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .plan-row { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   /* チェック済みは「白いカード」から「背景に沈んだ点線の枠」に変わり、文字も薄く・打ち消し線付きになることで、
      未チェックのもの（白背景・通常の文字）とひと目で区別できるようにする。チェックボックス自体は
      見えづらくならないよう、行全体を薄くする（opacity）のではなく色・線だけを変える方式にしている。 */
@@ -151,18 +151,18 @@
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
   .plan-row.plan-row-active { background: #eaf2fc; border: 1px solid var(--series-1); }
   .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-1); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
-  .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); }
-  .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; min-height: 64px; }
+  .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
+  .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 64px; justify-content: center; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
-  /* プロジェクト名・業務内容は縦に並べるのではなく横に並べ、業務内容がプロジェクト名の
-     すぐ隣に来ることで両方一度に目に入るようにする（間の「・」は区切りとして薄い色に）。 */
+  /* 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式で横に並べ、どれも一度に目に入るようにする
+     （間の「＞」は区切りとして薄い色に）。操作ボタンはこの下にフルの横幅で別行として配置し、
+     1行目の文字と競合してどちらも窮屈にならないようにする。 */
   .plan-row-title-line { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
   .plan-row-title-line .plan-row-field + .plan-row-field { margin-top: 0; }
-  .plan-row-title-line + .plan-row-field { margin-top: 5px; }
   .plan-row-sep { color: var(--text-muted); font-weight: 400; margin-right: 2px; }
   .plan-row-project { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .plan-row-memo { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-  .plan-row-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .plan-row-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
   .plan-start-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 10px; font-weight: 700; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-start-btn:hover { background: var(--series-1); color: #fff; }
   .plan-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 10px; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -1452,21 +1452,23 @@
             '</div>';
         }
         var isActivePlan = !p.done && planMatchesRunningSession(p);
+        // 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式にまとめ、操作ボタンはその下の行に
+        // フルの横幅で配置する（1行目の中にボタンが割り込んで文字が窮屈になるのを防ぐため）。
         return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
           '<div class="plan-row-title-line">' +
           '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + '</div>' +
-          (p.memo ? '<div class="plan-row-field plan-row-memo"><span class="plan-row-sep">・</span>' + escapeHtml(p.memo) + '</div>' : '') +
+          (p.memo ? '<div class="plan-row-field plan-row-memo"><span class="plan-row-sep">＞</span>' + escapeHtml(p.memo) + '</div>' : '') +
+          (p.number ? '<div class="plan-row-field"><span class="plan-row-sep">＞</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           (isActivePlan ? ' <span class="plan-row-active-badge">● 実施中</span>' : '') +
           (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
-          '</div>' +
-          (p.number ? '<div class="plan-row-field"><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           '</div>' +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
           '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
+          '</div>' +
           '</div>' +
           '</div>';
       }
