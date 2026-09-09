@@ -154,6 +154,12 @@
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; min-height: 64px; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
+  /* プロジェクト名・業務内容は縦に並べるのではなく横に並べ、業務内容がプロジェクト名の
+     すぐ隣に来ることで両方一度に目に入るようにする（間の「・」は区切りとして薄い色に）。 */
+  .plan-row-title-line { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+  .plan-row-title-line .plan-row-field + .plan-row-field { margin-top: 0; }
+  .plan-row-title-line + .plan-row-field { margin-top: 5px; }
+  .plan-row-sep { color: var(--text-muted); font-weight: 400; margin-right: 2px; }
   .plan-row-project { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .plan-row-memo { font-size: 13px; font-weight: 600; color: var(--text-primary); }
   .plan-row-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
@@ -1449,8 +1455,12 @@
         return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '">' +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-main">' +
-          '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + (isActivePlan ? ' <span class="plan-row-active-badge">● 実施中</span>' : '') + (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') + '</div>' +
-          (p.memo ? '<div class="plan-row-field plan-row-memo">' + escapeHtml(p.memo) + '</div>' : '') +
+          '<div class="plan-row-title-line">' +
+          '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + '</div>' +
+          (p.memo ? '<div class="plan-row-field plan-row-memo"><span class="plan-row-sep">・</span>' + escapeHtml(p.memo) + '</div>' : '') +
+          (isActivePlan ? ' <span class="plan-row-active-badge">● 実施中</span>' : '') +
+          (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
+          '</div>' +
           (p.number ? '<div class="plan-row-field"><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           '</div>' +
           '<div class="plan-row-actions">' +
