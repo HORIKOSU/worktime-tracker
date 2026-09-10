@@ -187,8 +187,6 @@
   .big-btn.break:hover { opacity: 0.92; }
   .big-btn.stop { background: var(--danger); color: #fff; }
   .big-btn.stop:hover { opacity: 0.92; }
-  .big-btn.complete { background: var(--success); color: #fff; }
-  .big-btn.complete:hover { opacity: 0.92; }
   .big-btn.secondary { background: var(--surface-1); color: var(--series-1); border: 2px solid var(--series-1); box-sizing: border-box; }
   .big-btn.secondary:hover { background: var(--page-plane); }
   .big-btn + .big-btn.secondary { margin-top: 10px; }
@@ -202,9 +200,6 @@
   .action-card-label { font-size: 14px; font-weight: 700; text-align: center; line-height: 1.3; }
   .action-card.start { background: var(--series-1); color: #fff; }
   .action-card.break { background: var(--series-4); color: #fff; }
-  .break-alt-action { margin-top: 12px; font-size: 12px; }
-  .break-alt-action a { color: var(--text-secondary); text-decoration: underline; }
-  .break-alt-sep { margin: 0 6px; color: var(--text-muted); }
   .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
@@ -261,8 +256,6 @@
   .hist-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-delete-btn:hover { background: var(--series-8); color: #fff; }
   .hist-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .hist-complete-task-btn { appearance: none; border: 1px solid var(--success); background: transparent; color: var(--success); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .hist-complete-task-btn:hover { background: var(--success); color: #fff; }
   .hist-edit-btn:hover { background: var(--series-1); color: #fff; }
   .hist-save-btn { appearance: none; border: 1px solid var(--success); background: var(--success); color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -847,7 +840,7 @@
     return s;
   }
 
-  // ---- タスク（IDで管理する、完了になるまで残る作業単位） ----
+  // ---- タスク（IDで管理する作業単位。いつでも再開できるよう、常に「未完了」として扱う） ----
   // 1つの「タスク」に対して、開始・終了（＝作業区間）を何度でも行える。
   // 実体としては、同じ taskId を持つ複数の session をまたいで合計時間を集計する。
   // これにより、日をまたいだ再開でも履歴上は各回ごとに正しい日付で記録される。
@@ -867,7 +860,7 @@
   function createTask(project, memo, number) {
     var num = (state.nextTaskNumber || 0) + 1;
     state.nextTaskNumber = num;
-    var task = { id: "T" + ("00" + num).slice(-3), project: project, memo: memo || "", number: number || "", completed: false };
+    var task = { id: "T" + ("00" + num).slice(-3), project: project, memo: memo || "", number: number || "" };
     getTasks().push(task);
     return task;
   }
@@ -887,17 +880,14 @@
     state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
     return total;
   }
-  // 未完了タスクの一覧（現在作業中・休憩中のタスクはステータスカードに専用表示があるため除く）
+  // タスクの一覧（現在作業中・休憩中のタスクはステータスカードに専用表示があるため除く）
   function openTasks() {
     var running = getRunningSession();
     var onBreak = getOnBreakSession();
     var excludeIds = {};
     if (running && running.taskId) excludeIds[running.taskId] = true;
     if (onBreak && onBreak.taskId) excludeIds[onBreak.taskId] = true;
-    return getTasks().filter(function (t) { return !t.completed && !excludeIds[t.id]; });
-  }
-  function completedTasks() {
-    return getTasks().filter(function (t) { return t.completed; });
+    return getTasks().filter(function (t) { return !excludeIds[t.id]; });
   }
   // ---- 今日の予定（実際の作業記録とは別に、その日にやる予定のプロジェクト名・業務内容をメモしておく） ----
   function getPlans() {
@@ -906,7 +896,7 @@
   }
   function todayPlans() {
     var today = todayDateInputValue();
-    return getPlans().filter(function (p) { return p.date === today && !planMatchesCompletedTask(p); });
+    return getPlans().filter(function (p) { return p.date === today; });
   }
   // 「今日の予定」の項目が、いま実際に作業中（実施中）のセッションと同じ内容
   // （プロジェクト名・業務内容・番号）かどうか。一致すれば、一覧上でその項目だけ色を変えて目立たせる。
@@ -918,29 +908,6 @@
     if (!running) return false;
     return running.project === p.project && (running.memo || "") === (p.memo || "") && (running.number || "") === (p.number || "");
   }
-  // 予定のプロジェクト名・業務内容に一致する完了済みタスクが「その予定を追加した後」に完了していれば、
-  // その予定は「今日の予定」から自動的に消す（番号は判定に含めない。「新しいタスクを開始」時の紐づけ
-  // 判定と同じ基準）。
-  // ※ 単純に「完了済みかどうか」や「今日完了したかどうか」だけで判定すると、次のようなケースで
-  //   困ってしまう：
-  //   - 同じプロジェクト名・業務内容を繰り返し使う予定（定例業務など）が過去に一度でも完了していると、
-  //     新しく追加した予定が追加直後から表示されなくなる
-  //   - 一度完了させた内容を、あらためて「今日の予定」に追加しようとしても表示されない
-  //   そこで「予定を追加した時刻より後に、そのタスクが完了（＝最後に使われた）かどうか」で判定する。
-  //   追加前にすでに完了していた場合は表示し、追加後に完了した場合（＝本来の「作業してチェックが
-  //   外れる」動き）だけ自動的に消す。
-  function planMatchesCompletedTask(p) {
-    // 秒単位の文字列比較だと「予定を追加した直後に同じ内容を完了させた」ような、
-    // 同じ1秒内で連続して起きる操作の前後関係を正しく判定できないことがあるため、
-    // ミリ秒単位の数値（createdAtMs / startMs）があればそちらを優先して比較する。
-    var addedAtIso = p.createdAt || (p.date + "T00:00:00");
-    var addedAtMs = typeof p.createdAtMs === "number" ? p.createdAtMs : new Date(addedAtIso.replace(" ", "T")).getTime();
-    return completedTasks().some(function (t) {
-      if (t.project !== p.project || (t.memo || "") !== (p.memo || "")) return false;
-      var lastActivityMs = taskLastActivityMs(t.id);
-      return lastActivityMs !== null && lastActivityMs > addedAtMs;
-    });
-  }
   // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
   function taskLastActivity(taskId) {
     var max = "";
@@ -948,7 +915,7 @@
     return max;
   }
   // 「新しいタスクを開始」やスケジュールからの「▶ 再開」で、プロジェクト名・業務内容が
-  // 完全一致する未完了タスクが見つかった場合に、自動でそのタスクへ紐づけてよいかどうかを判定する。
+  // 完全一致するタスクが見つかった場合に、自動でそのタスクへ紐づけてよいかどうかを判定する。
   // そのタスクを最後に使ったのが「今日」であれば、同じ作業の続き（休憩を挟んだだけ等）とみなし
   // これまでどおり確認なしで続行する。今日以外（日をまたいでいる）場合は、時間帯が明らかに
   // 離れているとみなし、いったんユーザーに確認する（同じプロジェクト名・業務内容・番号でも、
@@ -957,7 +924,7 @@
     var lastAct = taskLastActivity(task.id);
     if (lastAct && isSameDate(lastAct, todayDateInputValue())) return true;
     var lastActText = lastAct ? formatDateHeading(lastAct.slice(0, 10)) : "なし";
-    var msg = "同じプロジェクト名・業務内容の未完了タスクがあります（最後の記録：" + lastActText + "）。\n" +
+    var msg = "同じプロジェクト名・業務内容のタスクがあります（最後の記録：" + lastActText + "）。\n" +
       task.id + "　" + task.project + (task.number ? "（" + task.number + "）" : "") + (task.memo ? "・" + task.memo : "") + "\n" +
       "これまでの合計時間：" + formatHM(taskTotalSec(task)) + "\n\n" +
       "このタスクに続けて時間を追加しますか？\n" +
@@ -967,32 +934,15 @@
   // プロジェクト名・業務内容・番号を指定して、その場でタスクを開始する共通処理。
   // 「▶ 今すぐ開始」ボタンと、「今日の予定」の各項目の「▶ 開始」ボタンから共通で呼び出す
   // （どちらも「入力欄に転記してから改めて開始ボタンを押す」のではなく、その場で即座に開始する）。
-  // 既存の未完了タスクへの自動紐づけ・完了済みタスクとの一致確認は「今すぐ開始」と同じ基準で行う。
+  // 既存タスクへの自動紐づけは「今すぐ開始」と同じ基準で行う（confirmOpenTaskLink）。
   // 開始できた場合は true、作業中・中断中・休憩中で開始できなかった場合は false を返す。
   function startTaskNow(project, memo, number) {
     if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-      window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから開始してください。");
+      window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
       return false;
     }
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
     if (task && !confirmOpenTaskLink(task)) task = null;
-
-    if (!task) {
-      var exactMatch = completedTasks().find(function (t) {
-        return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
-      });
-      if (exactMatch) {
-        var msg = "過去に完了済みの同じ内容のタスクがあります。\n" +
-          exactMatch.id + "　" + exactMatch.project + (exactMatch.number ? "（" + exactMatch.number + "）" : "") + (exactMatch.memo ? "・" + exactMatch.memo : "") + "\n" +
-          "これまでの合計時間：" + formatHM(taskTotalSec(exactMatch)) + "\n\n" +
-          "このタスクを未完了に戻して時間を追加しますか？\n" +
-          "（キャンセルすると、新しい別のタスクとして開始します）";
-        if (window.confirm(msg)) {
-          exactMatch.completed = false;
-          task = exactMatch;
-        }
-      }
-    }
 
     if (!task) task = createTask(project, memo, number);
     else applyTypedNumberToTask(task, number);
@@ -1011,19 +961,8 @@
     });
     return max;
   }
-  // 現在「作業中」または「休憩中」のセッションがこのタスクを参照しているか。
-  // 参照していれば、そのタスクをうっかり完了にしてしまわないようにするためのチェックに使う。
-  function taskHasOpenSession(taskId) {
-    var running = getRunningSession();
-    if (running && running.taskId === taskId) return true;
-    var onBreak = getOnBreakSession();
-    if (onBreak && onBreak.taskId === taskId) return true;
-    return false;
-  }
   // 履歴の編集フォーム用：「タスクID」の選択欄のHTMLを組み立てる。
-  // 選択肢は「タスクなし」「新しいタスクとして登録」＋すべてのタスク（完了済みも含む）。
-  // 完了済みタスクも選べるようにしておかないと、後から見つかった過去の記録を
-  // 同じタスクに付け直したいときに選択肢から消えてしまうため。
+  // 選択肢は「タスクなし」「新しいタスクとして登録」＋すべてのタスク。
   function renderTaskIdSelect(currentTaskId) {
     var options = getTasks();
     var html = '<select class="e-task-id">' +
@@ -1031,7 +970,7 @@
       '<option value="__new__">＋ 新しいタスクとして登録</option>';
     options.forEach(function (t) {
       html += '<option value="' + escapeHtml(t.id) + '"' + (t.id === currentTaskId ? ' selected' : '') + '>' +
-        escapeHtml(t.id) + ' ' + escapeHtml(t.project) + (t.completed ? '（完了済み）' : '') + '</option>';
+        escapeHtml(t.id) + ' ' + escapeHtml(t.project) + '</option>';
     });
     html += '</select>';
     return html;
@@ -1174,9 +1113,8 @@
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
         '<div class="status-btn-row">' +
         '<button type="button" class="big-btn break" id="pauseBtn">■ 中断</button>' +
-        '<button type="button" class="big-btn complete" id="completeFromRunningBtn">✓ 完了</button>' +
         '</div>' +
-        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝一時停止（休憩・他の作業への切り替えもこちら）。完了＝タスクを完了にします。</p>';
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝一時停止（休憩・他の作業への切り替えもこちら）。</p>';
       document.getElementById("runningMemoInput").addEventListener("input", function () {
         running.memo = this.value;
         persistState();
@@ -1184,14 +1122,6 @@
       document.getElementById("pauseBtn").addEventListener("click", function () {
         endRunningSession(running);
         state.onBreakSessionId = running.id;
-        persistState();
-        renderAll();
-      });
-      document.getElementById("completeFromRunningBtn").addEventListener("click", function () {
-        var total = priorTaskSec + sessionElapsedSec;
-        if (!window.confirm(projectLabel(running) + (runningTask ? "（" + runningTask.id + "）" : "") + "を完了にしますか？\n合計時間：" + formatHM(total))) return;
-        endRunningSession(running);
-        if (runningTask) runningTask.completed = true;
         persistState();
         renderAll();
       });
@@ -1207,8 +1137,7 @@
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
-        '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>' +
-        (onBreakTask ? '<div class="break-alt-action"><a href="#" id="breakCompleteLink">✓ このタスクを完了にする</a></div>' : '');
+        '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
       document.getElementById("resumeBreakBtn").addEventListener("click", function () {
         resumeSession(onBreak);
         state.onBreakSessionId = null;
@@ -1221,18 +1150,6 @@
         persistState();
         renderAll();
       });
-      var breakCompleteLink = document.getElementById("breakCompleteLink");
-      if (breakCompleteLink) {
-        breakCompleteLink.addEventListener("click", function (evt) {
-          evt.preventDefault();
-          var total = taskTotalSec(onBreakTask);
-          if (!window.confirm(onBreakTask.project + "（" + onBreakTask.id + "）を完了にしますか？\n合計時間：" + formatHM(total))) return;
-          onBreakTask.completed = true;
-          state.onBreakSessionId = null;
-          persistState();
-          renderAll();
-        });
-      }
     } else if (getActiveGeneralBreak()) {
       var activeGeneralBreak = getActiveGeneralBreak();
       card.className = "card status-card on-break";
@@ -1580,7 +1497,7 @@
     renderPlanNumberSuggestChips();
   }
 
-  // ---- task list card（未完了・完了タスクの一覧。現在の状況カードとは別枠で常に表示） ----
+  // ---- タイマー表示の更新 ----
   function tick() {
     var running = getRunningSession();
     if (running) {
@@ -1944,7 +1861,6 @@
         } else {
           var segs = e.segs;
           var partRunning = !segs[segs.length - 1].end;
-          var histTask = s.taskId ? getTaskById(s.taskId) : null;
           html += '<div class="hist-entry' + (partRunning ? ' is-running' : '') + '">' +
             '<div class="hist-entry-main">' +
             '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(s), s.memo) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (e.isPart ? '<span class="part-tag">' + e.partIndex + '/' + e.partCount + '日目</span>' : '') + (partRunning ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
@@ -1952,7 +1868,6 @@
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
-            (histTask && !histTask.completed ? '<button type="button" class="hist-complete-task-btn" data-task-id="' + escapeHtml(histTask.id) + '">✓ タスク完了</button>' : '') +
             '<button type="button" class="hist-delete-btn" data-id="' + escapeHtml(s.id) + '">削除</button></div>' +
             '</div>';
         }
@@ -2135,22 +2050,6 @@
       persistState();
       historyEditingId = null;
       historyEditDraftSegments = null;
-      renderAll();
-      return;
-    }
-
-    var histCompleteBtn = evt.target.closest ? evt.target.closest(".hist-complete-task-btn") : null;
-    if (histCompleteBtn) {
-      var completeTask = getTaskById(histCompleteBtn.getAttribute("data-task-id"));
-      if (!completeTask) return;
-      if (taskHasOpenSession(completeTask.id)) {
-        window.alert("このタスクは現在作業中または中断中のため、こちらからは完了にできません。「現在の状況」の画面から完了にしてください。");
-        return;
-      }
-      var completeTotal = taskTotalSec(completeTask);
-      if (!window.confirm(completeTask.project + "（" + completeTask.id + "）を完了にしますか？\n合計時間：" + formatHM(completeTotal))) return;
-      completeTask.completed = true;
-      persistState();
       renderAll();
       return;
     }
@@ -2742,34 +2641,17 @@
       }
 
       if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-        window.alert("すでに作業中か中断中、休憩中です。先に完了するか作業に戻ってから再開してください。");
+        window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから再開してください。");
         renderScheduleDayView(true);
         return;
       }
       var project = session.project, memo = session.memo || "", number = session.number || "";
       var task = session.taskId ? getTaskById(session.taskId) : null;
-      if (task) {
-        if (task.completed) {
-          if (!window.confirm(task.project + "（" + task.id + "）は完了済みです。未完了に戻して再開しますか？")) {
-            renderScheduleDayView(true);
-            return;
-          }
-          task.completed = false;
-        }
-      } else {
+      if (!task) {
         // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
-        // 既存の未完了タスクに紐づけるか、完了済みと完全一致すれば確認のうえ再開、なければ新規タスクにする。
+        // 既存タスクに紐づけるか、なければ新規タスクにする。
         task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
         if (task && !confirmOpenTaskLink(task)) task = null;
-        if (!task) {
-          var exactMatch = completedTasks().find(function (t) {
-            return t.project === project && (t.memo || "") === memo && (t.number || "") === number;
-          });
-          if (exactMatch && window.confirm(exactMatch.project + "（" + exactMatch.id + "）は完了済みです。未完了に戻して再開しますか？")) {
-            exactMatch.completed = false;
-            task = exactMatch;
-          }
-        }
         if (!task) task = createTask(project, memo, number);
       }
       applyTypedNumberToTask(task, number);
