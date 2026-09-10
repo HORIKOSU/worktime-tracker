@@ -2286,7 +2286,19 @@
     if (!newVal) { window.alert("空にはできません。空にしたい場合は、履歴の編集から記録ごとに変更してください。"); return; }
     if (newVal === oldVal) { namesEditingKind = null; namesEditingValue = null; renderNamesTab(); return; }
     var label = NAME_KIND_LABELS[kind] || kind;
-    if (!window.confirm('「' + oldVal + '」を「' + newVal + '」に一括で置き換えます。\n' + label + 'が「' + oldVal + '」になっているすべての記録・タスク・予定が対象です。\nこの操作は取り消せません。よろしいですか？')) return;
+    // 変更後の値が、すでに別の記録で使われている既存の値と重複する場合は、単なる文字列の
+    // 置き換えではなく「2つを1つにまとめる」操作であることが伝わるよう、専用の確認文言にする。
+    var existing = nameUsageList(kind).find(function (item) { return item.value === newVal; });
+    var confirmMsg;
+    if (existing) {
+      confirmMsg = '「' + newVal + '」はすでに他の記録で使われています（' + existing.count + '件）。\n' +
+        '「' + oldVal + '」と「' + newVal + '」をまとめますか？\n' +
+        'まとめると、両方の記録が同じ' + label + '「' + newVal + '」として扱われます。\n' +
+        'この操作は取り消せません。';
+    } else {
+      confirmMsg = '「' + oldVal + '」を「' + newVal + '」に一括で置き換えます。\n' + label + 'が「' + oldVal + '」になっているすべての記録・タスク・予定が対象です。\nこの操作は取り消せません。よろしいですか？';
+    }
+    if (!window.confirm(confirmMsg)) return;
     renameFieldValueEverywhere(kind, oldVal, newVal);
     invalidateBusinessOrderCache();
     persistState();
