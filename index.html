@@ -111,6 +111,8 @@
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
   .status-badge.on-break { background: var(--series-4); color: #fff; }
+  .day-start-card { justify-content: center; border-color: var(--series-1); background: linear-gradient(180deg, #f2f7fd, var(--surface-1)); }
+  .day-start-question { font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 4px 0 16px; }
   .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color, var(--series-1)); margin-bottom: 4px; }
@@ -960,6 +962,28 @@
     persistState();
     return true;
   }
+  // 今日、記録（セッション）が1件でもあるかどうか。「今日はまだ何も始めていない」状態を
+  // 判定するために使う（＝「今日の業務を開始しますか？」の表示条件）。
+  function todayHasAnySession() {
+    var today = todayDateInputValue();
+    return state.sessions.some(function (s) { return s.start && s.start.slice(0, 10) === today; });
+  }
+  // 「今日の業務を開始しますか？」ボタン専用の開始処理。プロジェクト名・業務内容は
+  // 「経営」「ルーティン」に固定。このボタンは毎日必ず押す前提の定型ボタンのため、
+  // 他のタスクと違い confirmOpenTaskLink による「続けますか？」の確認は行わず、
+  // 常に1クリックで同じタスクに続けて記録を開始する。
+  function startDailyRoutineTask() {
+    if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
+      window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
+      return false;
+    }
+    var project = "経営", memo = "ルーティン";
+    var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+    if (!task) task = createTask(project, memo, "");
+    state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+    persistState();
+    return true;
+  }
   // taskLastActivity のミリ秒版。開始時刻にミリ秒精度の startMs があればそれを使い、
   // なければ start（秒精度の文字列）から算出する。
   function taskLastActivityMs(taskId) {
@@ -1175,6 +1199,21 @@
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
         activeGeneralBreak.end = nowLocalIso();
         persistState();
+        renderAll();
+      });
+    } else if (!todayHasAnySession()) {
+      // 今日まだ記録が1件も無ければ、通常の「停止中」表示の代わりに
+      // 1日の最初に必ず押す定型の開始ボタンを表示する。
+      card.className = "card status-card day-start-card";
+      card.style.removeProperty("--project-color");
+      card.innerHTML =
+        '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle idle">☀</div>' +
+        '<p class="day-start-question">今日の業務を開始しますか？</p>' +
+        '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' +
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「経営」・業務内容「ルーティン」で開始します。</p>';
+      document.getElementById("dayStartBtn").addEventListener("click", function () {
+        if (!startDailyRoutineTask()) return;
         renderAll();
       });
     } else {
