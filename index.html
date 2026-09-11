@@ -169,6 +169,8 @@
   .plan-row:not(.done) .plan-row-title-line .number-badge { color: var(--text-primary); border-color: var(--border); }
   .plan-row-project { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .plan-row-memo { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .plan-row-remarks { font-size: 12px; color: var(--text-muted); }
+  .plan-row.done .plan-row-remarks { text-decoration: line-through; }
   .plan-row-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-start; }
   .plan-start-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 10px; font-weight: 700; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-start-btn:hover { background: var(--series-1); color: #fff; }
@@ -252,6 +254,7 @@
   .hist-seg-line { line-height: 1.6; }
   .hist-seg-total { font-weight: 700; color: var(--text-primary); margin-top: 2px; }
   .hist-entry-memo { font-size: 12px; color: var(--text-muted); }
+  .hist-entry-remarks { font-size: 12px; color: var(--text-muted); }
   .hist-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .hist-delete-btn { appearance: none; border: 1px solid var(--series-8); background: transparent; color: var(--series-8); font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-delete-btn:hover { background: var(--series-8); color: #fff; }
@@ -418,6 +421,10 @@
               <label class="field-label">番号</label>
               <input type="text" id="planNumberInput" placeholder="例、1_1">
               <div class="quick-suggest-row" id="planNumberSuggest"></div>
+            </div>
+            <div class="field-block">
+              <label class="field-label">備考</label>
+              <input type="text" id="planRemarksInput" placeholder="例、〆切延長の相談あり">
             </div>
             <div class="plan-add-btn-row">
               <button type="button" class="start-now-btn" id="startBtn">▶ 今すぐ開始</button>
@@ -931,12 +938,15 @@
       "（キャンセルすると、新しい別のタスクとして開始します）";
     return window.confirm(msg);
   }
-  // プロジェクト名・業務内容・番号を指定して、その場でタスクを開始する共通処理。
+  // プロジェクト名・業務内容・番号（・備考）を指定して、その場でタスクを開始する共通処理。
   // 「▶ 今すぐ開始」ボタンと、「今日の予定」の各項目の「▶ 開始」ボタンから共通で呼び出す
   // （どちらも「入力欄に転記してから改めて開始ボタンを押す」のではなく、その場で即座に開始する）。
   // 既存タスクへの自動紐づけは「今すぐ開始」と同じ基準で行う（confirmOpenTaskLink）。
+  // 備考はプロジェクト名・業務内容・番号と違い、タスクの識別には使わない
+  // （同じ備考かどうかで既存タスクへの紐づけ判定はしない）。あくまでこの回の記録に添える
+  // 自由記述のメモとして、開始するセッションにだけ記録する。
   // 開始できた場合は true、作業中・中断中・休憩中で開始できなかった場合は false を返す。
-  function startTaskNow(project, memo, number) {
+  function startTaskNow(project, memo, number, remarks) {
     if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
       window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
       return false;
@@ -946,7 +956,7 @@
 
     if (!task) task = createTask(project, memo, number);
     else applyTypedNumberToTask(task, number);
-    state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+    state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: remarks || "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
     persistState();
     return true;
   }
@@ -1307,6 +1317,7 @@
     var projectInput = document.getElementById("planProjectInput");
     var memoInput = document.getElementById("planMemoInput");
     var numberInput = document.getElementById("planNumberInput");
+    var remarksInput = document.getElementById("planRemarksInput");
     var addBtn = document.getElementById("planAddBtn");
     var startBtn = document.getElementById("startBtn");
     if (!projectInput || !memoInput || !numberInput || !addBtn) return;
@@ -1326,11 +1337,13 @@
       }
       var memo = memoInput.value.trim();
       var number = numberInput.value.trim();
-      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, number: number, done: false, createdAt: nowLocalIso(), createdAtMs: Date.now() });
+      var remarks = remarksInput ? remarksInput.value.trim() : "";
+      getPlans().push({ id: generateId(), date: todayDateInputValue(), project: project, memo: memo, number: number, remarks: remarks, done: false, createdAt: nowLocalIso(), createdAtMs: Date.now() });
       persistState();
       projectInput.value = "";
       memoInput.value = "";
       numberInput.value = "";
+      if (remarksInput) remarksInput.value = "";
       renderAll();
     });
 
@@ -1346,10 +1359,12 @@
         }
         var memo = memoInput.value.trim();
         var number = numberInput.value.trim();
-        if (!startTaskNow(project, memo, number)) return;
+        var remarks = remarksInput ? remarksInput.value.trim() : "";
+        if (!startTaskNow(project, memo, number, remarks)) return;
         projectInput.value = "";
         memoInput.value = "";
         numberInput.value = "";
+        if (remarksInput) remarksInput.value = "";
         renderAll();
       });
     }
@@ -1394,6 +1409,7 @@
           (isActivePlan ? ' <span class="plan-row-active-badge">● 実施中</span>' : '') +
           (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
           '</div>' +
+          (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
           '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' +
@@ -1487,7 +1503,7 @@
         var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
         if (!plan) return;
         // 入力欄に転記して改めて「今すぐ開始」を押してもらうのではなく、その場で即座に開始する。
-        if (!startTaskNow(plan.project, plan.memo || "", plan.number || "")) return;
+        if (!startTaskNow(plan.project, plan.memo || "", plan.number || "", plan.remarks || "")) return;
         renderAll();
       });
     });
@@ -1573,6 +1589,7 @@
         ? '<div class="hist-seg-line">' + escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '</div>' + sessionDetailHtml(s)
         : escapeHtml(formatDateHeading(s.start.slice(0, 10))) + '　' + sessionDetailHtml(s)) + '</div>' +
       (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
+      (s.remarks ? '<div class="hist-entry-remarks">備考：' + escapeHtml(s.remarks) + '</div>' : '') +
       '</div>' +
       '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
       '<button type="button" class="hist-delete-btn" data-id="' + escapeHtml(s.id) + '">削除</button></div>' +
@@ -1866,6 +1883,7 @@
             '<div class="hist-entry-name"><span class="project-dot" style="background:' + colorForProjectAndMemo(projectLabel(s), s.memo) + '"></span>' + (s.taskId ? '<span class="task-id-badge">' + escapeHtml(s.taskId) + '</span> ' : '') + escapeHtml(projectLabel(s)) + (s.number ? ' <span class="number-badge">' + escapeHtml(s.number) + '</span>' : '') + (e.isPart ? '<span class="part-tag">' + e.partIndex + '/' + e.partCount + '日目</span>' : '') + (partRunning ? '<span class="running-tag">作業中</span>' : '') + '</div>' +
             '<div class="hist-entry-detail">' + segsDetailHtml(segs) + '</div>' +
             (s.memo ? '<div class="hist-entry-memo">' + escapeHtml(s.memo) + '</div>' : '') +
+            (s.remarks ? '<div class="hist-entry-remarks">備考：' + escapeHtml(s.remarks) + '</div>' : '') +
             '</div>' +
             '<div class="hist-row-actions"><button type="button" class="hist-edit-btn" data-id="' + escapeHtml(s.id) + '">編集</button>' +
             '<button type="button" class="hist-delete-btn" data-id="' + escapeHtml(s.id) + '">削除</button></div>' +
@@ -3499,13 +3517,14 @@
   });
 
   document.getElementById("csvExportBtn").addEventListener("click", function () {
-    var rows = [["タスクID", "プロジェクト名", "業務内容", "番号", "日付", "開始時刻", "終了時刻", "作業時間(分)"]];
+    var rows = [["タスクID", "プロジェクト名", "業務内容", "番号", "備考", "日付", "開始時刻", "終了時刻", "作業時間(分)"]];
     state.sessions.slice().sort(function (a, b) { return a.start.localeCompare(b.start); }).forEach(function (s) {
       rows.push([
         s.taskId || "",
         projectLabel(s),
         s.memo || "",
         s.number || "",
+        s.remarks || "",
         s.start.slice(0, 10),
         formatTimeShort(s.start),
         s.end ? formatTimeShort(s.end) : "(作業中)",
