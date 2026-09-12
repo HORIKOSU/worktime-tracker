@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taskmark｜作業時間記録ツール</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234a3aa7'/%3E%3Crect x='14' y='15' width='36' height='9' rx='3' fill='%23ffffff'/%3E%3Crect x='27.5' y='15' width='9' height='34' rx='3' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script>/*!
  * Chart.js v4.4.4
  * https://www.chartjs.org
@@ -31,7 +34,12 @@
     --gridline:       #e1e0d9;
     --baseline:       #c3c2b7;
     --border:         rgba(11,11,11,0.10);
-    --series-1:       #2a78d6;
+    /* --series-1〜8 はチャート（集計タブのグラフ・履歴のプロジェクト色分けドット）とは連動していない
+       （それらはJS側で別に持つ固定のカラーパレットを使っている）。--series-1 はボタン・タブ・バッジなど
+       アプリ全体の基調色（プライマリカラー）としてのみ使われているため、2026-09の全体デザイン変更で
+       ここだけ新しい配色（Charcoal Slate）に差し替えている。--series-2（作業中）・--series-4（中断中）・
+       --series-8（削除など）は状態を表す意味を持つ色のため、今回のデザイン変更では変更していない。 */
+    --series-1:       #36454F;
     --series-2:       #eb6834;
     --series-3:       #1baf7a;
     --series-4:       #eda100;
@@ -41,19 +49,22 @@
     --series-8:       #e34948;
     --success:        #006300;
     --danger:         #c23b3b;
+    /* 2026-09 デザイン変更（Charcoal Slate配色）で追加した変数 */
+    --primary-deep:   #232C33;
+    --tint-sand:      #E2E5E7;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
-  header.app-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); background: var(--surface-1); }
-  header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
-  header.app-header p { margin: 0; font-size: 13px; color: var(--text-secondary); }
-  nav.tabs { display: flex; gap: 4px; padding: 10px 20px 0; background: var(--surface-1); border-bottom: 1px solid var(--border); overflow-x: auto; }
-  nav.tabs button { appearance: none; border: none; background: transparent; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
-  nav.tabs button.active { color: var(--series-1); border-bottom-color: var(--series-1); }
+  body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  header.app-header { padding: 24px 24px 20px; background: linear-gradient(135deg, var(--series-1) 0%, var(--primary-deep) 100%); }
+  header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
+  header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
+  nav.tabs { display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
+  nav.tabs button.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
   main { max-width: 920px; margin: 0 auto; padding: 20px; }
   section.panel { display: none; }
   section.panel.active { display: block; }
-  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
   .dashboard-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
   /* グリッドのアイテムは既定で min-width:auto となり、中に縮まない要素（表など）があると
      グリッド自体がはみ出してしまう（いわゆる grid blowout）。0 にして、はみ出た分は
@@ -69,11 +80,11 @@
   .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); max-width: 880px; padding: 14px 16px; }
   .card.plan-card h2 { color: #8a6300; margin-bottom: 8px; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
   .stat-tile .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  select { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 8px; background: var(--surface-1); color: var(--text-primary); }
-  input[type="text"], input[type="date"], input[type="time"] { font-family: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 8px; background: var(--surface-1); color: var(--text-primary); width: 100%; box-sizing: border-box; }
+  select { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 10px; background: var(--surface-1); color: var(--text-primary); }
+  input[type="text"], input[type="date"], input[type="time"] { font-family: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 10px; background: var(--surface-1); color: var(--text-primary); width: 100%; box-sizing: border-box; }
   .filter-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: flex-end; }
   .filter-item { display: flex; flex-direction: column; min-width: 160px; }
   label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
@@ -111,7 +122,7 @@
   .status-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
   .status-badge.idle { background: var(--page-plane); color: var(--text-secondary); border: 1px solid var(--border); }
   .status-badge.on-break { background: var(--series-4); color: #fff; }
-  .day-start-card { justify-content: center; border-color: var(--series-1); background: linear-gradient(180deg, #f2f7fd, var(--surface-1)); }
+  .day-start-card { justify-content: center; border-color: var(--series-1); background: linear-gradient(180deg, var(--tint-sand), var(--surface-1)); }
   .day-start-question { font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 4px 0 16px; }
   .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
@@ -151,7 +162,7 @@
   .plan-row.done .plan-row-field { color: var(--text-muted); text-decoration: line-through; }
   .plan-row.done .number-badge { color: var(--text-muted); border-color: var(--border); background: var(--page-plane); text-decoration: line-through; }
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
-  .plan-row.plan-row-active { background: #eaf2fc; border: 1px solid var(--series-1); }
+  .plan-row.plan-row-active { background: var(--tint-sand); border: 1px solid var(--series-1); }
   .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-1); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
