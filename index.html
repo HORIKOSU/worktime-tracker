@@ -162,8 +162,10 @@
   .plan-row.done .plan-row-field { color: var(--text-muted); text-decoration: line-through; }
   .plan-row.done .number-badge { color: var(--text-muted); border-color: var(--border); background: var(--page-plane); text-decoration: line-through; }
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
-  .plan-row.plan-row-active { background: var(--tint-sand); border: 1px solid var(--series-1); }
-  .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-1); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
+  /* 「実施中」は「グレーアウト（＝完了・非活性）」と混同されないよう、他の画面で「作業中」を
+     示すのに使っている暖色（series-2）に揃えている（tint-sandなどの灰色系は使わない）。 */
+  .plan-row.plan-row-active { background: linear-gradient(180deg, #fff7f2, var(--surface-1)); border: 1px solid var(--series-2); }
+  .plan-row-active-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-2); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
