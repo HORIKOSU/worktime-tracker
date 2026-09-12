@@ -2355,7 +2355,12 @@
     var order = businessAppearanceOrder();
     var idx = order.indexOf(key);
     if (idx === -1) idx = order.length;
-    return SERIES_COLORS[idx % SERIES_COLORS.length];
+    var base = SERIES_COLORS[idx % SERIES_COLORS.length];
+    // 業務の登録数がパレットの色数（13）を超えて一周すると、何もしなければ13個前の業務と
+    // 完全に同じ色になってしまう（例：14番目の業務が1番目と同じ色）。何周目かに応じて
+    // 明るさ（L）を少しずらし、一周しても完全に同じ色にはならないようにする（1周目はそのまま）。
+    var cycle = Math.floor(idx / SERIES_COLORS.length);
+    return cycle > 0 ? shadeHexColor(base, cycle) : base;
   }
   // 同じプロジェクト（業務）内で、業務内容（メモ）が違う記録を「近い色だが別の色」で見分けられるようにする。
   // 基本の色（colorForProject）はそのまま活かし、そのプロジェクト内で業務内容が最初に登場した順に
