@@ -379,9 +379,15 @@
   .name-row-edit { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 8px; }
   .name-edit-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
   .name-row-actions { display: flex; gap: 8px; }
-  .name-save-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
-  .name-save-btn:hover { opacity: 0.9; }
-  .name-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .name-save-btn, .name-color-save-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .name-save-btn:hover, .name-color-save-btn:hover { opacity: 0.9; }
+  .name-cancel-btn, .name-color-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  /* プロジェクト名の色を手動指定するためのUI（名称管理タブ）。 */
+  .name-color-swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; cursor: pointer; padding: 0; }
+  .name-row-color-edit { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 8px; flex-wrap: wrap; }
+  .name-color-edit-label { font-size: 12px; color: var(--text-secondary); flex: 1; min-width: 120px; }
+  .name-color-input { width: 44px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: none; }
+  .name-color-reset-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
   .names-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
   .names-grid > .card { margin-bottom: 0; min-width: 0; }
   .names-toggle-card summary { cursor: pointer; list-style: none; }
@@ -653,6 +659,7 @@
   var planEditingId = null; // 「今日の予定」で編集中の予定のID（1件のみ）
   var namesEditingKind = null; // 「名称管理」で編集中の種類（"project"|"memo"|"number"）。1件のみ
   var namesEditingValue = null; // 編集中の元の値（置き換え対象を特定するため）
+  var colorPickingValue = null; // 「名称管理」のプロジェクト名で、色を手動指定中の値（1件のみ）。null以外ならその値のプロジェクトの色編集UIを表示する
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
   // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
@@ -2227,8 +2234,21 @@
           '<input type="text" class="name-edit-input" value="' + escapeHtml(item.value) + '">' +
           '<div class="name-row-actions"><button type="button" class="name-save-btn">保存</button><button type="button" class="name-cancel-btn">キャンセル</button></div>' +
           '</div>';
+      } else if (kind === "project" && colorPickingValue === item.value) {
+        // プロジェクトの色を手動で指定するUI。保存すると自動計算より優先され、
+        // 「自動に戻す」で指定を解除して従来どおりの自動計算に戻せる。
+        html += '<div class="name-row-color-edit" data-value="' + escapeHtml(item.value) + '">' +
+          '<span class="name-color-edit-label">「' + escapeHtml(item.value) + '」の色</span>' +
+          '<input type="color" class="name-color-input" value="' + colorForProject(item.value) + '">' +
+          '<div class="name-row-actions">' +
+          '<button type="button" class="name-color-save-btn">保存</button>' +
+          '<button type="button" class="name-color-reset-btn">自動に戻す</button>' +
+          '<button type="button" class="name-color-cancel-btn">キャンセル</button>' +
+          '</div>' +
+          '</div>';
       } else {
         html += '<div class="name-row">' +
+          (kind === "project" ? '<button type="button" class="name-color-swatch" data-value="' + escapeHtml(item.value) + '" style="background:' + colorForProject(item.value) + ';" title="色を指定"></button>' : '') +
           '<span class="name-row-main">' +
           '<span class="name-row-text">' + escapeHtml(item.value) + '</span>' +
           (relatedText ? '<span class="name-row-projects">' + escapeHtml(relatedText) + '</span>' : '') +
@@ -2273,10 +2293,35 @@
     }
     if (!window.confirm(confirmMsg)) return;
     renameFieldValueEverywhere(kind, oldVal, newVal);
+    if (kind === "project") {
+      // プロジェクト名を変更・統合した場合、手動で指定した色もそのプロジェクト名に付いてくるように
+      // キーを移し替える。統合先（newVal）に既に別の色指定があれば、そちらを優先して残す。
+      var overrides = getProjectColorOverrides();
+      if (Object.prototype.hasOwnProperty.call(overrides, oldVal)) {
+        if (!Object.prototype.hasOwnProperty.call(overrides, newVal)) {
+          overrides[newVal] = overrides[oldVal];
+        }
+        delete overrides[oldVal];
+      }
+    }
     invalidateBusinessOrderCache();
     persistState();
     namesEditingKind = null;
     namesEditingValue = null;
+    renderAll();
+  }
+  function saveProjectColor(value, hex) {
+    var overrides = getProjectColorOverrides();
+    overrides[value] = hex;
+    persistState();
+    colorPickingValue = null;
+    renderAll();
+  }
+  function resetProjectColor(value) {
+    var overrides = getProjectColorOverrides();
+    delete overrides[value];
+    persistState();
+    colorPickingValue = null;
     renderAll();
   }
   function wireNamesTabOnce() {
@@ -2300,6 +2345,33 @@
       }
       var saveBtn = evt.target.closest ? evt.target.closest(".name-save-btn") : null;
       if (saveBtn) { saveNameEdit(saveBtn.closest(".name-row-edit")); return; }
+      var swatchBtn = evt.target.closest ? evt.target.closest(".name-color-swatch") : null;
+      if (swatchBtn) {
+        namesEditingKind = null;
+        namesEditingValue = null;
+        colorPickingValue = swatchBtn.getAttribute("data-value");
+        renderNamesTab();
+        return;
+      }
+      var colorCancelBtn = evt.target.closest ? evt.target.closest(".name-color-cancel-btn") : null;
+      if (colorCancelBtn) {
+        colorPickingValue = null;
+        renderNamesTab();
+        return;
+      }
+      var colorSaveBtn = evt.target.closest ? evt.target.closest(".name-color-save-btn") : null;
+      if (colorSaveBtn) {
+        var colorEditRow = colorSaveBtn.closest(".name-row-color-edit");
+        var colorInput = colorEditRow ? colorEditRow.querySelector(".name-color-input") : null;
+        if (colorEditRow && colorInput) saveProjectColor(colorEditRow.getAttribute("data-value"), colorInput.value);
+        return;
+      }
+      var colorResetBtn = evt.target.closest ? evt.target.closest(".name-color-reset-btn") : null;
+      if (colorResetBtn) {
+        var resetRow = colorResetBtn.closest(".name-row-color-edit");
+        if (resetRow) resetProjectColor(resetRow.getAttribute("data-value"));
+        return;
+      }
     });
     wrap.addEventListener("keydown", function (evt) {
       if (!evt.target.classList || !evt.target.classList.contains("name-edit-input")) return;
@@ -2352,8 +2424,17 @@
     businessOrderCache = null;
     memoOrderCache = {};
   }
+  // プロジェクトごとに手動で指定した色（自動計算より優先）。「名称管理」タブのプロジェクト名
+  // から指定できる。キーはプロジェクト名（トリム済みの全体）、値は#rrggbb。未指定のプロジェクトは
+  // 従来どおり自動計算される（2026-09-12追加）。
+  function getProjectColorOverrides() {
+    if (!state.projectColorOverrides) state.projectColorOverrides = {};
+    return state.projectColorOverrides;
+  }
   function colorForProject(name) {
     var key = businessLabel(name) || name || "";
+    var overrides = getProjectColorOverrides();
+    if (key && overrides[key]) return overrides[key];
     var order = businessAppearanceOrder();
     var idx = order.indexOf(key);
     if (idx === -1) idx = order.length;
