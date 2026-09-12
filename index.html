@@ -2322,16 +2322,17 @@
     var rounded = Math.round((sec / 3600) * 10) / 10;
     return rounded + "h";
   }
-  // プロジェクト名の先頭の単語（空白区切り）を「業務」とみなし、業務ごとに色を決める。
-  // 例：「TikTok運用代行 〇〇様」→ 業務は「TikTok運用代行」。
+  // プロジェクト名欄に入力した文字列全体（クライアント名なども含む）を色分けの単位とする。
+  // 以前は先頭の単語だけを「業務」とみなして色分けしていたが、「プロジェクトごとに色を分けたい」
+  // というご要望を受けて、プロジェクト名全体を単位にするよう変更した（2026-09-12）。
+  // 変数・関数名には歴史的経緯で"business"という語が残っているが、実質的には
+  // 「プロジェクト名（トリム済みの全体）」を指す。
   function businessLabel(project) {
-    var trimmed = (project || "").trim();
-    if (!trimmed) return "";
-    return trimmed.split(/\s+/)[0];
+    return (project || "").trim();
   }
-  // 業務名ごとの色は「最初に登場した順」で12色を順番に割り当てる（ハッシュ方式だと、
-  // 業務の数が色数より少なくても偶然同じ色にぶつかり、色のレパートリーが無駄になっていたため）。
-  // これにより、登場する業務が色数の範囲内であれば必ず異なる色になる。
+  // プロジェクト名ごとの色は「最初に登場した順」で13色を順番に割り当てる（ハッシュ方式だと、
+  // プロジェクトの数が色数より少なくても偶然同じ色にぶつかり、色のレパートリーが無駄になっていたため）。
+  // これにより、登場するプロジェクトが色数の範囲内であれば必ず異なる色になる。
   var businessOrderCache = null;
   function businessAppearanceOrder() {
     if (businessOrderCache) return businessOrderCache;
@@ -2356,13 +2357,14 @@
     var idx = order.indexOf(key);
     if (idx === -1) idx = order.length;
     var base = SERIES_COLORS[idx % SERIES_COLORS.length];
-    // 業務の登録数がパレットの色数（13）を超えて一周すると、何もしなければ13個前の業務と
-    // 完全に同じ色になってしまう（例：14番目の業務が1番目と同じ色）。何周目かに応じて
-    // 明るさ（L）を少しずらし、一周しても完全に同じ色にはならないようにする（1周目はそのまま）。
+    // プロジェクトの登録数がパレットの色数（13）を超えて一周すると、何もしなければ13個前の
+    // プロジェクトと完全に同じ色になってしまう（例：14番目のプロジェクトが1番目と同じ色）。
+    // 何周目かに応じて明るさ（L）を少しずらし、一周しても完全に同じ色にはならないようにする
+    // （1周目はそのまま）。
     var cycle = Math.floor(idx / SERIES_COLORS.length);
     return cycle > 0 ? shadeHexColor(base, cycle) : base;
   }
-  // 同じプロジェクト（業務）内で、業務内容（メモ）が違う記録を「近い色だが別の色」で見分けられるようにする。
+  // 同じプロジェクト内で、業務内容（メモ）が違う記録を「近い色だが別の色」で見分けられるようにする。
   // 基本の色（colorForProject）はそのまま活かし、そのプロジェクト内で業務内容が最初に登場した順に
   // 明るさ（L）だけをずらしていく。最初に登場した業務内容（またはメモなし）は基本の色のまま。
   function memoAppearanceOrderForBusiness(business) {
@@ -2418,8 +2420,8 @@
     if (newL > 0.68) newL = 0.68;
     return hslToHex(hsl.h, hsl.s, newL);
   }
-  // プロジェクト名・業務内容の組み合わせで色を決める（表示用）。集計グラフなど、業務内容の区別が
-  // 不要な「プロジェクト単位」の表示では、これではなく colorForProject をそのまま使う。
+  // プロジェクト名（全体）・業務内容の組み合わせで色を決める（表示用）。集計グラフなど、業務内容の
+  // 区別が不要な「プロジェクト単位」の表示では、これではなく colorForProject をそのまま使う。
   function colorForProjectAndMemo(project, memo) {
     var base = colorForProject(project);
     var business = businessLabel(project) || project || "";
