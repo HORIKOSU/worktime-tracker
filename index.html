@@ -163,12 +163,13 @@
   .plan-row.done .number-badge { color: var(--text-muted); border-color: var(--border); background: var(--page-plane); text-decoration: line-through; }
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
   /* 「実施中」は「グレーアウト（＝完了・非活性）」と混同されないよう、他の画面で「作業中」を
-     示すのに使っている暖色系だが、行全体を太い枠＋右上のタグバッジだけで目立たせる案（案B）を採用。
+     示すのに使っている暖色系だが、行全体を太い枠＋左上のタグバッジだけで目立たせる案（案B）を採用。
      枠・バッジの色は通常の--series-2よりも一段濃いオレンジ（#b04e27）にして、白背景でもはっきり分かるようにしている。
      背景も同じ濃色系からティントした色（#f8dcc9）にして、白背景の他の行と見分けやすくしている。
-     --series-2自体（作業中の状態色）は他の画面と共通のまま変更していない。 */
+     --series-2自体（作業中の状態色）は他の画面と共通のまま変更していない。
+     バッジは当初右上に配置していたが、「左上にしたい」というご要望で左上に変更した（2026-09-12）。 */
   .plan-row.plan-row-active { background: #f8dcc9; border: 2px solid #b04e27; }
-  .plan-row-active-badge { position: absolute; top: -9px; right: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #b04e27; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+  .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #b04e27; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
