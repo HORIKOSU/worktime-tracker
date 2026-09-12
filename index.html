@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234a3aa7'/%3E%3Crect x='14' y='15' width='36' height='9' rx='3' fill='%23ffffff'/%3E%3Crect x='27.5' y='15' width='9' height='34' rx='3' fill='%23ffffff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script>/*!
  * Chart.js v4.4.4
  * https://www.chartjs.org
@@ -33,13 +33,13 @@
     --text-muted:     #898781;
     --gridline:       #e1e0d9;
     --baseline:       #c3c2b7;
-    --border:         rgba(11,11,11,0.10);
+    --border:         rgba(52,88,73,0.14);
     /* --series-1〜8 はチャート（集計タブのグラフ・履歴のプロジェクト色分けドット）とは連動していない
        （それらはJS側で別に持つ固定のカラーパレットを使っている）。--series-1 はボタン・タブ・バッジなど
-       アプリ全体の基調色（プライマリカラー）としてのみ使われているため、2026-09の全体デザイン変更で
-       ここだけ新しい配色（Charcoal Slate）に差し替えている。--series-2（作業中）・--series-4（中断中）・
-       --series-8（削除など）は状態を表す意味を持つ色のため、今回のデザイン変更では変更していない。 */
-    --series-1:       #36454F;
+       アプリ全体の基調色（プライマリカラー）としてのみ使われているため、デザイン変更のたびにここだけを
+       差し替えている（2026-09にCharcoal Slateへ、同月中に「セージの余白」案へ再変更）。--series-2（作業中）・
+       --series-4（中断中）・--series-8（削除など）は状態を表す意味を持つ色のため、変更していない。 */
+    --series-1:       #4F7863;
     --series-2:       #eb6834;
     --series-3:       #1baf7a;
     --series-4:       #eda100;
@@ -49,12 +49,14 @@
     --series-8:       #e34948;
     --success:        #006300;
     --danger:         #c23b3b;
-    /* 2026-09 デザイン変更（Charcoal Slate配色）で追加した変数 */
-    --primary-deep:   #232C33;
-    --tint-sand:      #E2E5E7;
+    /* 「セージの余白」配色（2026-09）で使う変数。--primary-deep はヘッダーのグラデーション終端、
+       --tint-sand は「今日の業務を開始しますか？」カードなどの淡いタイント用（名前は旧配色からの
+       流用だが、値はセージ寄りの薄緑にしている） */
+    --primary-deep:   #345849;
+    --tint-sand:      #E7EEE6;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  body { margin: 0; font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Yu Gothic', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
   header.app-header { padding: 24px 24px 20px; background: linear-gradient(135deg, var(--series-1) 0%, var(--primary-deep) 100%); }
   header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
   header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
@@ -64,7 +66,7 @@
   main { max-width: 920px; margin: 0 auto; padding: 20px; }
   section.panel { display: none; }
   section.panel.active { display: block; }
-  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 6px 18px -12px rgba(52,88,73,0.30); }
   .dashboard-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
   /* グリッドのアイテムは既定で min-width:auto となり、中に縮まない要素（表など）があると
      グリッド自体がはみ出してしまう（いわゆる grid blowout）。0 にして、はみ出た分は
@@ -80,11 +82,11 @@
   .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); max-width: 880px; padding: 14px 16px; }
   .card.plan-card h2 { color: #8a6300; margin-bottom: 8px; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; box-shadow: 0 4px 14px -10px rgba(52,88,73,0.30); }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
   .stat-tile .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  select { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 10px; background: var(--surface-1); color: var(--text-primary); }
-  input[type="text"], input[type="date"], input[type="time"] { font-family: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 10px; background: var(--surface-1); color: var(--text-primary); width: 100%; box-sizing: border-box; }
+  select { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 14px; background: var(--surface-1); color: var(--text-primary); }
+  input[type="text"], input[type="date"], input[type="time"] { font-family: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--baseline); border-radius: 14px; background: var(--surface-1); color: var(--text-primary); width: 100%; box-sizing: border-box; }
   .filter-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: flex-end; }
   .filter-item { display: flex; flex-direction: column; min-width: 160px; }
   label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
@@ -134,7 +136,7 @@
   .timer-session-block { margin-top: 14px; }
   .timer-session-elapsed { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
-  .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
+  .status-form input[type="text"] { padding: 12px 14px; border-radius: 14px; }
   .status-form .field-block { display: flex; flex-direction: column; gap: 0; }
   .quick-suggest-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .suggest-chip { appearance: none; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-secondary); font-size: 12px; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
@@ -144,9 +146,9 @@
   .plan-add-form .field-block { display: flex; flex-direction: column; gap: 0; }
   .plan-add-form input[type="text"] { padding: 10px 12px; border-radius: 8px; }
   .plan-add-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .start-now-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  .start-now-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 12px; cursor: pointer; }
   .start-now-btn:hover { opacity: 0.9; }
-  .plan-add-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  .plan-add-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 12px; cursor: pointer; }
   .plan-add-btn:hover { background: var(--series-1); color: #fff; }
   /* 一覧は2カラムのグリッドで表示（新規追加フォームは一覧の下に固定配置） */
   #planListWrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; }
@@ -154,7 +156,7 @@
   .plan-done-section { grid-column: 1 / -1; max-width: 100%; margin: 4px 0 0; text-align: left; }
   .plan-done-section summary { font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 6px 2px; text-align: left; }
   .plan-done-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px; }
-  .plan-row { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .plan-row { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; }
   /* チェック済みは「白いカード」から「背景に沈んだ点線の枠」に変わり、文字も薄く・打ち消し線付きになることで、
      未チェックのもの（白背景・通常の文字）とひと目で区別できるようにする。チェックボックス自体は
      見えづらくならないよう、行全体を薄くする（opacity）のではなく色・線だけを変える方式にしている。 */
@@ -197,7 +199,7 @@
   .plan-edit-form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
   .plan-edit-form .field-block { display: flex; flex-direction: column; gap: 0; }
   .plan-edit-form input[type="text"] { padding: 8px 10px; border-radius: 8px; }
-  .big-btn { appearance: none; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
+  .big-btn { appearance: none; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; padding: 14px 22px; cursor: pointer; width: 100%; max-width: 380px; margin: 20px auto 0; display: block; }
   .big-btn.start { background: var(--series-1); color: #fff; }
   .big-btn.start:hover { opacity: 0.92; }
   .big-btn.break { background: var(--series-4); color: #fff; }
