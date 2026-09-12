@@ -154,7 +154,7 @@
   .plan-done-section { grid-column: 1 / -1; max-width: 100%; margin: 4px 0 0; text-align: left; }
   .plan-done-section summary { font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 6px 2px; text-align: left; }
   .plan-done-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px; }
-  .plan-row { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .plan-row { position: relative; display: flex; align-items: flex-start; gap: 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   /* チェック済みは「白いカード」から「背景に沈んだ点線の枠」に変わり、文字も薄く・打ち消し線付きになることで、
      未チェックのもの（白背景・通常の文字）とひと目で区別できるようにする。チェックボックス自体は
      見えづらくならないよう、行全体を薄くする（opacity）のではなく色・線だけを変える方式にしている。 */
@@ -163,9 +163,11 @@
   .plan-row.done .number-badge { color: var(--text-muted); border-color: var(--border); background: var(--page-plane); text-decoration: line-through; }
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
   /* 「実施中」は「グレーアウト（＝完了・非活性）」と混同されないよう、他の画面で「作業中」を
-     示すのに使っている暖色（series-2）に揃えている（tint-sandなどの灰色系は使わない）。 */
-  .plan-row.plan-row-active { background: linear-gradient(180deg, #fff1e6, var(--surface-1)); border: 1px solid var(--series-2); border-left: 4px solid var(--series-2); padding-left: 9px; box-shadow: 0 2px 10px rgba(235,104,52,0.22); }
-  .plan-row-active-badge { display: inline-block; font-size: 11px; font-weight: 800; color: #fff; background: var(--series-2); border-radius: 999px; padding: 2px 10px; margin-left: 4px; vertical-align: middle; box-shadow: 0 1px 3px rgba(235,104,52,0.35); }
+     示すのに使っている暖色系だが、行の背景は白のまま太い枠＋右上のタグバッジだけで目立たせる案（案B）を採用。
+     枠・バッジの色は通常の--series-2よりも一段濃いオレンジ（#b04e27）にして、白背景でもはっきり分かるようにしている。
+     --series-2自体（作業中の状態色）は他の画面と共通のまま変更していない。 */
+  .plan-row.plan-row-active { background: var(--surface-1); border: 2px solid #b04e27; }
+  .plan-row-active-badge { position: absolute; top: -9px; right: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #b04e27; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
