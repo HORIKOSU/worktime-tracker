@@ -59,10 +59,10 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
-  header.app-header { padding: 24px 24px 20px; background: var(--series-1); }
+  header.app-header { max-width: 920px; margin: 0 auto; padding: 24px 20px 20px; background: var(--series-1); }
   header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
   header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
-  nav.tabs { display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
   nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
   nav.tabs button.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
   main { max-width: 920px; margin: 0 auto; padding: 20px; }
