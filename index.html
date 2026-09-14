@@ -25,37 +25,41 @@
 </script>
 <style>
   :root.viz-root, .viz-root {
-    color-scheme: light;
-    --surface-1:      #fcfcfb;
-    --page-plane:     #f9f9f7;
-    --text-primary:   #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted:     #898781;
-    --gridline:       #e1e0d9;
-    --baseline:       #c3c2b7;
-    --border:         rgba(11,11,11,0.10);
+    color-scheme: dark;
+    --surface-1:      #1c2027;
+    --page-plane:     #14171c;
+    --text-primary:   #eef1ee;
+    --text-secondary: #a9b0ad;
+    --text-muted:     #6f7670;
+    --gridline:       #2a2f37;
+    --baseline:       #3a4048;
+    --border:         rgba(140,160,200,0.16);
     /* --series-1〜8 はチャート（集計タブのグラフ・履歴のプロジェクト色分けドット）とは連動していない
        （それらはJS側で別に持つ固定のカラーパレットを使っている）。--series-1 はボタン・タブ・バッジなど
-       アプリ全体の基調色（プライマリカラー）としてのみ使われているため、2026-09の全体デザイン変更で
-       ここだけ新しい配色（Charcoal Slate）に差し替えている。--series-2（作業中）・--series-4（中断中）・
-       --series-8（削除など）は状態を表す意味を持つ色のため、今回のデザイン変更では変更していない。 */
-    --series-1:       #36454F;
+       アプリ全体の基調色（プライマリカラー）としてのみ使われているため、2026-0914の配色変更で
+       ここだけ新しい配色（ダークグリーン）に差し替えている。--series-2（作業中）・--series-4（中断中）は
+       状態を表す意味を持つ色のため、今回のデザイン変更でも色相は変更していない（--series-8＝削除などの
+       危険操作は暗い背景でも視認できるよう明度のみ引き上げた）。--series-3/5/6/7 は現在CSS上どこからも
+       参照されていない未使用の変数（過去のカラーパレットの名残）のため、今回は値を変更していない。 */
+    --series-1:       #3fae79;
     --series-2:       #eb6834;
     --series-3:       #1baf7a;
     --series-4:       #eda100;
     --series-5:       #e87ba4;
     --series-6:       #008300;
     --series-7:       #4a3aa7;
-    --series-8:       #e34948;
-    --success:        #006300;
-    --danger:         #c23b3b;
-    /* 2026-09 デザイン変更（Charcoal Slate配色）で追加した変数 */
-    --primary-deep:   #232C33;
-    --tint-sand:      #E2E5E7;
+    --series-8:       #ff6b6a;
+    --success:        #3fae79;
+    --danger:         #e0605f;
+    /* 2026-09-14 デザイン変更（ダークグリーン配色）で値を差し替えた変数。
+       --primary-deep はヘッダーのグラデーションが不要になった（フラットな単色に変更）ため、
+       現状CSS上は未使用（将来グラデーション等で使う可能性を考慮し変数自体は残している）。 */
+    --primary-deep:   #2a6e4c;
+    --tint-sand:      #21362a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
-  header.app-header { padding: 24px 24px 20px; background: linear-gradient(135deg, var(--series-1) 0%, var(--primary-deep) 100%); }
+  header.app-header { padding: 24px 24px 20px; background: var(--series-1); }
   header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
   header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
   nav.tabs { display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
@@ -77,8 +81,8 @@
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
   /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く。
      場所を取りすぎないよう、横幅と余白は他のカードより小さくしてある。 */
-  .card.plan-card { background: rgba(237,161,0,0.07); border: 1px solid rgba(237,161,0,0.32); max-width: 880px; padding: 14px 16px; }
-  .card.plan-card h2 { color: #8a6300; margin-bottom: 8px; }
+  .card.plan-card { background: rgba(237,161,0,0.12); border: 1px solid rgba(237,161,0,0.40); max-width: 880px; padding: 14px 16px; }
+  .card.plan-card h2 { color: #eab54a; margin-bottom: 8px; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -113,8 +117,8 @@
   /* status card / timer */
   .status-card { text-align: center; padding: 20px 18px; min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
   .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
-  .status-card.running { border-color: var(--project-color, var(--series-2)); background: linear-gradient(180deg, #fff7f2, var(--surface-1)); }
-  .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #fffaf0, var(--surface-1)); }
+  .status-card.running { border-color: var(--project-color, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
+  .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #2b2417, var(--surface-1)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -164,12 +168,13 @@
   .plan-row-done-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
   /* 「実施中」は「グレーアウト（＝完了・非活性）」と混同されないよう、他の画面で「作業中」を
      示すのに使っている暖色系だが、行全体を太い枠＋左上のタグバッジだけで目立たせる案（案B）を採用。
-     枠・バッジの色は通常の--series-2よりも一段濃いオレンジ（#b04e27）にして、白背景でもはっきり分かるようにしている。
-     背景も同じ濃色系からティントした色（#f8dcc9）にして、白背景の他の行と見分けやすくしている。
+     枠・バッジの色は通常の--series-2よりも一段濃いオレンジ（#d9702f）にして、暗い背景でもはっきり分かるようにしている。
+     背景も同じ暖色系の暗いティント（#3a2417）にして、周囲の他の行（--surface-1）と見分けやすくしている。
      --series-2自体（作業中の状態色）は他の画面と共通のまま変更していない。
-     バッジは当初右上に配置していたが、「左上にしたい」というご要望で左上に変更した（2026-09-12）。 */
-  .plan-row.plan-row-active { background: #f8dcc9; border: 2px solid #b04e27; }
-  .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #b04e27; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+     バッジは当初右上に配置していたが、「左上にしたい」というご要望で左上に変更した（2026-09-12）。
+     2026-09-14：ダークグリーン配色への全体変更に合わせて、枠・バッジ・背景の色を暗い背景用に調整した。 */
+  .plan-row.plan-row-active { background: #3a2417; border: 2px solid #d9702f; }
+  .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #d9702f; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
@@ -252,7 +257,7 @@
   .hist-entry.is-running { border-color: var(--series-2); }
   .hist-entry.is-editing-elsewhere { opacity: 0.6; border-style: dashed; }
   .hist-entry-name .part-tag { font-size: 10px; font-weight: 700; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
-  .hist-break-entry { background: #fffaf0; border-color: var(--series-4); }
+  .hist-break-entry { background: #2b2417; border-color: var(--series-4); }
   .hist-break-entry.is-running { border-color: var(--series-4); }
   /* 最近の記録：同じタスクの記録を日付をまたいで1つのくくりにまとめた表示 */
   .recent-task-group { background: var(--page-plane); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; }
@@ -287,12 +292,12 @@
   .hist-edit-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
   .hist-edit-field input, .hist-edit-field select { width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
   .hist-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .seg-break-row { background: #fffaf0; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
-  .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #92720f; margin-bottom: 6px; }
+  .seg-break-row { background: #2b2417; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #d9a441; margin-bottom: 6px; }
   .e-break-remove { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .e-break-remove:hover { background: var(--page-plane); }
-  .e-add-break { appearance: none; border: 1px dashed var(--series-4); background: transparent; color: #92720f; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-  .e-add-break:hover { background: #fffaf0; }
+  .e-add-break { appearance: none; border: 1px dashed var(--series-4); background: transparent; color: #d9a441; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .e-add-break:hover { background: #2b2417; }
 
   /* schedule tab: month calendar + day timeline */
   .mode-toggle { display: flex; gap: 4px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
@@ -318,7 +323,7 @@
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
   .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; text-align: center; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
-  .day-break-block { background: repeating-linear-gradient(45deg, #fff8ea, #fff8ea 6px, #ffedc2 6px, #ffedc2 12px); border: 1px dashed var(--series-4); color: #8a6a10; }
+  .day-break-block { background: repeating-linear-gradient(45deg, #2b2417, #2b2417 6px, #3a2f1a 6px, #3a2f1a 12px); border: 1px dashed var(--series-4); color: #e3b563; }
   .day-break-block .day-segment-name { font-weight: 700; }
   .day-break-block.running { box-shadow: 0 0 0 2px var(--series-4); }
   .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; flex: 0 1 auto; }
@@ -327,7 +332,7 @@
   .day-now-line::before { content: ""; position: absolute; left: 50px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
   .resize-handle { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; z-index: 3; touch-action: none; }
   .resize-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 26px; height: 3px; margin-left: -13px; margin-top: -1.5px; border-radius: 2px; background: rgba(255,255,255,0.85); opacity: 0; transition: opacity 0.12s; }
-  .day-break-block .resize-handle::after { background: rgba(138,106,16,0.55); }
+  .day-break-block .resize-handle::after { background: rgba(227,181,99,0.55); }
   .resize-handle-top { top: -3px; }
   .resize-handle-bottom { bottom: -3px; }
   .day-segment-block:hover .resize-handle::after, .day-segment-block.resizing .resize-handle::after { opacity: 1; }
