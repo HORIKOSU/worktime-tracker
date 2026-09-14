@@ -117,7 +117,7 @@
   /* status card / timer */
   .status-card { text-align: center; padding: 20px 18px; min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
   .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
-  .status-card.running { border-color: var(--project-color, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
+  .status-card.running { border-color: var(--project-color-text, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
   .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #2b2417, var(--surface-1)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
@@ -130,7 +130,7 @@
   .day-start-question { font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 4px 0 16px; }
   .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-  .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color, var(--series-1)); margin-bottom: 4px; }
+  .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color-text, var(--series-1)); margin-bottom: 4px; }
   .timer-total-line { display: flex; align-items: baseline; justify-content: center; gap: 6px; margin: 2px 0; }
   .timer-total-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
@@ -1161,7 +1161,9 @@
       }
       var taskFirstStartDateDisplay = formatDateHeading(splitIso(taskFirstStart).date);
       card.className = "card status-card running";
-      card.style.setProperty("--project-color", colorForProjectAndMemo(projectLabel(running), running.memo));
+      var runningProjectColor = colorForProjectAndMemo(projectLabel(running), running.memo);
+      card.style.setProperty("--project-color", runningProjectColor);
+      card.style.setProperty("--project-color-text", readableTextColor(runningProjectColor, 0.68));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
@@ -1192,7 +1194,9 @@
       var onBreak = getOnBreakSession();
       var onBreakTask = onBreak.taskId ? getTaskById(onBreak.taskId) : null;
       card.className = "card status-card on-break";
-      card.style.setProperty("--project-color", colorForProjectAndMemo(projectLabel(onBreak), onBreak.memo));
+      var onBreakProjectColor = colorForProjectAndMemo(projectLabel(onBreak), onBreak.memo);
+      card.style.setProperty("--project-color", onBreakProjectColor);
+      card.style.setProperty("--project-color-text", readableTextColor(onBreakProjectColor, 0.68));
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">■</div>' +
@@ -1217,6 +1221,7 @@
       var activeGeneralBreak = getActiveGeneralBreak();
       card.className = "card status-card on-break";
       card.style.removeProperty("--project-color");
+      card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">☕</div>' +
@@ -1235,6 +1240,7 @@
       // 1日の最初に必ず押す定型の開始ボタンを表示する。
       card.className = "card status-card day-start-card";
       card.style.removeProperty("--project-color");
+      card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle idle">☀</div>' +
@@ -1248,6 +1254,7 @@
     } else {
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
+      card.style.removeProperty("--project-color-text");
 
       card.innerHTML =
         '<h2>現在の状況</h2>' +
@@ -2507,6 +2514,17 @@
     if (newL > 0.68) newL = 0.68;
     return hslToHex(hsl.h, hsl.s, newL);
   }
+  // 2026-09-14 ダーク配色化に伴い追加：プロジェクトごとの自動色（SERIES_COLORS）の中には
+  // 緑・紺・茶など暗めの色も含まれており、そのまま暗い背景の上に文字色・枠線として使うと
+  // 読みにくくなる（例：#008300はダーク背景とのコントラスト比3.2:1で基準4.5:1を下回る）。
+  // 明度（L）が一定以上ある色相はそのまま、低い色相だけ明度を底上げして、どの色が
+  // 割り当たっても文字・枠線として十分読める濃さを保証する（色相・彩度は変えないため、
+  // その項目の「色」としての同一性・見分けやすさは維持される）。
+  function readableTextColor(hex, minL) {
+    var hsl = hexToHsl(hex);
+    var l = hsl.l < minL ? minL : hsl.l;
+    return hslToHex(hsl.h, hsl.s, l);
+  }
   // プロジェクト名（全体）・業務内容の組み合わせで色を決める（表示用）。集計グラフなど、業務内容の
   // 区別が不要な「プロジェクト単位」の表示では、これではなく colorForProject をそのまま使う。
   function colorForProjectAndMemo(project, memo) {
@@ -3466,8 +3484,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.y + " 時間"; } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#898781", font: { size: 10 }, maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { color: "#898781", font: { size: 11 } }, grid: { color: "#e1e0d9" } }
+          x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+          y: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } }
         }
       }
     });
@@ -3496,8 +3514,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.y + " 時間"; } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#898781", font: { size: 11 } } },
-          y: { beginAtZero: true, ticks: { color: "#898781", font: { size: 11 } }, grid: { color: "#e1e0d9" } }
+          x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 11 } } },
+          y: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } }
         }
       }
     });
@@ -3548,8 +3566,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.x + " 時間"; } } } },
         scales: {
-          x: { beginAtZero: true, ticks: { color: "#898781", font: { size: 11 } }, grid: { color: "#e1e0d9" } },
-          y: { grid: { display: false }, ticks: { color: "#52514e", font: { size: 12 } } }
+          x: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } },
+          y: { grid: { display: false }, ticks: { color: "#eef1ee", font: { size: 12 } } }
         }
       }
     });
