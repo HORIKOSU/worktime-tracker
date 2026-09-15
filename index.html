@@ -194,7 +194,11 @@
   .plan-row-drag-handle { flex-shrink: 0; width: 18px; height: 34px; margin-top: 2px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; align-content: center; justify-items: center; cursor: grab; touch-action: none; }
   .plan-row-drag-handle span { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
   .plan-row-drag-handle:active { cursor: grabbing; }
-  .plan-row.plan-row-dragging { opacity: 0.5; }
+  /* 並び替え中の行がヌルっと滑るように動くよう、位置移動にトランジションをかける
+     （FLIPアニメーション。JS側で「移動前の位置に一旦ずらして配置 → transformを0に戻す」ことで
+     アニメーションさせている。ドラッグ中の行だけ opacity/box-shadow で浮いた見た目にする）。 */
+  .plan-row { transition: transform 0.18s ease; }
+  .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 8px 20px rgba(0,0,0,0.45); }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
   .plan-row-seq { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; background: var(--page-plane); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
@@ -1640,10 +1644,35 @@
           var atPoint = document.elementFromPoint(ev.clientX, ev.clientY);
           var targetRow = atPoint ? atPoint.closest(".plan-row") : null;
           if (!targetRow || targetRow === row || !container.contains(targetRow)) return;
+
+          // FLIP（First・Last・Invert・Play）で、並び替えで位置が変わる行をヌルっと
+          // アニメーションさせる。①並び替え前（First）の各行の位置を記録→②実際にDOM上で
+          // 並び替え→③並び替え後（Last）の位置との差分だけ逆方向にずらして配置（Invert）→
+          // ④transitionをかけてそのズレを0に戻すことで、あたかも滑らかに移動したように見せる（Play）。
+          var rowEls = Array.prototype.slice.call(container.querySelectorAll(".plan-row"));
+          var firstRects = {};
+          rowEls.forEach(function (r) { firstRects[r.getAttribute("data-plan-id")] = r.getBoundingClientRect(); });
+
           var rect = targetRow.getBoundingClientRect();
           var insertBefore = (ev.clientX - rect.left) < rect.width / 2;
           if (insertBefore) container.insertBefore(row, targetRow);
           else container.insertBefore(row, targetRow.nextSibling);
+
+          rowEls.forEach(function (r) {
+            var first = firstRects[r.getAttribute("data-plan-id")];
+            if (!first) return;
+            var last = r.getBoundingClientRect();
+            var dx = first.left - last.left;
+            var dy = first.top - last.top;
+            if (!dx && !dy) return;
+            r.style.transition = "none";
+            r.style.transform = "translate(" + dx + "px," + dy + "px)";
+            r.getBoundingClientRect(); // 強制リフロー（この時点のtransformを確実に反映させてから、次のtransitionを効かせるため）
+            requestAnimationFrame(function () {
+              r.style.transition = "";
+              r.style.transform = "";
+            });
+          });
         }
         function onUp() {
           document.removeEventListener("pointermove", onMove);
