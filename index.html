@@ -198,7 +198,7 @@
      （FLIPアニメーション。JS側で「移動前の位置に一旦ずらして配置 → transformを0に戻す」ことで
      アニメーションさせている。ドラッグ中の行だけ opacity/box-shadow で浮いた見た目にする）。 */
   .plan-row { transition: transform 0.18s ease; }
-  .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 8px 20px rgba(0,0,0,0.45); }
+  .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 10px 24px rgba(0,0,0,0.5); }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。
      2026-09-15：「番号を目立たせて欲しい」とのご要望で、地味なグレーの縁取りだけの丸から、
@@ -1610,6 +1610,10 @@
   //   含む行自体をDOM上で動かすため、もし移動先の要素（ハンドル）側でイベントを拾おうとすると、
   //   ブラウザによってはポインターキャプチャがうまく追従せず、以降のイベントが届かなくなることが
   //   あるため（実機検証で確認済み）。documentに登録すればDOMの並び替えの影響を受けない。
+  // 掴んだ瞬間に「掴んだ感」を出すため、つまみ上げるように一瞬だけ拡大させる倍率。
+  // ドラッグ中はこの拡大を保ったまま移動・並び替えのアニメーションと共存させる必要があるため、
+  // 定数化してFLIPアニメーション側（onMove内）でも同じ値を使い回す。
+  var PLAN_DRAG_SCALE = "scale(1.04)";
   function initPlanDragReorder(container) {
     if (!container) return;
     container.querySelectorAll(".plan-row-drag-handle").forEach(function (handle) {
@@ -1619,6 +1623,11 @@
         if (!row) return;
         e.preventDefault();
         row.classList.add("plan-row-dragging");
+        // 掴んだ瞬間にふわっと持ち上がるように、短いトランジションで一気に拡大させる
+        // （その後のFLIPアニメーション用の0.18sトランジションより速く・弾みをつけて、
+        // 「つまみ上げた」ことがはっきり分かるようにするため、ここだけ別のイージングにしている）。
+        row.style.transition = "transform 0.12s cubic-bezier(.34,1.56,.64,1)";
+        row.style.transform = PLAN_DRAG_SCALE;
 
         function onMove(ev) {
           var atPoint = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -1644,13 +1653,18 @@
             var last = r.getBoundingClientRect();
             var dx = first.left - last.left;
             var dy = first.top - last.top;
-            if (!dx && !dy) return;
+            // ドラッグ中の行自身は「掴んだ」拡大（PLAN_DRAG_SCALE）を維持したまま移動させる。
+            // ここでtranslateだけのtransformに置き換えてしまうと、並び替えるたびに
+            // 拡大が一瞬消えて元に戻ってしまう（ポコポコ点滅して見える）ため、常に付け足す。
+            var isDraggedRow = r === row;
+            if (!dx && !dy && !isDraggedRow) return;
+            var scaleSuffix = isDraggedRow ? " " + PLAN_DRAG_SCALE : "";
             r.style.transition = "none";
-            r.style.transform = "translate(" + dx + "px," + dy + "px)";
+            r.style.transform = "translate(" + dx + "px," + dy + "px)" + scaleSuffix;
             r.getBoundingClientRect(); // 強制リフロー（この時点のtransformを確実に反映させてから、次のtransitionを効かせるため）
             requestAnimationFrame(function () {
               r.style.transition = "";
-              r.style.transform = "";
+              r.style.transform = scaleSuffix ? PLAN_DRAG_SCALE : "";
             });
           });
         }
@@ -1659,6 +1673,8 @@
           document.removeEventListener("pointerup", onUp);
           document.removeEventListener("pointercancel", onUp);
           row.classList.remove("plan-row-dragging");
+          row.style.transition = "";
+          row.style.transform = "";
           commitPlanOrderFromDom(container);
         }
         document.addEventListener("pointermove", onMove);
