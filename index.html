@@ -75,7 +75,8 @@
      各要素側の横スクロールに閉じ込める。 */
   .dashboard-top-grid > .card { min-width: 0; }
   .dashboard-top-grid .card { margin-bottom: 0; }
-  /* 左カラム（現在の状況＋タスクを登録）は縦に並べる */
+  /* 左カラム（今日の予定＋タスクを登録）は縦に並べる。2026-09-15：「現在の状況」と
+     「今日の予定」の配置を入れ替え、現在の状況は上の全幅カードへ、今日の予定はこの左カラムへ移動した。 */
   .dashboard-left-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
@@ -83,6 +84,11 @@
      場所を取りすぎないよう、横幅と余白は他のカードより小さくしてある。 */
   .card.plan-card { background: rgba(237,161,0,0.12); border: 1px solid rgba(237,161,0,0.40); max-width: 880px; padding: 14px 16px; }
   .card.plan-card h2 { color: #eab54a; margin-bottom: 8px; }
+  /* 今日の予定は2カラムレイアウトの左カラム（本来の全幅の半分ほど）に入るため、
+     一覧を1列にして窮屈にならないようにする（左カラムの外に単独で置かれていた頃は
+     3列グリッドだったが、幅が半分になった今の位置ではスマホ表示と同様に1列が収まりが良い）。 */
+  .dashboard-left-col .plan-card #planListWrap,
+  .dashboard-left-col .plan-card .plan-done-grid { grid-template-columns: 1fr; }
   .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
   .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -155,6 +161,11 @@
   /* 一覧は2カラムのグリッドで表示（新規追加フォームは一覧の下に固定配置） */
   #planListWrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; }
   #planListWrap > .generated-note { grid-column: 1 / -1; }
+  /* 未完了の予定をドラッグ&ドロップで並び替えられるようにするための包み要素。
+     display:contents にすることで、この div 自体はレイアウトに影響を与えず、
+     中の.plan-rowが引き続き#planListWrapのグリッドの直接の子として並ぶ（＝見た目は変わらない）。
+     並び替えの操作対象をまとめて取得するための、あくまでJS用の入れ物。 */
+  .plan-open-list { display: contents; }
   .plan-done-section { grid-column: 1 / -1; max-width: 100%; margin: 4px 0 0; text-align: left; }
   .plan-done-section summary { font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 6px 2px; text-align: left; }
   .plan-done-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px; }
@@ -176,6 +187,14 @@
   .plan-row.plan-row-active { background: #3a2417; border: 2px solid #d9702f; }
   .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #d9702f; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
+  /* 「今日の予定」の並び替え用ドラッグハンドル（未完了の予定のみに表示）。
+     6つの点で構成する、よく使われる「つかむ」アイコン形。マウスのドラッグだけでなく
+     スマホでのタッチ操作でも並び替えられるよう、Pointer Eventsで実装している
+     （タッチ中にページが縦スクロールしてしまわないよう touch-action:none を指定）。 */
+  .plan-row-drag-handle { flex-shrink: 0; width: 18px; height: 34px; margin-top: 2px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; align-content: center; justify-items: center; cursor: grab; touch-action: none; }
+  .plan-row-drag-handle span { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
+  .plan-row-drag-handle:active { cursor: grabbing; }
+  .plan-row.plan-row-dragging { opacity: 0.5; }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。 */
   .plan-row-seq { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; background: var(--page-plane); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
@@ -427,14 +446,14 @@
   <section id="dashboard" class="panel active">
     <div class="stat-row" id="statRow"></div>
 
-    <div class="card plan-card">
-      <h2>今日の予定</h2>
-      <div id="planListWrap"></div>
-    </div>
+    <div class="card status-card" id="statusCard"></div>
 
     <div class="dashboard-top-grid">
       <div class="dashboard-left-col">
-        <div class="card status-card" id="statusCard"></div>
+        <div class="card plan-card">
+          <h2>今日の予定</h2>
+          <div id="planListWrap"></div>
+        </div>
 
         <div class="card">
           <h2>タスクを登録<span class="sub">今すぐ始めるか、後で使う予定として追加するか選べます</span></h2>
@@ -1461,7 +1480,7 @@
       // 「完了」専用の折りたたみセクションに分けて表示する（未完了タスクと完了したタスクを分けているのと同じ考え方）。
       function planRowHtml(p) {
         if (p.id === planEditingId) {
-          return '<div class="plan-row plan-row-editing">' +
+          return '<div class="plan-row plan-row-editing" data-plan-id="' + escapeHtml(p.id) + '">' +
             '<div class="plan-edit-form">' +
             '<div class="field-block"><label class="field-label">プロジェクト名</label><input type="text" class="plan-edit-project-input" list="projectList" value="' + escapeHtml(p.project) + '"><div class="quick-suggest-row" id="planEditProjectSuggest"></div></div>' +
             '<div class="field-block"><label class="field-label">業務内容</label><input type="text" class="plan-edit-memo-input" value="' + escapeHtml(p.memo || "") + '"><div class="quick-suggest-row" id="planEditMemoSuggest"></div></div>' +
@@ -1473,7 +1492,10 @@
         var isActivePlan = !p.done && planMatchesRunningSession(p);
         // 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式にまとめ、操作ボタンはその下の行に
         // フルの横幅で配置する（1行目の中にボタンが割り込んで文字が窮屈になるのを防ぐため）。
-        return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '">' +
+        // ドラッグハンドル（並び替え用）は未完了の予定にのみ表示する（完了済みは折りたたみ済みの
+        // 別セクションで、順番を変える必要性が薄いため対象外にしている）。
+        return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '" data-plan-id="' + escapeHtml(p.id) + '">' +
+          (p.done ? '' : '<div class="plan-row-drag-handle" title="ドラッグして並び替え"><span></span><span></span><span></span><span></span><span></span><span></span></div>') +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
           '<div class="plan-row-seq" title="今日の予定に登録した順番">' + seqById[p.id] + '</div>' +
           '<div class="plan-row-main">' +
@@ -1504,7 +1526,9 @@
           '<div class="plan-done-grid">' + donePlans.map(planRowHtml).join("") + '</div>' +
           '</details>';
       }
-      wrap.innerHTML = openHtml + doneHtml;
+      // .plan-open-list は display:contents の包み要素なので、見た目（#planListWrapのグリッド）には
+      // 影響しない。並び替え対象の範囲をJSから扱いやすくするためだけに使う。
+      wrap.innerHTML = '<div class="plan-open-list" id="planOpenList">' + openHtml + '</div>' + doneHtml;
     }
 
     var planEditProjectInputEl = wrap.querySelector(".plan-edit-project-input");
@@ -1583,9 +1607,73 @@
       });
     });
 
+    initPlanDragReorder(wrap.querySelector(".plan-open-list"));
+
     renderPlanProjectSuggestChips();
     renderPlanMemoSuggestChips();
     renderPlanNumberSuggestChips();
+  }
+
+  // 「今日の予定」のドラッグ&ドロップ並び替え。マウスでもスマホのタッチでも同じコードで動くよう、
+  // HTML5のネイティブdrag&dropではなくPointer Eventsで実装している（ネイティブdrag&dropは
+  // タッチ操作に対応していないブラウザが多いため）。
+  // 仕組み：ハンドルをpointerdownで掴んだあと、pointermoveのたびに「今カーソルの真下にある
+  // .plan-row」をdocument.elementFromPointで調べ、その行の左半分/右半分どちらにカーソルがあるかで
+  // 「その行の前に入れる／後ろに入れる」を判定してDOM上で並び替える（グリッドは行優先でDOM順に
+  // 並ぶため、この判定だけで複数列のグリッドでも正しく並び替えられる）。指を離した時点のDOM順を
+  // 正として、state.plans（今日・未完了の分だけ）に書き戻す。
+  // ※ pointermove/pointerupはハンドル要素ではなくdocumentに登録している。ドラッグ中はハンドルを
+  //   含む行自体をDOM上で動かすため、もし移動先の要素（ハンドル）側でイベントを拾おうとすると、
+  //   ブラウザによってはポインターキャプチャがうまく追従せず、以降のイベントが届かなくなることが
+  //   あるため（実機検証で確認済み）。documentに登録すればDOMの並び替えの影響を受けない。
+  function initPlanDragReorder(container) {
+    if (!container) return;
+    container.querySelectorAll(".plan-row-drag-handle").forEach(function (handle) {
+      handle.addEventListener("pointerdown", function (e) {
+        if (typeof e.button === "number" && e.button !== 0) return;
+        var row = handle.closest(".plan-row");
+        if (!row) return;
+        e.preventDefault();
+        row.classList.add("plan-row-dragging");
+
+        function onMove(ev) {
+          var atPoint = document.elementFromPoint(ev.clientX, ev.clientY);
+          var targetRow = atPoint ? atPoint.closest(".plan-row") : null;
+          if (!targetRow || targetRow === row || !container.contains(targetRow)) return;
+          var rect = targetRow.getBoundingClientRect();
+          var insertBefore = (ev.clientX - rect.left) < rect.width / 2;
+          if (insertBefore) container.insertBefore(row, targetRow);
+          else container.insertBefore(row, targetRow.nextSibling);
+        }
+        function onUp() {
+          document.removeEventListener("pointermove", onMove);
+          document.removeEventListener("pointerup", onUp);
+          document.removeEventListener("pointercancel", onUp);
+          row.classList.remove("plan-row-dragging");
+          commitPlanOrderFromDom(container);
+        }
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup", onUp);
+        document.addEventListener("pointercancel", onUp);
+      });
+    });
+  }
+
+  // ドラッグ後のDOM順を読み取り、state.plans に反映する。並び替え対象（今日・未完了の予定）
+  // 以外の予定（他の日の予定や、今日でも完了済みの予定）は元の並び順のまま変更しない。
+  function commitPlanOrderFromDom(container) {
+    var idsInOrder = Array.prototype.slice.call(container.querySelectorAll(".plan-row[data-plan-id]"))
+      .map(function (el) { return el.getAttribute("data-plan-id"); });
+    var rank = {};
+    idsInOrder.forEach(function (id, i) { rank[id] = i; });
+    var reordered = getPlans().filter(function (p) { return rank.hasOwnProperty(p.id); })
+      .sort(function (a, b) { return rank[a.id] - rank[b.id]; });
+    var qi = 0;
+    state.plans = getPlans().map(function (p) {
+      return rank.hasOwnProperty(p.id) ? reordered[qi++] : p;
+    });
+    persistState();
+    renderPlanCard();
   }
 
   // ---- タイマー表示の更新 ----
