@@ -200,9 +200,12 @@
   .plan-row { transition: transform 0.18s ease; }
   .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 8px 20px rgba(0,0,0,0.45); }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
-     四角いバッジ（number-badge）とは違う丸い形にしている。 */
-  .plan-row-seq { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; background: var(--page-plane); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .plan-row.done .plan-row-seq { color: var(--text-muted); }
+     四角いバッジ（number-badge）とは違う丸い形にしている。
+     2026-09-15：「番号を目立たせて欲しい」とのご要望で、地味なグレーの縁取りだけの丸から、
+     今日の予定カードのアクセント色（暖色のアンバー）で塗りつぶした丸バッジに変更し、
+     サイズ・文字も少し大きくした（完了済みは今まで通り目立たせず、グレーのまま）。 */
+  .plan-row-seq { flex-shrink: 0; width: 26px; height: 26px; margin-top: 0; border-radius: 50%; background: var(--series-4); border: none; color: #241900; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+  .plan-row.done .plan-row-seq { background: var(--page-plane); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 64px; justify-content: center; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
   /* 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式で横に並べ、どれも一度に目に入るようにする
