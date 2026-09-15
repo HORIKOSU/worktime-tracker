@@ -969,33 +969,13 @@
     if (!running) return false;
     return running.project === p.project && (running.memo || "") === (p.memo || "") && (running.number || "") === (p.number || "");
   }
-  // タスクに紐づく記録のうち、最も新しい開始日時（＝そのタスクを直近いつ使ったか）。
-  function taskLastActivity(taskId) {
-    var max = "";
-    state.sessions.forEach(function (s) { if (s.taskId === taskId && s.start > max) max = s.start; });
-    return max;
-  }
-  // 「新しいタスクを開始」やスケジュールからの「▶ 再開」で、プロジェクト名・業務内容が
-  // 完全一致するタスクが見つかった場合に、自動でそのタスクへ紐づけてよいかどうかを判定する。
-  // そのタスクを最後に使ったのが「今日」であれば、同じ作業の続き（休憩を挟んだだけ等）とみなし
-  // これまでどおり確認なしで続行する。今日以外（日をまたいでいる）場合は、時間帯が明らかに
-  // 離れているとみなし、いったんユーザーに確認する（同じプロジェクト名・業務内容・番号でも、
-  // 時間帯が分かれていれば独立した別の記録として開始できるようにするため）。
-  function confirmOpenTaskLink(task) {
-    var lastAct = taskLastActivity(task.id);
-    if (lastAct && isSameDate(lastAct, todayDateInputValue())) return true;
-    var lastActText = lastAct ? formatDateHeading(lastAct.slice(0, 10)) : "なし";
-    var msg = "同じプロジェクト名・業務内容のタスクがあります（最後の記録：" + lastActText + "）。\n" +
-      task.id + "　" + task.project + (task.number ? "（" + task.number + "）" : "") + (task.memo ? "・" + task.memo : "") + "\n" +
-      "これまでの合計時間：" + formatHM(taskTotalSec(task)) + "\n\n" +
-      "このタスクに続けて時間を追加しますか？\n" +
-      "（キャンセルすると、新しい別のタスクとして開始します）";
-    return window.confirm(msg);
-  }
   // プロジェクト名・業務内容・番号（・備考）を指定して、その場でタスクを開始する共通処理。
   // 「▶ 今すぐ開始」ボタンと、「今日の予定」の各項目の「▶ 開始」ボタンから共通で呼び出す
   // （どちらも「入力欄に転記してから改めて開始ボタンを押す」のではなく、その場で即座に開始する）。
-  // 既存タスクへの自動紐づけは「今すぐ開始」と同じ基準で行う（confirmOpenTaskLink）。
+  // 同じプロジェクト名・業務内容の既存タスクが見つかれば、最後に使ったのがいつであっても
+  // 確認なしでそのタスクに続けて記録する（2026-09-15：以前は日をまたいでいる場合に
+  // 「続けますか？」の確認ポップアップを出していたが、同じ名前で登録している時点で
+  // 続きとして扱ってよい場合がほとんどで、むしろ手間になるとのご意見により廃止した）。
   // 備考はプロジェクト名・業務内容・番号と違い、タスクの識別には使わない
   // （同じ備考かどうかで既存タスクへの紐づけ判定はしない）。あくまでこの回の記録に添える
   // 自由記述のメモとして、開始するセッションにだけ記録する。
@@ -1006,7 +986,6 @@
       return false;
     }
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-    if (task && !confirmOpenTaskLink(task)) task = null;
 
     if (!task) task = createTask(project, memo, number);
     else applyTypedNumberToTask(task, number);
@@ -1021,9 +1000,7 @@
     return state.sessions.some(function (s) { return s.start && s.start.slice(0, 10) === today; });
   }
   // 「今日の業務を開始しますか？」ボタン専用の開始処理。プロジェクト名・業務内容は
-  // 「経営」「ルーティン」に固定。このボタンは毎日必ず押す前提の定型ボタンのため、
-  // 他のタスクと違い confirmOpenTaskLink による「続けますか？」の確認は行わず、
-  // 常に1クリックで同じタスクに続けて記録を開始する。
+  // 「経営」「ルーティン」に固定。常に1クリックで同じタスクに続けて記録を開始する。
   function startDailyRoutineTask() {
     if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
       window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
@@ -1036,8 +1013,8 @@
     persistState();
     return true;
   }
-  // taskLastActivity のミリ秒版。開始時刻にミリ秒精度の startMs があればそれを使い、
-  // なければ start（秒精度の文字列）から算出する。
+  // タスクに紐づく記録のうち、最も新しい開始日時をミリ秒で返す。開始時刻にミリ秒精度の
+  // startMs があればそれを使い、なければ start（秒精度の文字列）から算出する。
   function taskLastActivityMs(taskId) {
     var max = null;
     state.sessions.forEach(function (s) {
@@ -2953,7 +2930,6 @@
         // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
         // 既存タスクに紐づけるか、なければ新規タスクにする。
         task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-        if (task && !confirmOpenTaskLink(task)) task = null;
         if (!task) task = createTask(project, memo, number);
       }
       applyTypedNumberToTask(task, number);
