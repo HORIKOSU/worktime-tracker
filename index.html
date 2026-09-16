@@ -1027,11 +1027,11 @@
     return state.sessions.some(function (s) { return s.start && s.start.slice(0, 10) === today; });
   }
   // 「今日の業務を開始しますか？」ボタン専用の開始処理。プロジェクト名・業務内容は
-  // 「経営」「ルーティン」に固定。常に1クリックで同じタスクに続けて記録を開始する。
+  // 「ルーティン」・空欄に固定。常に1クリックで同じタスクに続けて記録を開始する。
   // こちらも作業中・中断中・休憩中であれば自動で区切ってから開始する。
   function startDailyRoutineTask() {
     clearCurrentActivityToStartAnother();
-    var project = "経営", memo = "ルーティン";
+    var project = "ルーティン", memo = "";
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
     if (!task) task = createTask(project, memo, "");
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
@@ -1271,7 +1271,7 @@
         '<div class="status-icon-circle idle">☀</div>' +
         '<p class="day-start-question">今日の業務を開始しますか？</p>' +
         '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' +
-        '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「経営」・業務内容「ルーティン」で開始します。</p>';
+        '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「ルーティン」で開始します。</p>';
       document.getElementById("dayStartBtn").addEventListener("click", function () {
         if (!startDailyRoutineTask()) return;
         renderAll();
