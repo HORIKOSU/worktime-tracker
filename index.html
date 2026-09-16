@@ -463,7 +463,7 @@
         </div>
 
         <div class="card">
-          <h2>タスクを登録<span class="sub">今すぐ始めるか、後で使う予定として追加するか選べます</span></h2>
+          <h2>タスクを登録</h2>
           <div class="plan-add-form">
             <div class="field-block">
               <label class="field-label">プロジェクト名</label>
@@ -972,6 +972,27 @@
     if (!running) return false;
     return running.project === p.project && (running.memo || "") === (p.memo || "") && (running.number || "") === (p.number || "");
   }
+  // 何かしら「作業中・中断中・休憩中」の状態であれば、それを区切ってから新しいタスクを
+  // 開始できるようにする共通処理。2026-09-16：以前は「別のタスクの開始」ボタンを押しても
+  // 何も起きず（アラートで拒否するだけ）、先に手動で中断するか休憩から戻る必要があったが、
+  // 「タスク進行中に別のタスクの開始ボタンを押すとそれまでのタスクは中断し、別のタスクを
+  // 開始する」という動きにしてほしいとのご要望により、自動で区切ってから開始するよう変更した。
+  // ・作業中（実施中のタスクがある）→「■ 中断」ボタンと同じ扱いで、そのタスクを中断中にする
+  //   （記録は消さず、あとで「▶ 作業に戻る」で再開できる状態のまま新しいタスクに切り替える）
+  // ・中断中（既に一時停止しているタスクがある）→「別の作業を始める」と同じ扱いで、
+  //   そのタスクの中断状態を解除する（記録はそのまま残るが、以後は自動では再開されない）
+  // ・休憩中（タスクに紐づかない一般休憩）→ 休憩を終了する
+  function clearCurrentActivityToStartAnother() {
+    var running = getRunningSession();
+    if (running) {
+      endRunningSession(running);
+      state.onBreakSessionId = running.id;
+      return;
+    }
+    if (state.onBreakSessionId) { state.onBreakSessionId = null; return; }
+    var activeGeneralBreak = getActiveGeneralBreak();
+    if (activeGeneralBreak) { activeGeneralBreak.end = nowLocalIso(); }
+  }
   // プロジェクト名・業務内容・番号（・備考）を指定して、その場でタスクを開始する共通処理。
   // 「▶ 今すぐ開始」ボタンと、「今日の予定」の各項目の「▶ 開始」ボタンから共通で呼び出す
   // （どちらも「入力欄に転記してから改めて開始ボタンを押す」のではなく、その場で即座に開始する）。
@@ -982,12 +1003,10 @@
   // 備考はプロジェクト名・業務内容・番号と違い、タスクの識別には使わない
   // （同じ備考かどうかで既存タスクへの紐づけ判定はしない）。あくまでこの回の記録に添える
   // 自由記述のメモとして、開始するセッションにだけ記録する。
-  // 開始できた場合は true、作業中・中断中・休憩中で開始できなかった場合は false を返す。
+  // 作業中・中断中・休憩中であっても、それらを自動で区切ってから開始する
+  // （clearCurrentActivityToStartAnother。2026-09-16〜）ため、常に true を返す。
   function startTaskNow(project, memo, number, remarks) {
-    if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-      window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
-      return false;
-    }
+    clearCurrentActivityToStartAnother();
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
 
     if (!task) task = createTask(project, memo, number);
@@ -1004,11 +1023,9 @@
   }
   // 「今日の業務を開始しますか？」ボタン専用の開始処理。プロジェクト名・業務内容は
   // 「経営」「ルーティン」に固定。常に1クリックで同じタスクに続けて記録を開始する。
+  // こちらも作業中・中断中・休憩中であれば自動で区切ってから開始する。
   function startDailyRoutineTask() {
-    if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-      window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから開始してください。");
-      return false;
-    }
+    clearCurrentActivityToStartAnother();
     var project = "経営", memo = "ルーティン";
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
     if (!task) task = createTask(project, memo, "");
@@ -2938,11 +2955,9 @@
         return;
       }
 
-      if (getRunningSession() || getOnBreakSession() || getActiveGeneralBreak()) {
-        window.alert("すでに作業中か中断中、休憩中です。先に中断するか作業に戻ってから再開してください。");
-        renderScheduleDayView(true);
-        return;
-      }
+      // タップしたブロックが今の作業中・中断中のタスクとは別物であれば、そちらは自動で
+      // 区切ってから、このブロックのタスクを新たに開始する（2026-09-16〜）。
+      clearCurrentActivityToStartAnother();
       var project = session.project, memo = session.memo || "", number = session.number || "";
       var task = session.taskId ? getTaskById(session.taskId) : null;
       if (!task) {
