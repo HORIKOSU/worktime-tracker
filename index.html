@@ -59,7 +59,11 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
-  header.app-header { max-width: 920px; margin: 16px auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; }
+  /* 2026-09-16：タイトルの帯＋タブ切り替えを画面上部に固定表示（スクロールしても常にタブへ手が届くように）。
+     header.app-header の上マージンをこのラッパーの padding-top に移し、sticky時に margin と
+     ビューポート上端のあいだに背景が透けて見える隙間ができないようにしている。 */
+  .app-top-fixed { position: sticky; top: 0; z-index: 50; background: var(--page-plane); padding-top: 16px; }
+  header.app-header { max-width: 920px; margin: 0 auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; }
   header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
   header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
   nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
@@ -408,14 +412,16 @@
   .name-list { display: flex; flex-direction: column; gap: 6px; }
   .name-group-header { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); }
   .name-group-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-  .name-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
+  /* 2026-09-16：プロジェクト名などが長くて2行に折り返しても、丸アイコン・件数バッジ・編集ボタンの
+     縦位置が文字数によってズレないよう、行全体ではなく先頭行の高さに合わせて上揃えにする。 */
+  .name-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
   .name-row-linkable { cursor: pointer; }
   .name-row-linkable:hover { border-color: var(--series-1); background: var(--page-plane); }
   .name-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .name-row-text { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
+  .name-row-text { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; line-height: 1.5; }
   .name-row-projects { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .name-row-count { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; flex-shrink: 0; white-space: nowrap; }
-  .name-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex-shrink: 0; }
+  .name-row-count { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; flex-shrink: 0; white-space: nowrap; margin-top: 3px; }
+  .name-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex-shrink: 0; margin-top: 1px; }
   .name-edit-btn:hover { background: var(--series-1); color: #fff; }
   .name-row-edit { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 8px; }
   .name-edit-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
@@ -446,6 +452,7 @@
 </head>
 <body class="viz-root">
 
+<div class="app-top-fixed">
 <header class="app-header">
   <h1>⏱️ Taskmark</h1>
   <p>「開始」「休憩」ボタンを押すだけで作業時間を記録します。プロジェクト名・業務内容も一緒に記録できます。</p>
@@ -458,6 +465,7 @@
   <button data-tab="names">名称管理</button>
   <button data-tab="data">データ管理</button>
 </nav>
+</div>
 
 <main>
   <section id="dashboard" class="panel active">
