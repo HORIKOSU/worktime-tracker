@@ -118,6 +118,9 @@
   tr.proj-memo-row td { padding-left: 26px; color: var(--text-secondary); font-size: 12.5px; background: var(--page-plane); }
   tr.proj-memo-row .memo-name { color: var(--text-secondary); }
   .empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px; }
+  .hist-quick-filter-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--series-1); color: var(--series-1); border-radius: 999px; padding: 5px 8px 5px 14px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; }
+  .hist-quick-filter-badge .hqf-clear { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: none; background: transparent; color: inherit; font-size: 12px; cursor: pointer; line-height: 1; padding: 0; }
+  .hist-quick-filter-badge .hqf-clear:hover { background: rgba(127, 127, 127, 0.18); }
   .chart-wrap { position: relative; height: 260px; }
   .toolbar-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
   details.table-toggle summary { cursor: pointer; font-size: 12px; color: var(--series-1); font-weight: 600; margin-top: 8px; }
@@ -406,6 +409,8 @@
   .name-group-header { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); }
   .name-group-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .name-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
+  .name-row-linkable { cursor: pointer; }
+  .name-row-linkable:hover { border-color: var(--series-1); background: var(--page-plane); }
   .name-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .name-row-text { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
   .name-row-projects { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -580,6 +585,7 @@
           <select id="histProjectFilter"><option value="__all__">すべてのプロジェクト</option></select>
         </div>
       </div>
+      <div id="histQuickFilterBadge"></div>
       <div id="historyWrap"></div>
     </div>
   </section>
@@ -1893,6 +1899,38 @@
   });
 
   // ---- history tab ----
+  // 名称管理から「業務内容」「番号」の項目をクリックしたときの絞り込み（プロジェクトは
+  // 既存の histProjectFilter セレクトで絞り込むため、こちらは memo / number のみを扱う）。
+  var histQuickFilterField = null; // "memo" | "number" | null
+  var histQuickFilterValue = null;
+  function renderHistQuickFilterBadge() {
+    var el = document.getElementById("histQuickFilterBadge");
+    if (!el) return;
+    if (!histQuickFilterField) { el.innerHTML = ""; return; }
+    var label = NAME_KIND_LABELS[histQuickFilterField] || histQuickFilterField;
+    el.innerHTML = '<span class="hist-quick-filter-badge">' + escapeHtml(label) + '「' + escapeHtml(histQuickFilterValue) + '」で絞り込み中' +
+      '<button type="button" class="hqf-clear" id="histQuickFilterClearBtn" title="絞り込みを解除">✕</button></span>';
+  }
+  document.addEventListener("click", function (evt) {
+    var clearBtn = evt.target.closest ? evt.target.closest("#histQuickFilterClearBtn") : null;
+    if (!clearBtn) return;
+    histQuickFilterField = null; histQuickFilterValue = null;
+    renderHistoryList();
+  });
+  // 名称管理の一覧項目クリックで履歴タブへ飛び、その値で絞り込んだ状態にする。
+  function jumpToHistoryFilteredBy(kind, value) {
+    var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+    var histFilterEl = document.getElementById("histProjectFilter");
+    if (kind === "project") {
+      histQuickFilterField = null; histQuickFilterValue = null;
+      if (histFilterEl) { populateProjectFilterOptions(histFilterEl); histFilterEl.value = value; }
+    } else {
+      if (histFilterEl) histFilterEl.value = "__all__";
+      histQuickFilterField = kind; histQuickFilterValue = value;
+    }
+    if (historyTabBtn) historyTabBtn.click();
+    renderHistoryList();
+  }
   function renderHistory() {
     populateProjectFilterOptions(document.getElementById("histProjectFilter"));
     renderHistoryList();
@@ -1978,9 +2016,16 @@
   }
 
   function renderHistoryList() {
+    renderHistQuickFilterBadge();
     var filter = document.getElementById("histProjectFilter").value;
     var filtered = state.sessions.filter(function (s) {
-      return filter === "__all__" || projectLabel(s) === filter || (s.project && s.project.trim() === filter);
+      var projectOk = filter === "__all__" || projectLabel(s) === filter || (s.project && s.project.trim() === filter);
+      if (!projectOk) return false;
+      if (histQuickFilterField) {
+        var v = ((s[histQuickFilterField]) || "").trim();
+        if (v !== histQuickFilterValue) return false;
+      }
+      return true;
     });
 
     // タスクに紐づかない一般休憩は特定のプロジェクトに属さないため、
@@ -2012,7 +2057,7 @@
         });
       });
     });
-    if (filter === "__all__") {
+    if (filter === "__all__" && !histQuickFilterField) {
       getGeneralBreaks().forEach(function (b) { entries.push({ type: "general-break", start: b.start, gb: b }); });
     }
     entries.sort(function (a, b) { return b.start.localeCompare(a.start); });
@@ -2394,7 +2439,7 @@
           '</div>' +
           '</div>';
       } else {
-        html += '<div class="name-row">' +
+        html += '<div class="name-row name-row-linkable" data-kind="' + kind + '" data-value="' + escapeHtml(item.value) + '" title="この' + escapeHtml(NAME_KIND_LABELS[kind] || kind) + 'で記録した履歴を見る">' +
           (kind === "project" ? '<button type="button" class="name-color-swatch" data-value="' + escapeHtml(item.value) + '" style="background:' + colorForProject(item.value) + ';" title="色を指定"></button>' : '') +
           '<span class="name-row-main">' +
           '<span class="name-row-text">' + escapeHtml(item.value) + '</span>' +
@@ -2517,6 +2562,13 @@
       if (colorResetBtn) {
         var resetRow = colorResetBtn.closest(".name-row-color-edit");
         if (resetRow) resetProjectColor(resetRow.getAttribute("data-value"));
+        return;
+      }
+      // 上記のボタン類（編集・色指定）のクリックはすべて上でreturn済みなので、
+      // ここに来るのは行そのもの（項目名・件数など）をクリックした場合のみ。
+      var linkRow = evt.target.closest ? evt.target.closest(".name-row-linkable") : null;
+      if (linkRow) {
+        jumpToHistoryFilteredBy(linkRow.getAttribute("data-kind"), linkRow.getAttribute("data-value"));
         return;
       }
     });
