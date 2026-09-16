@@ -112,6 +112,11 @@
   table.data-table th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
   table.data-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
   table.data-table tr:hover td { background: var(--page-plane); }
+  tr.proj-row-toggle { cursor: pointer; }
+  tr.proj-row-toggle .proj-row-arrow { display: inline-block; width: 14px; color: var(--text-muted); font-size: 10px; transition: transform .15s ease; }
+  tr.proj-row-toggle.expanded .proj-row-arrow { transform: rotate(90deg); }
+  tr.proj-memo-row td { padding-left: 26px; color: var(--text-secondary); font-size: 12.5px; background: var(--page-plane); }
+  tr.proj-memo-row .memo-name { color: var(--text-secondary); }
   .empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px; }
   .chart-wrap { position: relative; height: 260px; }
   .toolbar-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
@@ -3665,6 +3670,22 @@
     return map;
   }
 
+  // プロジェクト名 → 業務内容 → 合計秒数、の入れ子マップ（集計タブの内訳表用）
+  function totalsByProjectMemoMap() {
+    var map = {};
+    state.sessions.forEach(function (s) {
+      var proj = projectLabel(s);
+      var memo = (s.memo && s.memo.trim()) ? s.memo.trim() : "(業務内容未設定)";
+      getSegments(s).forEach(function (seg) {
+        if (!statsPeriodMatches(seg.start.slice(0, 10))) return;
+        if (!map[proj]) map[proj] = {};
+        map[proj][memo] = (map[proj][memo] || 0) + segmentDurationSec(seg);
+      });
+    });
+    return map;
+  }
+  var expandedStatsProjects = {}; // プロジェクト別の内訳表で、業務内容の内訳を開いているプロジェクト名
+
   function renderProjectChart() {
     var map = totalsByProjectMap();
     var entries = Object.keys(map).map(function (k) { return { name: k, sec: map[k] }; }).sort(function (a, b) { return b.sec - a.sec; });
@@ -3699,9 +3720,23 @@
       }
     });
 
+    var memoMap = totalsByProjectMemoMap();
     var tableWrap = document.getElementById("projectTableWrap");
-    var html = '<table class="data-table"><thead><tr><th>プロジェクト</th><th class="num">合計作業時間</th></tr></thead><tbody>';
-    entries.forEach(function (e) { html += "<tr><td>" + escapeHtml(e.name) + "</td><td class='num'>" + formatHM(e.sec) + "</td></tr>"; });
+    var html = '<table class="data-table proj-breakdown-table"><thead><tr><th>プロジェクト</th><th class="num">合計作業時間</th></tr></thead><tbody>';
+    entries.forEach(function (e) {
+      var memoEntries = Object.keys(memoMap[e.name] || {}).map(function (k) { return { name: k, sec: memoMap[e.name][k] }; })
+        .sort(function (a, b) { return b.sec - a.sec; });
+      var hasBreakdown = memoEntries.length > 1 || (memoEntries.length === 1 && memoEntries[0].name !== "(業務内容未設定)");
+      var isOpen = hasBreakdown && !!expandedStatsProjects[e.name];
+      html += '<tr class="proj-row' + (hasBreakdown ? ' proj-row-toggle' : '') + (isOpen ? ' expanded' : '') + '" data-project="' + escapeHtml(e.name) + '">' +
+        '<td>' + (hasBreakdown ? '<span class="proj-row-arrow">▶</span>' : '') + escapeHtml(e.name) + '</td>' +
+        '<td class="num">' + formatHM(e.sec) + '</td></tr>';
+      if (isOpen) {
+        memoEntries.forEach(function (m) {
+          html += '<tr class="proj-memo-row"><td><span class="memo-name">' + escapeHtml(m.name) + '</span></td><td class="num">' + formatHM(m.sec) + '</td></tr>';
+        });
+      }
+    });
     tableWrap.innerHTML = html + "</tbody></table>";
   }
 
@@ -3735,6 +3770,13 @@
   }
   document.getElementById("dailyProjectFilter").addEventListener("change", renderDailyChart);
   document.getElementById("weeklyProjectFilter").addEventListener("change", renderWeeklyChart);
+  document.getElementById("projectTableWrap").addEventListener("click", function (e) {
+    var row = e.target.closest(".proj-row-toggle");
+    if (!row) return;
+    var name = row.getAttribute("data-project");
+    if (expandedStatsProjects[name]) delete expandedStatsProjects[name]; else expandedStatsProjects[name] = true;
+    renderProjectChart();
+  });
   document.getElementById("statsPeriodStartInput").addEventListener("change", function () {
     statsPeriodStart = this.value;
     document.querySelectorAll("#statsPeriodPresets .suggest-chip").forEach(function (chip) { chip.classList.remove("active"); });
