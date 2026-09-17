@@ -1315,12 +1315,24 @@
 
   var MAX_SUGGEST_CHIPS = 13;
 
+  // 2026-09-17：「タスクを登録」カードのプロジェクト名候補チップだけ、指定した項目を必ず
+  // この順で先頭に固定表示する（ご要望のあった固定順）。該当項目は実際に使われている
+  // ものだけを対象にし、順番を並べ替えるのみで存在しない項目を新たに追加はしない。
+  // 対象は候補チップのみ（履歴・集計の絞り込みや名称管理の一覧などは対象外、最近使った順・
+  // 五十音順のまま）。
+  var PROJECT_CHIP_PRIORITY_ORDER = ["人事", "BtoB", "事業", "経営", "総務"];
+  function applyProjectChipPriorityOrder(list) {
+    var priorityFirst = PROJECT_CHIP_PRIORITY_ORDER.filter(function (name) { return list.indexOf(name) !== -1; });
+    var rest = list.filter(function (name) { return PROJECT_CHIP_PRIORITY_ORDER.indexOf(name) === -1; });
+    return priorityFirst.concat(rest);
+  }
+
   // ---- 「タスクを登録」カード（過去の実績から候補ボタンで選ぶか、新規で登録してすぐ使えるようにする） ----
   function renderPlanProjectSuggestChips() {
     var wrap = document.getElementById("planProjectSuggest");
     var input = document.getElementById("planProjectInput");
     if (!wrap || !input) return;
-    var projects = distinctProjects().slice(0, MAX_SUGGEST_CHIPS);
+    var projects = applyProjectChipPriorityOrder(distinctProjects()).slice(0, MAX_SUGGEST_CHIPS);
     wrap.innerHTML = projects.map(function (p) {
       return '<button type="button" class="suggest-chip" data-project="' + escapeHtml(p) + '">' + escapeHtml(p) + '</button>';
     }).join("");
@@ -1376,7 +1388,7 @@
     var wrap = document.getElementById("planEditProjectSuggest");
     var input = document.querySelector(".plan-edit-project-input");
     if (!wrap || !input) return;
-    var projects = distinctProjects().slice(0, MAX_SUGGEST_CHIPS);
+    var projects = applyProjectChipPriorityOrder(distinctProjects()).slice(0, MAX_SUGGEST_CHIPS);
     if (!projects.length) { wrap.innerHTML = ""; return; }
     wrap.innerHTML = projects.map(function (p) {
       return '<button type="button" class="suggest-chip" data-project="' + escapeHtml(p) + '">' + escapeHtml(p) + '</button>';
