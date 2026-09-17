@@ -722,6 +722,18 @@
   var HOUR_PX = 72; // 1時間あたりの高さ(px)。スケジュール（日表示）の縦の幅を広げたいというご要望で 48→72（1.5倍）に変更
   var MIN_BLOCK_HEIGHT = 27; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）。HOUR_PXと同じ比率で拡大
 
+  // 2026-09-17：「2:00〜6:00は記入することがないので表示しない」とのご要望で、日表示のこの
+  // 時間帯を非表示にする。実際の分（0〜1440、0時からの経過分）を、非表示区間の分だけ詰めた
+  // 「表示用の分」に変換して、縦位置の計算に使う（この区間をまたいで記録がある場合も、
+  // 見た目の高さは非表示区間の分だけ短くなる）。
+  var SCHEDULE_HIDDEN_START_MIN = 2 * 60; // 2:00
+  var SCHEDULE_HIDDEN_END_MIN = 6 * 60; // 6:00
+  var SCHEDULE_HIDDEN_DURATION_MIN = SCHEDULE_HIDDEN_END_MIN - SCHEDULE_HIDDEN_START_MIN;
+  function scheduleDisplayMin(min) {
+    var overlap = Math.min(Math.max(min - SCHEDULE_HIDDEN_START_MIN, 0), SCHEDULE_HIDDEN_DURATION_MIN);
+    return min - overlap;
+  }
+
   function isValidState(obj) {
     return !!obj && Array.isArray(obj.sessions);
   }
@@ -2834,14 +2846,16 @@
     document.getElementById("schDayLabel").textContent = (d.getMonth() + 1) + "月" + d.getDate() + "日（" + wd + "）";
 
     var timeline = document.getElementById("dayTimeline");
-    timeline.style.height = (HOUR_PX * 24) + "px";
+    timeline.style.height = ((scheduleDisplayMin(24 * 60) / 60) * HOUR_PX) + "px";
 
     var scrollBoxEarly = document.getElementById("dayTimelineScroll");
     var keptScrollTop = (preserveScroll && scrollBoxEarly) ? scrollBoxEarly.scrollTop : null;
 
     var html = "";
     for (var h = 0; h < 24; h++) {
-      html += '<div class="day-hour-row" style="top:' + (h * HOUR_PX) + 'px;"><span class="day-hour-label">' + pad2(h) + ':00</span></div>';
+      var hMin = h * 60;
+      if (hMin >= SCHEDULE_HIDDEN_START_MIN && hMin < SCHEDULE_HIDDEN_END_MIN) continue; // 2:00〜5時台は非表示
+      html += '<div class="day-hour-row" style="top:' + ((scheduleDisplayMin(hMin) / 60) * HOUR_PX) + 'px;"><span class="day-hour-label">' + pad2(h) + ':00</span></div>';
     }
 
     function minMaxClamp(startMin, endMin) {
@@ -2857,10 +2871,10 @@
         var running = !seg.end;
         var startMin = minutesOfDay(seg.start);
         var endMin = minMaxClamp(startMin, running ? minutesOfDay(nowLocalIso()) : minutesOfDay(seg.end));
-        var workTrueHeight = ((endMin - startMin) / 60) * HOUR_PX;
+        var workTrueHeight = ((scheduleDisplayMin(endMin) - scheduleDisplayMin(startMin)) / 60) * HOUR_PX;
         blocks.push({
           kind: "work", session: s, seg: seg, segIndex: segIdx, running: running, startMin: startMin, segsLength: segs.length,
-          top: (startMin / 60) * HOUR_PX, trueHeight: workTrueHeight, height: Math.max(workTrueHeight, MIN_BLOCK_HEIGHT)
+          top: (scheduleDisplayMin(startMin) / 60) * HOUR_PX, trueHeight: workTrueHeight, height: Math.max(workTrueHeight, MIN_BLOCK_HEIGHT)
         });
       });
       // タスクを一時中断している間（セグメントとセグメントの間）は「休憩」として特別に表示する。
@@ -2870,20 +2884,20 @@
         if (!gapStart || !isSameDate(gapStart, scheduleDayState)) continue;
         var gStartMin = minutesOfDay(gapStart);
         var gEndMin = minMaxClamp(gStartMin, minutesOfDay(gapEnd));
-        var taskBreakTrueHeight = ((gEndMin - gStartMin) / 60) * HOUR_PX;
+        var taskBreakTrueHeight = ((scheduleDisplayMin(gEndMin) - scheduleDisplayMin(gStartMin)) / 60) * HOUR_PX;
         blocks.push({
           kind: "task-break", startMin: gStartMin, startIso: gapStart, endIso: gapEnd, ongoing: false, sessionId: s.id, segIndex: gi,
-          top: (gStartMin / 60) * HOUR_PX, trueHeight: taskBreakTrueHeight, height: Math.max(taskBreakTrueHeight, MIN_BLOCK_HEIGHT)
+          top: (scheduleDisplayMin(gStartMin) / 60) * HOUR_PX, trueHeight: taskBreakTrueHeight, height: Math.max(taskBreakTrueHeight, MIN_BLOCK_HEIGHT)
         });
       }
       // 現在まさに休憩中のタスクは、休憩の終わりがまだ決まっていないので「進行中」として表示する。
       if (state.onBreakSessionId === s.id && s.end && isSameDate(s.end, scheduleDayState)) {
         var oStartMin = minutesOfDay(s.end);
         var oEndMin = minMaxClamp(oStartMin, minutesOfDay(nowLocalIso()));
-        var ongoingTaskBreakTrueHeight = ((oEndMin - oStartMin) / 60) * HOUR_PX;
+        var ongoingTaskBreakTrueHeight = ((scheduleDisplayMin(oEndMin) - scheduleDisplayMin(oStartMin)) / 60) * HOUR_PX;
         blocks.push({
           kind: "task-break", startMin: oStartMin, startIso: s.end, endIso: null, ongoing: true, elId: "liveTaskBreakBlock", sessionId: s.id, segIndex: segs.length - 1,
-          top: (oStartMin / 60) * HOUR_PX, trueHeight: ongoingTaskBreakTrueHeight, height: Math.max(ongoingTaskBreakTrueHeight, MIN_BLOCK_HEIGHT)
+          top: (scheduleDisplayMin(oStartMin) / 60) * HOUR_PX, trueHeight: ongoingTaskBreakTrueHeight, height: Math.max(ongoingTaskBreakTrueHeight, MIN_BLOCK_HEIGHT)
         });
       }
     });
@@ -2894,11 +2908,11 @@
       var ongoing = !b.end;
       var gStartMin = minutesOfDay(b.start);
       var gEndMin = minMaxClamp(gStartMin, ongoing ? minutesOfDay(nowLocalIso()) : minutesOfDay(b.end));
-      var generalBreakTrueHeight = ((gEndMin - gStartMin) / 60) * HOUR_PX;
+      var generalBreakTrueHeight = ((scheduleDisplayMin(gEndMin) - scheduleDisplayMin(gStartMin)) / 60) * HOUR_PX;
       blocks.push({
         kind: "general-break", startMin: gStartMin, startIso: b.start, endIso: b.end, ongoing: ongoing, breakId: b.id,
         elId: ongoing ? "liveGeneralBreakBlock" : null,
-        top: (gStartMin / 60) * HOUR_PX, trueHeight: generalBreakTrueHeight, height: Math.max(generalBreakTrueHeight, MIN_BLOCK_HEIGHT)
+        top: (scheduleDisplayMin(gStartMin) / 60) * HOUR_PX, trueHeight: generalBreakTrueHeight, height: Math.max(generalBreakTrueHeight, MIN_BLOCK_HEIGHT)
       });
     });
 
@@ -2975,7 +2989,7 @@
 
     var isToday = scheduleDayState === todayDateInputValue();
     if (isToday) {
-      html += '<div id="dayNowLine" class="day-now-line" style="top:' + ((minutesOfDay(nowLocalIso()) / 60) * HOUR_PX) + 'px;"></div>';
+      html += '<div id="dayNowLine" class="day-now-line" style="top:' + ((scheduleDisplayMin(minutesOfDay(nowLocalIso())) / 60) * HOUR_PX) + 'px;"></div>';
     }
 
     // 記録ブロックをタップしたときに開く操作メニュー（▶ 再開／編集）。
@@ -3083,7 +3097,7 @@
   function updateScheduleLiveGauge() {
     var isToday = scheduleDayState === todayDateInputValue();
     var nowLine = document.getElementById("dayNowLine");
-    if (nowLine) nowLine.style.top = ((minutesOfDay(nowLocalIso()) / 60) * HOUR_PX) + "px";
+    if (nowLine) nowLine.style.top = ((scheduleDisplayMin(minutesOfDay(nowLocalIso())) / 60) * HOUR_PX) + "px";
 
     // 作業中のブロック・進行中の休憩ブロック（タスク休憩・一般休憩）はいずれも
     // 終わりがまだ決まっていないため、同じ仕組みで高さと時刻表示をリアルタイムに更新する。
@@ -3092,7 +3106,7 @@
       if (!el) return;
       var top = parseFloat(el.style.top);
       var nowMin = isToday ? minutesOfDay(nowLocalIso()) : 24 * 60;
-      var newHeight = Math.max((nowMin / 60) * HOUR_PX - top, MIN_BLOCK_HEIGHT);
+      var newHeight = Math.max((scheduleDisplayMin(nowMin) / 60) * HOUR_PX - top, MIN_BLOCK_HEIGHT);
       el.style.height = newHeight + "px";
       if (isToday) {
         var timeEl = el.querySelector(".day-segment-time");
