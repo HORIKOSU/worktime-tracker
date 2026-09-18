@@ -198,6 +198,9 @@
      2026-09-14：ダークグリーン配色への全体変更に合わせて、枠・バッジ・背景の色を暗い背景用に調整した。 */
   .plan-row.plan-row-active { background: #3a2417; border: 2px solid #d9702f; }
   .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #d9702f; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); }
+  /* 2026-09-18：連番はそのまま残し、実施中の再生アイコンは行の右側の余白（右上）に表示する形に変更
+     （左の連番バッジと数字を奪い合わないように）。 */
+  .plan-row-playing-icon { position: absolute; top: 10px; right: 12px; width: 26px; height: 26px; border-radius: 50%; background: #d9702f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; padding-left: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」の並び替え用ドラッグハンドル（未完了の予定のみに表示）。
      6つの点で構成する、よく使われる「つかむ」アイコン形。マウスのドラッグだけでなく
@@ -218,9 +221,6 @@
      サイズ・文字も少し大きくした（完了済みは今まで通り目立たせず、グレーのまま）。 */
   .plan-row-seq { flex-shrink: 0; width: 26px; height: 26px; margin-top: 0; border-radius: 50%; background: var(--series-4); border: none; color: #241900; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   .plan-row.done .plan-row-seq { background: var(--page-plane); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
-  /* 2026-09-18：「実施中の予定に再生ボタンのアイコンを入れて欲しい」とのご要望で、実施中は
-     連番の代わりに再生アイコン（▶）を表示し、実施中バッジと同じオレンジで塗りつぶす。 */
-  .plan-row-seq.plan-row-seq-playing { background: #d9702f; color: #fff; font-size: 11px; padding-left: 2px; }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 64px; justify-content: center; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
   /* 1行目は「プロジェクト名＞業務内容＞番号」のパンくず形式で横に並べ、どれも一度に目に入るようにする
@@ -1545,13 +1545,14 @@
         return '<div class="plan-row' + (p.done ? ' done' : '') + (isActivePlan ? ' plan-row-active' : '') + '" data-plan-id="' + escapeHtml(p.id) + '">' +
           (p.done ? '' : '<div class="plan-row-drag-handle" title="ドラッグして並び替え"><span></span><span></span><span></span><span></span><span></span><span></span></div>') +
           '<input type="checkbox" class="plan-row-checkbox" data-plan-id="' + escapeHtml(p.id) + '"' + (p.done ? ' checked' : '') + '>' +
-          '<div class="plan-row-seq' + (isActivePlan ? ' plan-row-seq-playing' : '') + '" title="' + (isActivePlan ? '実施中' : '今日の予定に登録した順番') + '">' + (isActivePlan ? '▶' : seqById[p.id]) + '</div>' +
+          '<div class="plan-row-seq" title="今日の予定に登録した順番">' + seqById[p.id] + '</div>' +
+          (isActivePlan ? '<span class="plan-row-playing-icon" title="実施中">▶</span>' : '') +
           '<div class="plan-row-main">' +
           '<div class="plan-row-title-line">' +
           '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + '</div>' +
           (p.memo ? '<div class="plan-row-field plan-row-memo"><span class="plan-row-sep">＞</span>' + escapeHtml(p.memo) + '</div>' : '') +
           (p.number ? '<div class="plan-row-field"><span class="plan-row-sep">＞</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
-          (isActivePlan ? ' <span class="plan-row-active-badge">▶ 実施中</span>' : '') +
+          (isActivePlan ? ' <span class="plan-row-active-badge">実施中</span>' : '') +
           (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
           '</div>' +
           (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
