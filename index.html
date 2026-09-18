@@ -79,6 +79,24 @@
      各要素側の横スクロールに閉じ込める。 */
   .dashboard-top-grid > .card { min-width: 0; }
   .dashboard-top-grid .card { margin-bottom: 0; }
+  /* 2026-09-18：月次目標（今月中に完了させたいタスクのチェックリスト）をダッシュボード上部に追加 */
+  .monthly-goals-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .monthly-goals-header h2 { margin: 0; }
+  .monthly-goals-month { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 6px; }
+  .monthly-goals-progress { font-size: 12px; font-weight: 700; color: var(--series-1); background: var(--page-plane); border: 1px solid var(--border); padding: 3px 12px; border-radius: 999px; white-space: nowrap; }
+  .monthly-goals-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .monthly-goal-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); }
+  .monthly-goal-row.done { opacity: 0.6; }
+  .monthly-goal-row.done .monthly-goal-text { text-decoration: line-through; }
+  .monthly-goal-checkbox { width: 18px; height: 18px; flex: none; cursor: pointer; }
+  .monthly-goal-text { flex: 1; font-size: 14px; min-width: 0; overflow-wrap: break-word; }
+  .monthly-goal-text .monthly-goal-memo { color: var(--text-secondary); }
+  .monthly-goal-delete-btn { appearance: none; border: none; background: none; color: var(--text-muted); font-size: 17px; line-height: 1; cursor: pointer; padding: 4px 6px; flex: none; }
+  .monthly-goal-delete-btn:hover { color: var(--danger); }
+  .monthly-goal-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .monthly-goal-add-row input[type="text"] { flex: 1 1 160px; min-width: 0; }
+  .monthly-goal-add-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 10px; cursor: pointer; flex: none; }
+  .monthly-goal-add-btn:hover { opacity: 0.92; }
   /* 左カラム（今日の予定＋タスクを登録）は縦に並べる。2026-09-15：「現在の状況」と
      「今日の予定」の配置を入れ替え、現在の状況は上の全幅カードへ、今日の予定はこの左カラムへ移動した。 */
   .dashboard-left-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -490,6 +508,8 @@
 
 <main>
   <section id="dashboard" class="panel active">
+    <div class="card monthly-goals-card" id="monthlyGoalsCard"></div>
+
     <div class="stat-row" id="statRow"></div>
 
     <div class="card status-card" id="statusCard"></div>
@@ -995,6 +1015,88 @@
     var total = 0;
     state.sessions.forEach(function (s) { if (s.taskId === task.id) total += durationSecOf(s); });
     return total;
+  }
+
+  // ---- 月次目標（今月中に完了させたいタスクのチェックリスト） ----
+  // タスク本体（getTasks）は「常に未完了」として扱う仕様のため、ここでは別のデータとして
+  // 「今月、このプロジェクト・業務内容を完了させる」という目標を月ごとに持たせる。
+  // 目標の達成チェックは、タスクの完了状態とは連動しない（あくまで目標側だけのチェック）。
+  function getMonthlyGoals() {
+    if (!state.monthlyGoals) state.monthlyGoals = [];
+    return state.monthlyGoals;
+  }
+  function currentMonthKey() {
+    return todayDateInputValue().slice(0, 7); // "YYYY-MM"
+  }
+  function monthKeyLabel(monthKey) {
+    var parts = monthKey.split("-");
+    return parts[0] + "年" + parseInt(parts[1], 10) + "月";
+  }
+  function renderMonthlyGoalsCard() {
+    var wrap = document.getElementById("monthlyGoalsCard");
+    if (!wrap) return;
+    var monthKey = currentMonthKey();
+    var goals = getMonthlyGoals().filter(function (g) { return g.month === monthKey; });
+    var doneCount = goals.filter(function (g) { return g.done; }).length;
+    var listHtml = goals.length
+      ? goals.map(function (g) {
+          return '<div class="monthly-goal-row' + (g.done ? ' done' : '') + '" data-goal-id="' + escapeHtml(g.id) + '">' +
+            '<input type="checkbox" class="monthly-goal-checkbox" data-goal-id="' + escapeHtml(g.id) + '"' + (g.done ? ' checked' : '') + '>' +
+            '<div class="monthly-goal-text">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + '</div>' +
+            '<button type="button" class="monthly-goal-delete-btn" data-goal-id="' + escapeHtml(g.id) + '" title="削除">×</button>' +
+            '</div>';
+        }).join("")
+      : '<p class="generated-note">今月の目標はまだ登録されていません。下のフォームから追加できます。</p>';
+    wrap.innerHTML =
+      '<div class="monthly-goals-header">' +
+      '<h2>今月の目標<span class="monthly-goals-month">（' + escapeHtml(monthKeyLabel(monthKey)) + '）</span></h2>' +
+      (goals.length ? '<span class="monthly-goals-progress">' + doneCount + ' / ' + goals.length + ' 達成</span>' : '') +
+      '</div>' +
+      '<div class="monthly-goals-list" id="monthlyGoalsList">' + listHtml + '</div>' +
+      '<div class="monthly-goal-add-row">' +
+      '<input type="text" id="monthlyGoalProjectInput" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
+      '<input type="text" id="monthlyGoalMemoInput" placeholder="業務内容（任意）">' +
+      '<button type="button" class="monthly-goal-add-btn" id="monthlyGoalAddBtn">＋ 追加</button>' +
+      '</div>';
+  }
+  function addMonthlyGoal() {
+    var projectInput = document.getElementById("monthlyGoalProjectInput");
+    var memoInput = document.getElementById("monthlyGoalMemoInput");
+    var project = projectInput ? projectInput.value.trim() : "";
+    var memo = memoInput ? memoInput.value.trim() : "";
+    if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
+    getMonthlyGoals().push({ id: generateId(), month: currentMonthKey(), project: project, memo: memo, done: false, createdAt: nowLocalIso() });
+    persistState();
+    renderMonthlyGoalsCard();
+  }
+  function wireMonthlyGoalsCardOnce() {
+    var wrap = document.getElementById("monthlyGoalsCard");
+    if (!wrap) return;
+    wrap.addEventListener("click", function (evt) {
+      var addBtn = evt.target.closest ? evt.target.closest("#monthlyGoalAddBtn") : null;
+      if (addBtn) { addMonthlyGoal(); return; }
+      var deleteBtn = evt.target.closest ? evt.target.closest(".monthly-goal-delete-btn") : null;
+      if (deleteBtn) {
+        var id = deleteBtn.getAttribute("data-goal-id");
+        state.monthlyGoals = getMonthlyGoals().filter(function (g) { return g.id !== id; });
+        persistState();
+        renderMonthlyGoalsCard();
+        return;
+      }
+    });
+    wrap.addEventListener("change", function (evt) {
+      var checkbox = evt.target.closest ? evt.target.closest(".monthly-goal-checkbox") : null;
+      if (!checkbox) return;
+      var id = checkbox.getAttribute("data-goal-id");
+      var goal = getMonthlyGoals().find(function (g) { return g.id === id; });
+      if (goal) { goal.done = checkbox.checked; persistState(); renderMonthlyGoalsCard(); }
+    });
+    wrap.addEventListener("keydown", function (evt) {
+      if (evt.key === "Enter" && (evt.target.id === "monthlyGoalProjectInput" || evt.target.id === "monthlyGoalMemoInput")) {
+        evt.preventDefault();
+        addMonthlyGoal();
+      }
+    });
   }
   // タスクの一覧（現在作業中・休憩中のタスクはステータスカードに専用表示があるため除く）
   function openTasks() {
@@ -4047,6 +4149,7 @@
   // ---- init ----
   function renderAll() {
     populateProjectDatalist();
+    renderMonthlyGoalsCard();
     renderStatusCard();
     renderPlanCard();
     renderStatRow();
@@ -4068,6 +4171,7 @@
 
   wirePlanAddFormOnce();
   wireNamesTabOnce();
+  wireMonthlyGoalsCardOnce();
   renderAll();
 })();
 </script>
