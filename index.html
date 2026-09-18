@@ -146,11 +146,12 @@
   @media (prefers-reduced-motion: reduce) {
     .status-card.running { animation: none; }
   }
-  /* 2026-09-18：作業中カードの枠に沿って、1分（60秒）で一周する秒数カウントゲージ（目盛りドット型）を追加。
-     ドットの生成・位置計算・点灯数の更新はJS側（layoutStatusGaugeDots/updateStatusGaugeDots）で行う。 */
-  .status-gauge-dots { position: absolute; inset: 0; pointer-events: none; }
-  .status-gauge-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); transform: translate(-50%, -50%); transition: background 0.15s ease, box-shadow 0.15s ease; }
-  .status-gauge-dot.on { background: var(--project-color-text, var(--series-2)); box-shadow: 0 0 5px var(--project-color-text, var(--series-2)); }
+  /* 2026-09-18：作業中カードの四角い枠そのものを、1分（60秒）かけて上辺→右辺→下辺→左辺の順に
+     描き足していく秒数カウントゲージに変更。SVGの矩形をstroke-dashoffsetで少しずつ表示する。
+     サイズ計算・アニメーションの更新はJS側（layoutStatusGaugeFrame/updateStatusGaugeFrame）で行う。 */
+  .status-gauge-frame { position: absolute; pointer-events: none; overflow: visible; }
+  .status-gauge-frame-track { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 3; }
+  .status-gauge-frame-fill { fill: none; stroke: var(--project-color-text, var(--series-2)); stroke-width: 3; stroke-linecap: round; }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -1208,43 +1209,57 @@
     });
   });
 
-  // ---- status card 秒数カウントゲージ（目盛りドット型） ----
-  // 作業中カードの枠に沿って一定数のドットを並べ、経過秒数（1分＝60秒で一周）に応じて
-  // 先頭から点灯させる。カードの実寸に合わせて配置するため、表示時と画面リサイズ時に再計算する。
-  var STATUS_GAUGE_DOT_COUNT = 28;
-  function layoutStatusGaugeDots() {
+  // ---- status card 秒数カウントゲージ（四角い枠を描き足していく方式） ----
+  // 作業中カードの枠の少し外側に矩形（角丸の四角形）を重ね、その辺の長さぶんだけ
+  // stroke-dashoffsetで少しずつ表示していく。経過秒数（1分＝60秒で一周）に応じて
+  // 上辺→右辺→下辺→左辺の順に描かれ、60秒で一周してまたゼロから描き直す。
+  // カードの実寸に合わせてSVGのサイズ・矩形を計算するため、表示時と画面リサイズ時に再計算する。
+  function layoutStatusGaugeFrame() {
     var card = document.getElementById("statusCard");
-    var wrap = document.getElementById("statusGaugeDots");
-    if (!card || !wrap || !card.classList.contains("running")) return;
+    var svg = document.getElementById("statusGaugeFrame");
+    var track = document.getElementById("statusGaugeFrameTrack");
+    var fillRect = document.getElementById("statusGaugeFrameFill");
+    if (!card || !svg || !track || !fillRect || !card.classList.contains("running")) return;
     var w = card.offsetWidth, h = card.offsetHeight;
     if (!w || !h) return;
-    var pad = 9;
-    var cx = w / 2, cy = h / 2;
-    var rx = cx + pad, ry = cy + pad;
-    wrap.innerHTML = "";
-    for (var i = 0; i < STATUS_GAUGE_DOT_COUNT; i++) {
-      var angle = (i / STATUS_GAUGE_DOT_COUNT) * Math.PI * 2 - Math.PI / 2;
-      var dot = document.createElement("span");
-      dot.className = "status-gauge-dot";
-      dot.style.left = (cx + rx * Math.cos(angle)) + "px";
-      dot.style.top = (cy + ry * Math.sin(angle)) + "px";
-      wrap.appendChild(dot);
-    }
+    var outset = 6;
+    var strokeW = 3;
+    var svgW = w + outset * 2;
+    var svgH = h + outset * 2;
+    var rectX = strokeW / 2;
+    var rectY = strokeW / 2;
+    var rectW = svgW - strokeW;
+    var rectH = svgH - strokeW;
+    var rectRX = 20;
+    svg.setAttribute("width", svgW);
+    svg.setAttribute("height", svgH);
+    svg.style.left = (-outset) + "px";
+    svg.style.top = (-outset) + "px";
+    [track, fillRect].forEach(function (rect) {
+      rect.setAttribute("x", rectX);
+      rect.setAttribute("y", rectY);
+      rect.setAttribute("width", rectW);
+      rect.setAttribute("height", rectH);
+      rect.setAttribute("rx", rectRX);
+    });
+    var perimeter = fillRect.getTotalLength();
+    fillRect.dataset.perimeter = String(perimeter);
+    fillRect.style.strokeDasharray = String(perimeter);
+    fillRect.style.strokeDashoffset = String(perimeter);
   }
-  function updateStatusGaugeDots(sessionElapsedSec) {
-    var wrap = document.getElementById("statusGaugeDots");
-    if (!wrap) return;
+  function updateStatusGaugeFrame(sessionElapsedSec) {
+    var fillRect = document.getElementById("statusGaugeFrameFill");
+    if (!fillRect) return;
+    var perimeter = parseFloat(fillRect.dataset.perimeter || "0");
+    if (!perimeter) return;
     var gaugeSec = sessionElapsedSec % 60;
-    var litCount = Math.round((gaugeSec / 60) * STATUS_GAUGE_DOT_COUNT);
-    var dots = wrap.children;
-    for (var i = 0; i < dots.length; i++) {
-      dots[i].classList.toggle("on", i < litCount);
-    }
+    var pct = gaugeSec / 60;
+    fillRect.style.strokeDashoffset = (perimeter * (1 - pct)).toFixed(2);
   }
   var statusGaugeResizeTimer = null;
   window.addEventListener("resize", function () {
     clearTimeout(statusGaugeResizeTimer);
-    statusGaugeResizeTimer = setTimeout(layoutStatusGaugeDots, 150);
+    statusGaugeResizeTimer = setTimeout(layoutStatusGaugeFrame, 150);
   });
 
   // ---- status card (start / stop) ----
@@ -1273,7 +1288,7 @@
       card.style.setProperty("--project-color", runningProjectColor);
       card.style.setProperty("--project-color-text", readableTextColor(runningProjectColor, 0.68));
       card.innerHTML =
-        '<div class="status-gauge-dots" id="statusGaugeDots"></div>' +
+        '<svg class="status-gauge-frame" id="statusGaugeFrame"><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect></svg>' +
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
@@ -1299,8 +1314,8 @@
         persistState();
         renderAll();
       });
-      layoutStatusGaugeDots();
-      updateStatusGaugeDots(sessionElapsedSec);
+      layoutStatusGaugeFrame();
+      updateStatusGaugeFrame(sessionElapsedSec);
     } else if (getOnBreakSession()) {
       var onBreak = getOnBreakSession();
       var onBreakTask = onBreak.taskId ? getTaskById(onBreak.taskId) : null;
@@ -1838,7 +1853,7 @@
       if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
       renderStatRow();
       // 枠の秒数カウントゲージ（目盛りドット型）：1分（60秒）で一周し、次の分でまたゼロから
-      updateStatusGaugeDots(sessionElapsedSec);
+      updateStatusGaugeFrame(sessionElapsedSec);
     }
     updateScheduleLiveGauge();
   }
