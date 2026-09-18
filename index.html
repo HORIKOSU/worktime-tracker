@@ -146,23 +146,11 @@
   @media (prefers-reduced-motion: reduce) {
     .status-card.running { animation: none; }
   }
-  /* 2026-09-18：作業中カードの枠の外側に、1分（60秒）で一周する秒数カウントゲージを追加。
-     --gauge-progress（0〜100）はJS側のtick()で毎秒更新する。 */
-  .status-card.running::before {
-    content: "";
-    position: absolute;
-    inset: -5px;
-    border-radius: 20px;
-    padding: 3px;
-    background: conic-gradient(var(--project-color-text, var(--series-2)) calc(var(--gauge-progress, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .status-card.running::before { display: none; }
-  }
+  /* 2026-09-18：作業中カードの枠に沿って、1分（60秒）で一周する秒数カウントゲージ（目盛りドット型）を追加。
+     ドットの生成・位置計算・点灯数の更新はJS側（layoutStatusGaugeDots/updateStatusGaugeDots）で行う。 */
+  .status-gauge-dots { position: absolute; inset: 0; pointer-events: none; }
+  .status-gauge-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); transform: translate(-50%, -50%); transition: background 0.15s ease, box-shadow 0.15s ease; }
+  .status-gauge-dot.on { background: var(--project-color-text, var(--series-2)); box-shadow: 0 0 5px var(--project-color-text, var(--series-2)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -1220,6 +1208,45 @@
     });
   });
 
+  // ---- status card 秒数カウントゲージ（目盛りドット型） ----
+  // 作業中カードの枠に沿って一定数のドットを並べ、経過秒数（1分＝60秒で一周）に応じて
+  // 先頭から点灯させる。カードの実寸に合わせて配置するため、表示時と画面リサイズ時に再計算する。
+  var STATUS_GAUGE_DOT_COUNT = 28;
+  function layoutStatusGaugeDots() {
+    var card = document.getElementById("statusCard");
+    var wrap = document.getElementById("statusGaugeDots");
+    if (!card || !wrap || !card.classList.contains("running")) return;
+    var w = card.offsetWidth, h = card.offsetHeight;
+    if (!w || !h) return;
+    var pad = 9;
+    var cx = w / 2, cy = h / 2;
+    var rx = cx + pad, ry = cy + pad;
+    wrap.innerHTML = "";
+    for (var i = 0; i < STATUS_GAUGE_DOT_COUNT; i++) {
+      var angle = (i / STATUS_GAUGE_DOT_COUNT) * Math.PI * 2 - Math.PI / 2;
+      var dot = document.createElement("span");
+      dot.className = "status-gauge-dot";
+      dot.style.left = (cx + rx * Math.cos(angle)) + "px";
+      dot.style.top = (cy + ry * Math.sin(angle)) + "px";
+      wrap.appendChild(dot);
+    }
+  }
+  function updateStatusGaugeDots(sessionElapsedSec) {
+    var wrap = document.getElementById("statusGaugeDots");
+    if (!wrap) return;
+    var gaugeSec = sessionElapsedSec % 60;
+    var litCount = Math.round((gaugeSec / 60) * STATUS_GAUGE_DOT_COUNT);
+    var dots = wrap.children;
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle("on", i < litCount);
+    }
+  }
+  var statusGaugeResizeTimer = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(statusGaugeResizeTimer);
+    statusGaugeResizeTimer = setTimeout(layoutStatusGaugeDots, 150);
+  });
+
   // ---- status card (start / stop) ----
   function renderStatusCard() {
     var card = document.getElementById("statusCard");
@@ -1246,6 +1273,7 @@
       card.style.setProperty("--project-color", runningProjectColor);
       card.style.setProperty("--project-color-text", readableTextColor(runningProjectColor, 0.68));
       card.innerHTML =
+        '<div class="status-gauge-dots" id="statusGaugeDots"></div>' +
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
@@ -1271,6 +1299,8 @@
         persistState();
         renderAll();
       });
+      layoutStatusGaugeDots();
+      updateStatusGaugeDots(sessionElapsedSec);
     } else if (getOnBreakSession()) {
       var onBreak = getOnBreakSession();
       var onBreakTask = onBreak.taskId ? getTaskById(onBreak.taskId) : null;
@@ -1807,12 +1837,8 @@
       var sessionEl = document.getElementById("sessionElapsedTimer");
       if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
       renderStatRow();
-      // 枠の秒数カウントゲージ：1分（60秒）で一周し、次の分でまたゼロから
-      var statusCardEl = document.getElementById("statusCard");
-      if (statusCardEl) {
-        var gaugeSec = sessionElapsedSec % 60;
-        statusCardEl.style.setProperty("--gauge-progress", ((gaugeSec / 60) * 100).toFixed(2));
-      }
+      // 枠の秒数カウントゲージ（目盛りドット型）：1分（60秒）で一周し、次の分でまたゼロから
+      updateStatusGaugeDots(sessionElapsedSec);
     }
     updateScheduleLiveGauge();
   }
