@@ -148,10 +148,12 @@
   }
   /* 2026-09-18：作業中カードの四角い枠そのものを、1分（60秒）かけて上辺→右辺→下辺→左辺の順に
      描き足していく秒数カウントゲージに変更。SVGの矩形をstroke-dashoffsetで少しずつ表示する。
-     サイズ計算・アニメーションの更新はJS側（layoutStatusGaugeFrame/updateStatusGaugeFrame）で行う。 */
+     サイズ計算・アニメーションの更新はJS側（layoutStatusGaugeFrame/updateStatusGaugeFrame）で行う。
+     2026-09-18：外にはみ出さない内側リング（B案）に変更。プロジェクトカラーの枠線と混ざって
+     見えにくくならないよう、ゲージ自体はプロジェクトカラーに依存しない固定のアンバー色＋発光で目立たせる。 */
   .status-gauge-frame { position: absolute; pointer-events: none; overflow: visible; }
-  .status-gauge-frame-track { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 3; }
-  .status-gauge-frame-fill { fill: none; stroke: var(--project-color-text, var(--series-2)); stroke-width: 3; stroke-linecap: round; }
+  .status-gauge-frame-track { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 4; }
+  .status-gauge-frame-fill { fill: none; stroke: var(--series-4); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--series-4)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -1222,15 +1224,15 @@
     if (!card || !svg || !track || !fillRect || !card.classList.contains("running")) return;
     var w = card.offsetWidth, h = card.offsetHeight;
     if (!w || !h) return;
-    var outset = 6;
-    var strokeW = 3;
+    var outset = 0;
+    var strokeW = 4;
     var svgW = w + outset * 2;
     var svgH = h + outset * 2;
     var rectX = strokeW / 2;
     var rectY = strokeW / 2;
     var rectW = svgW - strokeW;
     var rectH = svgH - strokeW;
-    var rectRX = 20;
+    var rectRX = 16;
     svg.setAttribute("width", svgW);
     svg.setAttribute("height", svgH);
     svg.style.left = (-outset) + "px";
