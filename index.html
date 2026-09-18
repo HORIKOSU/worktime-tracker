@@ -133,7 +133,7 @@
   .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; }
 
   /* status card / timer */
-  .status-card { text-align: center; padding: 20px 18px; min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
+  .status-card { position: relative; text-align: center; padding: 20px 18px; min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
   .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
   .status-card.running { border-color: var(--project-color-text, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
   .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #2b2417, var(--surface-1)); }
@@ -145,6 +145,23 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .status-card.running { animation: none; }
+  }
+  /* 2026-09-18：作業中カードの枠の外側に、1分（60秒）で一周する秒数カウントゲージを追加。
+     --gauge-progress（0〜100）はJS側のtick()で毎秒更新する。 */
+  .status-card.running::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 20px;
+    padding: 3px;
+    background: conic-gradient(var(--project-color-text, var(--series-2)) calc(var(--gauge-progress, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .status-card.running::before { display: none; }
   }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
@@ -1790,6 +1807,12 @@
       var sessionEl = document.getElementById("sessionElapsedTimer");
       if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
       renderStatRow();
+      // 枠の秒数カウントゲージ：1分（60秒）で一周し、次の分でまたゼロから
+      var statusCardEl = document.getElementById("statusCard");
+      if (statusCardEl) {
+        var gaugeSec = sessionElapsedSec % 60;
+        statusCardEl.style.setProperty("--gauge-progress", ((gaugeSec / 60) * 100).toFixed(2));
+      }
     }
     updateScheduleLiveGauge();
   }
