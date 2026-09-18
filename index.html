@@ -137,6 +137,15 @@
   .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
   .status-card.running { border-color: var(--project-color-text, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
   .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #2b2417, var(--surface-1)); }
+  /* 2026-09-18：作業中（running）だけ、遊び心のある浮遊モーションを入れる。休憩中・待機中は動かさない。 */
+  .status-card.running { animation: statusCardFloat 3.4s ease-in-out infinite; }
+  @keyframes statusCardFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .status-card.running { animation: none; }
+  }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
