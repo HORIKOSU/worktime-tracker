@@ -91,12 +91,19 @@
   .monthly-goal-checkbox { width: 18px; height: 18px; flex: none; cursor: pointer; }
   .monthly-goal-text { flex: 1; font-size: 14px; min-width: 0; overflow-wrap: break-word; }
   .monthly-goal-text .monthly-goal-memo { color: var(--text-secondary); }
+  .monthly-goal-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex: none; }
   .monthly-goal-delete-btn { appearance: none; border: none; background: none; color: var(--text-muted); font-size: 17px; line-height: 1; cursor: pointer; padding: 4px 6px; flex: none; }
   .monthly-goal-delete-btn:hover { color: var(--danger); }
   .monthly-goal-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
   .monthly-goal-add-row input[type="text"] { flex: 1 1 160px; min-width: 0; }
   .monthly-goal-add-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 10px; cursor: pointer; flex: none; }
   .monthly-goal-add-btn:hover { opacity: 0.92; }
+  .monthly-goal-row-edit { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 10px; margin-bottom: 6px; }
+  .monthly-goal-row-edit input[type="text"] { width: 100%; box-sizing: border-box; }
+  .monthly-goal-edit-btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+  .monthly-goal-save-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .monthly-goal-save-btn:hover { opacity: 0.9; }
+  .monthly-goal-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
   /* 左カラム（今日の予定＋タスクを登録）は縦に並べる。2026-09-15：「現在の状況」と
      「今日の予定」の配置を入れ替え、現在の状況は上の全幅カードへ、今日の予定はこの左カラムへ移動した。 */
   .dashboard-left-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -751,6 +758,7 @@
   var namesEditingKind = null; // 「名称管理」で編集中の種類（"project"|"memo"|"number"）。1件のみ
   var namesEditingValue = null; // 編集中の元の値（置き換え対象を特定するため）
   var colorPickingValue = null; // 「名称管理」のプロジェクト名で、色を手動指定中の値（1件のみ）。null以外ならその値のプロジェクトの色編集UIを表示する
+  var monthlyGoalEditingId = null; // 「今月の目標」で編集中の目標のID（1件のみ）
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
   // たびに一旦DOMの入力値を読み取ってここに格納し、再描画する。
@@ -1040,9 +1048,20 @@
     var doneCount = goals.filter(function (g) { return g.done; }).length;
     var listHtml = goals.length
       ? goals.map(function (g) {
+          if (g.id === monthlyGoalEditingId) {
+            return '<div class="monthly-goal-row-edit" data-goal-id="' + escapeHtml(g.id) + '">' +
+              '<input type="text" class="monthly-goal-edit-project-input" value="' + escapeHtml(g.project) + '" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
+              '<input type="text" class="monthly-goal-edit-memo-input" value="' + escapeHtml(g.memo || "") + '" placeholder="業務内容（任意）">' +
+              '<div class="monthly-goal-edit-btn-row">' +
+              '<button type="button" class="monthly-goal-save-btn" data-goal-id="' + escapeHtml(g.id) + '">保存</button>' +
+              '<button type="button" class="monthly-goal-cancel-btn">キャンセル</button>' +
+              '</div>' +
+              '</div>';
+          }
           return '<div class="monthly-goal-row' + (g.done ? ' done' : '') + '" data-goal-id="' + escapeHtml(g.id) + '">' +
             '<input type="checkbox" class="monthly-goal-checkbox" data-goal-id="' + escapeHtml(g.id) + '"' + (g.done ? ' checked' : '') + '>' +
             '<div class="monthly-goal-text">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + '</div>' +
+            '<button type="button" class="monthly-goal-edit-btn" data-goal-id="' + escapeHtml(g.id) + '" title="編集">編集</button>' +
             '<button type="button" class="monthly-goal-delete-btn" data-goal-id="' + escapeHtml(g.id) + '" title="削除">×</button>' +
             '</div>';
         }).join("")
@@ -1069,6 +1088,22 @@
     persistState();
     renderMonthlyGoalsCard();
   }
+  function saveMonthlyGoalEdit(row) {
+    if (!row) return;
+    var id = row.getAttribute("data-goal-id");
+    var goal = getMonthlyGoals().find(function (g) { return g.id === id; });
+    if (!goal) return;
+    var projectInput = row.querySelector(".monthly-goal-edit-project-input");
+    var memoInput = row.querySelector(".monthly-goal-edit-memo-input");
+    var project = projectInput ? projectInput.value.trim() : "";
+    var memo = memoInput ? memoInput.value.trim() : "";
+    if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
+    goal.project = project;
+    goal.memo = memo;
+    monthlyGoalEditingId = null;
+    persistState();
+    renderMonthlyGoalsCard();
+  }
   function wireMonthlyGoalsCardOnce() {
     var wrap = document.getElementById("monthlyGoalsCard");
     if (!wrap) return;
@@ -1079,7 +1114,24 @@
       if (deleteBtn) {
         var id = deleteBtn.getAttribute("data-goal-id");
         state.monthlyGoals = getMonthlyGoals().filter(function (g) { return g.id !== id; });
+        if (monthlyGoalEditingId === id) monthlyGoalEditingId = null;
         persistState();
+        renderMonthlyGoalsCard();
+        return;
+      }
+      var editBtn = evt.target.closest ? evt.target.closest(".monthly-goal-edit-btn") : null;
+      if (editBtn) {
+        monthlyGoalEditingId = editBtn.getAttribute("data-goal-id");
+        renderMonthlyGoalsCard();
+        var input = wrap.querySelector(".monthly-goal-row-edit .monthly-goal-edit-project-input");
+        if (input) { input.focus(); input.select(); }
+        return;
+      }
+      var saveBtn = evt.target.closest ? evt.target.closest(".monthly-goal-save-btn") : null;
+      if (saveBtn) { saveMonthlyGoalEdit(saveBtn.closest(".monthly-goal-row-edit")); return; }
+      var cancelBtn = evt.target.closest ? evt.target.closest(".monthly-goal-cancel-btn") : null;
+      if (cancelBtn) {
+        monthlyGoalEditingId = null;
         renderMonthlyGoalsCard();
         return;
       }
@@ -1092,9 +1144,23 @@
       if (goal) { goal.done = checkbox.checked; persistState(); renderMonthlyGoalsCard(); }
     });
     wrap.addEventListener("keydown", function (evt) {
+      // 日本語入力（IME）で変換を確定するためのEnterでも反応してしまわないよう、
+      // 変換中（isComposing）や変換確定の合図（keyCode 229）のときは無視する。
+      if (evt.isComposing || evt.keyCode === 229) return;
       if (evt.key === "Enter" && (evt.target.id === "monthlyGoalProjectInput" || evt.target.id === "monthlyGoalMemoInput")) {
         evt.preventDefault();
         addMonthlyGoal();
+        return;
+      }
+      var editingRow = evt.target.closest ? evt.target.closest(".monthly-goal-row-edit") : null;
+      if (editingRow && (evt.target.classList.contains("monthly-goal-edit-project-input") || evt.target.classList.contains("monthly-goal-edit-memo-input"))) {
+        if (evt.key === "Enter") {
+          evt.preventDefault();
+          saveMonthlyGoalEdit(editingRow);
+        } else if (evt.key === "Escape") {
+          monthlyGoalEditingId = null;
+          renderMonthlyGoalsCard();
+        }
       }
     });
   }
@@ -2788,6 +2854,8 @@
     });
     wrap.addEventListener("keydown", function (evt) {
       if (!evt.target.classList || !evt.target.classList.contains("name-edit-input")) return;
+      // 日本語入力（IME）の変換確定のEnterでは保存しないようにする
+      if (evt.isComposing || evt.keyCode === 229) return;
       if (evt.key === "Enter") {
         evt.preventDefault();
         saveNameEdit(evt.target.closest(".name-row-edit"));
