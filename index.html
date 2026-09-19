@@ -337,14 +337,18 @@
   .hist-date-total { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-left: auto; }
   .hist-date-body { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
   .hist-entry { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 9px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
-  .hist-entry.is-running { border-color: var(--series-2); }
+  /* 2026-09-19：「最近の記録」の作業中アイテムが地味という指摘を受け、単なる枠線色だけでなく
+     淡いオレンジのグラデーション背景と発光（box-shadow）を加えて、ひと目で「動いている記録」と
+     わかるようにした。休憩中（.hist-break-entry.is-running）・タスクのまとめ表示
+     （.recent-task-group.is-running）にも同じ考え方で揃えている。 */
+  .hist-entry.is-running { border-color: var(--series-2); background: linear-gradient(135deg, rgba(235, 104, 52, 0.14), var(--surface-1) 60%); box-shadow: 0 0 0 1px rgba(235, 104, 52, 0.16), 0 2px 12px rgba(235, 104, 52, 0.18); }
   .hist-entry.is-editing-elsewhere { opacity: 0.6; border-style: dashed; }
   .hist-entry-name .part-tag { font-size: 10px; font-weight: 700; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
   .hist-break-entry { background: #2b2417; border-color: var(--series-4); }
-  .hist-break-entry.is-running { border-color: var(--series-4); }
+  .hist-break-entry.is-running { border-color: var(--series-4); background: linear-gradient(135deg, rgba(237, 161, 0, 0.16), #2b2417 60%); box-shadow: 0 0 0 1px rgba(237, 161, 0, 0.16), 0 2px 12px rgba(237, 161, 0, 0.18); }
   /* 最近の記録：同じタスクの記録を日付をまたいで1つのくくりにまとめた表示 */
   .recent-task-group { background: var(--page-plane); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; }
-  .recent-task-group.is-running { border-color: var(--series-2); }
+  .recent-task-group.is-running { border-color: var(--series-2); background: linear-gradient(135deg, rgba(235, 104, 52, 0.12), var(--page-plane) 60%); box-shadow: 0 0 0 1px rgba(235, 104, 52, 0.14), 0 2px 12px rgba(235, 104, 52, 0.16); }
   .recent-task-group-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
   .recent-task-group[open] .recent-task-group-heading { margin-bottom: 8px; }
   .recent-task-group:not([open]) .recent-task-group-heading { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
@@ -355,7 +359,19 @@
   .recent-task-group .hist-entry:last-child { margin-bottom: 0; }
   .hist-entry-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .hist-entry-name { font-weight: 700; font-size: 13px; color: var(--text-primary); }
-  .hist-entry-name .running-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--series-2); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  /* 2026-09-19：以前は .hist-entry-name の中でしかスタイルが当たっておらず、タスクを
+     まとめ表示（.recent-task-group-heading）した際の「作業中」タグが無地のテキストに
+     なってしまっていた（デザインが崩れて見える原因の一つ）。クラス単体にスタイルを当て、
+     どこで使っても同じピル型バッジになるようにし、点滅ドットで「今も進行中」を伝える。 */
+  .running-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: #fff; background: var(--series-2); border-radius: 999px; padding: 2px 9px 2px 7px; margin-left: 6px; box-shadow: 0 0 6px rgba(235, 104, 52, 0.5); }
+  .running-tag::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: runningTagPulse 1.6s ease-in-out infinite; }
+  @keyframes runningTagPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.6); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .running-tag::before { animation: none; }
+  }
   .project-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
   .hist-entry-detail { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
   .hist-seg-line { line-height: 1.6; }
