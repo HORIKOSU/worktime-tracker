@@ -1068,6 +1068,7 @@
             return '<div class="monthly-goal-row-edit" data-goal-id="' + escapeHtml(g.id) + '">' +
               '<input type="text" class="monthly-goal-edit-project-input" value="' + escapeHtml(g.project) + '" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
               '<input type="text" class="monthly-goal-edit-memo-input" value="' + escapeHtml(g.memo || "") + '" placeholder="業務内容（任意）">' +
+              '<input type="text" class="monthly-goal-edit-number-input" value="' + escapeHtml(g.number || "") + '" placeholder="番号（任意）">' +
               '<div class="monthly-goal-edit-btn-row">' +
               '<button type="button" class="monthly-goal-save-btn" data-goal-id="' + escapeHtml(g.id) + '">保存</button>' +
               '<button type="button" class="monthly-goal-cancel-btn">キャンセル</button>' +
@@ -1076,7 +1077,7 @@
           }
           return '<div class="monthly-goal-row' + (g.done ? ' done' : '') + '" data-goal-id="' + escapeHtml(g.id) + '">' +
             '<input type="checkbox" class="monthly-goal-checkbox" data-goal-id="' + escapeHtml(g.id) + '"' + (g.done ? ' checked' : '') + '>' +
-            '<div class="monthly-goal-text">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + '</div>' +
+            '<div class="monthly-goal-text">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + (g.number ? ' <span class="number-badge">' + escapeHtml(g.number) + '</span>' : '') + '</div>' +
             '<button type="button" class="monthly-goal-edit-btn" data-goal-id="' + escapeHtml(g.id) + '" title="編集">編集</button>' +
             '<button type="button" class="monthly-goal-delete-btn" data-goal-id="' + escapeHtml(g.id) + '" title="削除">×</button>' +
             '</div>';
@@ -1091,16 +1092,19 @@
       '<div class="monthly-goal-add-row">' +
       '<input type="text" id="monthlyGoalProjectInput" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
       '<input type="text" id="monthlyGoalMemoInput" placeholder="業務内容（任意）">' +
+      '<input type="text" id="monthlyGoalNumberInput" placeholder="番号（任意）">' +
       '<button type="button" class="monthly-goal-add-btn" id="monthlyGoalAddBtn">＋ 追加</button>' +
       '</div>';
   }
   function addMonthlyGoal() {
     var projectInput = document.getElementById("monthlyGoalProjectInput");
     var memoInput = document.getElementById("monthlyGoalMemoInput");
+    var numberInput = document.getElementById("monthlyGoalNumberInput");
     var project = projectInput ? projectInput.value.trim() : "";
     var memo = memoInput ? memoInput.value.trim() : "";
+    var number = numberInput ? numberInput.value.trim() : "";
     if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
-    getMonthlyGoals().push({ id: generateId(), month: currentMonthKey(), project: project, memo: memo, done: false, createdAt: nowLocalIso() });
+    getMonthlyGoals().push({ id: generateId(), month: currentMonthKey(), project: project, memo: memo, number: number, done: false, createdAt: nowLocalIso() });
     persistState();
     renderMonthlyGoalsCard();
   }
@@ -1111,11 +1115,14 @@
     if (!goal) return;
     var projectInput = row.querySelector(".monthly-goal-edit-project-input");
     var memoInput = row.querySelector(".monthly-goal-edit-memo-input");
+    var numberInput = row.querySelector(".monthly-goal-edit-number-input");
     var project = projectInput ? projectInput.value.trim() : "";
     var memo = memoInput ? memoInput.value.trim() : "";
+    var number = numberInput ? numberInput.value.trim() : "";
     if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
     goal.project = project;
     goal.memo = memo;
+    goal.number = number;
     monthlyGoalEditingId = null;
     persistState();
     renderMonthlyGoalsCard();
@@ -1163,13 +1170,13 @@
       // 日本語入力（IME）で変換を確定するためのEnterでも反応してしまわないよう、
       // 変換中（isComposing）や変換確定の合図（keyCode 229）のときは無視する。
       if (evt.isComposing || evt.keyCode === 229) return;
-      if (evt.key === "Enter" && (evt.target.id === "monthlyGoalProjectInput" || evt.target.id === "monthlyGoalMemoInput")) {
+      if (evt.key === "Enter" && (evt.target.id === "monthlyGoalProjectInput" || evt.target.id === "monthlyGoalMemoInput" || evt.target.id === "monthlyGoalNumberInput")) {
         evt.preventDefault();
         addMonthlyGoal();
         return;
       }
       var editingRow = evt.target.closest ? evt.target.closest(".monthly-goal-row-edit") : null;
-      if (editingRow && (evt.target.classList.contains("monthly-goal-edit-project-input") || evt.target.classList.contains("monthly-goal-edit-memo-input"))) {
+      if (editingRow && (evt.target.classList.contains("monthly-goal-edit-project-input") || evt.target.classList.contains("monthly-goal-edit-memo-input") || evt.target.classList.contains("monthly-goal-edit-number-input"))) {
         if (evt.key === "Enter") {
           evt.preventDefault();
           saveMonthlyGoalEdit(editingRow);
