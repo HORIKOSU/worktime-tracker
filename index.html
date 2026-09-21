@@ -170,11 +170,21 @@
      2026-09-21：中断中・休憩中（on-break）にも、作業中とは違うモーションを追加。
      「動いている」作業中＝上下に浮遊、「止まっている」中断中＝ゆっくり呼吸するように
      拡大縮小する、という対になる動きにして、見た目だけで状態の違いがわかるようにした。
-     さらに、カード全体の動きだけでなく「■ 中断中」「☕ 休憩中」のバッジ自体もゆっくり
-     点滅させ、一時停止中であることがバッジの文字自体からも伝わるようにした。 */
+     バッジの文字は、最初は単純な点滅にしていたが「タイピングしているように」とのご要望で
+     変更。アイコン部分（■／☕）は固定のまま、「中断中」「休憩中」の文字部分（.badge-typing）
+     だけをタイプライターのように1文字ずつ表示→少し止まる→消える、を繰り返し、末尾には
+     点滅するカーソル（縦棒）を添える。 */
   .status-card.running { animation: statusCardFloat 3.4s ease-in-out infinite; }
   .status-card.on-break { animation: statusCardBreathe 2.6s ease-in-out infinite; }
-  .status-badge.on-break { animation: statusBadgeBlink 1.8s ease-in-out infinite; }
+  .status-badge.on-break .badge-typing {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    white-space: nowrap;
+    width: 0;
+    border-right: 2px solid currentColor;
+    animation: badgeTyping 2.6s linear infinite, badgeCaretBlink 0.7s step-end infinite;
+  }
   @keyframes statusCardFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
@@ -183,14 +193,20 @@
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.012); opacity: 0.93; }
   }
-  @keyframes statusBadgeBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+  @keyframes badgeTyping {
+    0%, 5% { width: 0; animation-timing-function: steps(3, end); }
+    55% { width: 3.2em; animation-timing-function: steps(3, end); }
+    85% { width: 3.2em; animation-timing-function: steps(3, end); }
+    95%, 100% { width: 0; }
+  }
+  @keyframes badgeCaretBlink {
+    0%, 100% { border-color: currentColor; }
+    50% { border-color: transparent; }
   }
   @media (prefers-reduced-motion: reduce) {
     .status-card.running { animation: none; }
     .status-card.on-break { animation: none; }
-    .status-badge.on-break { animation: none; }
+    .status-badge.on-break .badge-typing { animation: none; width: auto; border-right: none; }
   }
   /* 2026-09-18：作業中カードの四角い枠そのものを、1分（60秒）かけて上辺→右辺→下辺→左辺の順に
      描き足していく秒数カウントゲージに変更。SVGの矩形をstroke-dashoffsetで少しずつ表示する。
@@ -1546,7 +1562,7 @@
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">■</div>' +
-        '<span class="status-badge on-break">■ 中断中</span>' +
+        '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
@@ -1571,7 +1587,7 @@
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">☕</div>' +
-        '<span class="status-badge on-break">☕ 休憩中</span>' +
+        '<span class="status-badge on-break">☕ <span class="badge-typing">休憩中</span></span>' +
         '<div class="timer-project">業務全体の休憩中</div>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
