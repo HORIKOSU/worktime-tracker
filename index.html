@@ -4070,21 +4070,47 @@
     wrap.style.height = Math.max(220, entries.length * 34) + "px";
 
     var labels = entries.map(function (e) { return e.name; });
-    var hours = entries.map(function (e) { return +(e.sec / 3600).toFixed(2); });
-    var colors = entries.map(function (e) { return colorForProject(e.name); });
+    var memoMap = totalsByProjectMemoMap();
+
+    // 2026-09-21：「プロジェクト別の内訳」グラフの中身（各プロジェクトの棒）を、業務内容ごとの
+    // 積み上げ式（stacked bar）で表示する。積み上げの並び順は、プロジェクトをまたいだ
+    // 業務内容ごとの合計時間が多い順。色はプロジェクトの色をベースに、そのプロジェクト内での
+    // 業務内容の登場順で濃淡をずらす colorForProjectAndMemo を使い、最近の記録などの配色と揃える。
+    var memoTotals = {};
+    entries.forEach(function (e) {
+      var memos = memoMap[e.name] || {};
+      Object.keys(memos).forEach(function (m) { memoTotals[m] = (memoTotals[m] || 0) + memos[m]; });
+    });
+    var memoOrder = Object.keys(memoTotals).sort(function (a, b) { return memoTotals[b] - memoTotals[a]; });
+
+    var datasets = memoOrder.map(function (memoName) {
+      return {
+        label: memoName,
+        data: entries.map(function (e) { return +(((memoMap[e.name] || {})[memoName] || 0) / 3600).toFixed(2); }),
+        backgroundColor: entries.map(function (e) { return colorForProjectAndMemo(e.name, memoName === "(業務内容未設定)" ? "" : memoName); }),
+        borderRadius: 4
+      };
+    });
 
     var ctx = document.getElementById("projectChart").getContext("2d");
     if (projectChartInstance) projectChartInstance.destroy();
     projectChartInstance = new Chart(ctx, {
       type: "bar",
-      data: { labels: labels, datasets: [{ label: "作業時間(h)", data: hours, backgroundColor: colors, borderRadius: 4 }] },
+      data: { labels: labels, datasets: datasets },
       options: {
         indexAxis: "y",
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.x + " 時間"; } } } },
+        interaction: { mode: "nearest", intersect: true },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: function (item) { return item.parsed.x > 0; },
+            callbacks: { label: function (item) { return item.dataset.label + "：" + item.parsed.x + " 時間"; } }
+          }
+        },
         scales: {
-          x: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } },
-          y: { grid: { display: false }, ticks: { color: "#eef1ee", font: { size: 12 } } }
+          x: { stacked: true, beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } },
+          y: { stacked: true, grid: { display: false }, ticks: { color: "#eef1ee", font: { size: 12 } } }
         }
       }
     });
