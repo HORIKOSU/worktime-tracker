@@ -169,9 +169,12 @@
   /* 2026-09-18：作業中（running）に、遊び心のある浮遊モーションを入れる。
      2026-09-21：中断中・休憩中（on-break）にも、作業中とは違うモーションを追加。
      「動いている」作業中＝上下に浮遊、「止まっている」中断中＝ゆっくり呼吸するように
-     拡大縮小する、という対になる動きにして、見た目だけで状態の違いがわかるようにした。 */
+     拡大縮小する、という対になる動きにして、見た目だけで状態の違いがわかるようにした。
+     さらに、カード全体の動きだけでなく「■ 中断中」「☕ 休憩中」のバッジ自体もゆっくり
+     点滅させ、一時停止中であることがバッジの文字自体からも伝わるようにした。 */
   .status-card.running { animation: statusCardFloat 3.4s ease-in-out infinite; }
   .status-card.on-break { animation: statusCardBreathe 2.6s ease-in-out infinite; }
+  .status-badge.on-break { animation: statusBadgeBlink 1.8s ease-in-out infinite; }
   @keyframes statusCardFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
@@ -180,9 +183,14 @@
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.012); opacity: 0.93; }
   }
+  @keyframes statusBadgeBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .status-card.running { animation: none; }
     .status-card.on-break { animation: none; }
+    .status-badge.on-break { animation: none; }
   }
   /* 2026-09-18：作業中カードの四角い枠そのものを、1分（60秒）かけて上辺→右辺→下辺→左辺の順に
      描き足していく秒数カウントゲージに変更。SVGの矩形をstroke-dashoffsetで少しずつ表示する。
