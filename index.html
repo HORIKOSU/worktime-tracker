@@ -495,6 +495,11 @@
   .sched-block-delete-btn:hover { background: var(--series-8); color: #fff; }
   .sched-block-menu-close-btn { appearance: none; border: none; background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; }
 
+  /* 2026-09-22:「集中カウント開始」→「業務開始」の2ステップ化用。実際の開始ボタンと同じクラス・サイズの
+     まま、まだ押していない間だけこのクラスで色を差し替える（要素セレクタ込みで詳細度を上げ、常に上書きする）。 */
+  button.focus-count-btn { background: var(--page-plane); color: var(--series-1); border: 1px dashed var(--series-1); }
+  button.focus-count-btn:hover { background: var(--series-1); color: #fff; }
+
   @media (max-width: 760px) {
     .dashboard-top-grid { grid-template-columns: 1fr; }
     #planListWrap, .plan-done-grid { grid-template-columns: 1fr 1fr; }
@@ -834,6 +839,13 @@
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
   var focusCycleAutoPausedSessionId = null; // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すためのフラグ（再開時にクリアする、保存はしない一時的な値）
 
+  // 2026-09-22:「集中カウント開始→業務開始ボタン」の2ステップにしたいというご要望で追加。
+  // 「▶ 今すぐ開始」「予定からの開始」「▶ 作業に戻る」「☀ 開始する」「スケジュールからの再開」など、
+  // タスクを開始・再開するすべての操作の直前に、まず「● 集中カウント開始」ボタンを表示する。
+  // これを押すとフラグが立ち、その場にあった実際の開始ボタンに差し替わる（全箇所いっせいに切り替わる）。
+  // 実際にタスクが開始・再開された瞬間にfalseへ戻す一時的なフラグ（保存はしない）。
+  var focusCountArmed = false;
+
   // 2026-09-17：「2:00〜6:00は記入することがないので表示しない」とのご要望で、日表示のこの
   // 時間帯を非表示にする。実際の分（0〜1440、0時からの経過分）を、非表示区間の分だけ詰めた
   // 「表示用の分」に変換して、縦位置の計算に使う（この区間をまたいで記録がある場合も、
@@ -885,6 +897,13 @@
     return String(str).replace(/[&<>"']/g, function (c) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
+  }
+
+  // 「集中カウント開始」ボタンのHTMLを共通生成する。実際の開始ボタンと同じclass文字列を渡すことで、
+  // 見た目のサイズ・位置は変えずに色だけ差し替える（focus-count-btnで上書き）。data-focus-gate属性を
+  // 目印に、クリックはdocument側で一括して拾う（再描画のたびに作り直されるボタンにもその都度効くようにするため）。
+  function focusGateButtonHtml(baseClass) {
+    return '<button type="button" class="' + baseClass + ' focus-count-btn" data-focus-gate="1">● 集中カウント開始</button>';
   }
 
   function pad2(n) { n = String(n); return n.length < 2 ? "0" + n : n; }
@@ -961,6 +980,7 @@
     session.segments.push({ start: nowLocalIso(), end: null });
     session.end = null;
     if (memo !== undefined) session.memo = memo;
+    focusCountArmed = false; // 実際に再開したので、次回また「集中カウント開始」から押し直してもらう
   }
   function endRunningSession(session) {
     var now = nowLocalIso();
@@ -1328,6 +1348,7 @@
     else applyTypedNumberToTask(task, number);
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: remarks || "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
     persistState();
+    focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
   }
   // 今日、記録（セッション）が1件でもあるかどうか。「今日はまだ何も始めていない」状態を
@@ -1346,6 +1367,7 @@
     if (!task) task = createTask(project, memo, "");
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
     persistState();
+    focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
   }
   // タスクに紐づく記録のうち、最も新しい開始日時をミリ秒で返す。開始時刻にミリ秒精度の
@@ -1596,15 +1618,17 @@
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         (focusCycleAutoPausedSessionId === onBreak.id ? '<p class="focus-cycle-note">90分の集中サイクルが経過したため、自動的に中断しました。</p>' : '') +
-        '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
+        (focusCountArmed ? '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' : focusGateButtonHtml("big-btn")) +
         '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
-      document.getElementById("resumeBreakBtn").addEventListener("click", function () {
-        resumeSession(onBreak);
-        state.onBreakSessionId = null;
-        focusCycleAutoPausedSessionId = null;
-        persistState();
-        renderAll();
-      });
+      if (focusCountArmed) {
+        document.getElementById("resumeBreakBtn").addEventListener("click", function () {
+          resumeSession(onBreak);
+          state.onBreakSessionId = null;
+          focusCycleAutoPausedSessionId = null;
+          persistState();
+          renderAll();
+        });
+      }
       document.getElementById("breakNewLink").addEventListener("click", function (evt) {
         evt.preventDefault();
         state.onBreakSessionId = null;
@@ -1640,12 +1664,14 @@
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle idle">☀</div>' +
         '<p class="day-start-question">今日の業務を開始しますか？</p>' +
-        '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' +
+        (focusCountArmed ? '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' : focusGateButtonHtml("big-btn")) +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「ルーティン」で開始します。</p>';
-      document.getElementById("dayStartBtn").addEventListener("click", function () {
-        if (!startDailyRoutineTask()) return;
-        renderAll();
-      });
+      if (focusCountArmed) {
+        document.getElementById("dayStartBtn").addEventListener("click", function () {
+          if (!startDailyRoutineTask()) return;
+          renderAll();
+        });
+      }
     } else {
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
@@ -1833,6 +1859,13 @@
     // すでに作業中・中断中・休憩中の場合は、先にそちらを終わらせてもらう（同時に2つは開始できないため）。
     if (startBtn) {
       startBtn.addEventListener("click", function () {
+        // 2026-09-22:「集中カウント開始→業務開始」の2ステップ化。1回目のクリックは
+        // 「これから始める」という合図だけで、実際のタスク開始（2回目のクリック）はまだ行わない。
+        if (!focusCountArmed) {
+          focusCountArmed = true;
+          renderAll();
+          return;
+        }
         var project = projectInput.value.trim();
         if (!project) {
           window.alert("プロジェクト名を入力してください。");
@@ -1849,6 +1882,21 @@
         if (remarksInput) remarksInput.value = "";
         renderAll();
       });
+    }
+  }
+
+  // 「▶ 今すぐ開始」ボタンは他の開始ボタンと違い、フォームごと固定DOMとして最初の1回しか
+  // 生成されない（wirePlanAddFormOnce）。そのためrenderAll()のたびにここでラベル・見た目だけを
+  // 「集中カウント開始」⇔「▶ 今すぐ開始」の状態に同期する（要素自体は作り直さない）。
+  function syncQuickStartGate() {
+    var btn = document.getElementById("startBtn");
+    if (!btn) return;
+    if (focusCountArmed) {
+      btn.textContent = "▶ 今すぐ開始";
+      btn.classList.remove("focus-count-btn");
+    } else {
+      btn.textContent = "● 集中カウント開始";
+      btn.classList.add("focus-count-btn");
     }
   }
 
@@ -1898,7 +1946,7 @@
           (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
-          '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' +
+          (focusCountArmed ? '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' : focusGateButtonHtml("plan-start-btn")) +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
           '</div>' +
@@ -3366,7 +3414,7 @@
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
         '<div class="schedule-block-menu-info"><strong>' + escapeHtml(menuLabel) + '</strong></div>' +
         '<div class="schedule-block-menu-actions">' +
-        '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' +
+        (focusCountArmed ? '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' : focusGateButtonHtml("sched-block-resume-btn")) +
         '<button type="button" class="sched-block-edit-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">編集</button>' +
         '<button type="button" class="sched-block-delete-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">削除</button>' +
         '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
@@ -3395,40 +3443,44 @@
     var menuEl = document.querySelector(".schedule-block-menu");
     if (!menuEl) return;
 
-    menuEl.querySelector(".sched-block-resume-btn").addEventListener("click", function () {
-      var sessionId = this.getAttribute("data-session-id");
-      var session = state.sessions.find(function (s) { return s.id === sessionId; });
-      scheduleBlockMenuState = null;
-      if (!session) { renderScheduleDayView(true); return; }
+    var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn");
+    if (schedResumeBtn) {
+      schedResumeBtn.addEventListener("click", function () {
+        var sessionId = this.getAttribute("data-session-id");
+        var session = state.sessions.find(function (s) { return s.id === sessionId; });
+        scheduleBlockMenuState = null;
+        if (!session) { renderScheduleDayView(true); return; }
 
-      // タップしたブロックが、ちょうど今「中断中」のタスクそのものであれば、
-      // 「▶ 作業に戻る」と同じ処理でそのまま再開する（新しい別タスクとして扱わない）。
-      var onBreak = getOnBreakSession();
-      if (onBreak && (onBreak.id === session.id || (session.taskId && onBreak.taskId === session.taskId))) {
-        resumeSession(onBreak);
-        state.onBreakSessionId = null;
-        focusCycleAutoPausedSessionId = null;
+        // タップしたブロックが、ちょうど今「中断中」のタスクそのものであれば、
+        // 「▶ 作業に戻る」と同じ処理でそのまま再開する（新しい別タスクとして扱わない）。
+        var onBreak = getOnBreakSession();
+        if (onBreak && (onBreak.id === session.id || (session.taskId && onBreak.taskId === session.taskId))) {
+          resumeSession(onBreak);
+          state.onBreakSessionId = null;
+          focusCycleAutoPausedSessionId = null;
+          persistState();
+          renderAll();
+          return;
+        }
+
+        // タップしたブロックが今の作業中・中断中のタスクとは別物であれば、そちらは自動で
+        // 区切ってから、このブロックのタスクを新たに開始する（2026-09-16〜）。
+        clearCurrentActivityToStartAnother();
+        var project = session.project, memo = session.memo || "", number = session.number || "";
+        var task = session.taskId ? getTaskById(session.taskId) : null;
+        if (!task) {
+          // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
+          // 既存タスクに紐づけるか、なければ新規タスクにする。
+          task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
+          if (!task) task = createTask(project, memo, number);
+        }
+        applyTypedNumberToTask(task, number);
+        state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
         persistState();
+        focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
         renderAll();
-        return;
-      }
-
-      // タップしたブロックが今の作業中・中断中のタスクとは別物であれば、そちらは自動で
-      // 区切ってから、このブロックのタスクを新たに開始する（2026-09-16〜）。
-      clearCurrentActivityToStartAnother();
-      var project = session.project, memo = session.memo || "", number = session.number || "";
-      var task = session.taskId ? getTaskById(session.taskId) : null;
-      if (!task) {
-        // 手動追加した記録などタスクに紐づいていないセッションは、「新しいタスクを開始」と同じ判定で
-        // 既存タスクに紐づけるか、なければ新規タスクにする。
-        task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
-        if (!task) task = createTask(project, memo, number);
-      }
-      applyTypedNumberToTask(task, number);
-      state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
-      persistState();
-      renderAll();
-    });
+      });
+    }
 
     menuEl.querySelector(".sched-block-edit-btn").addEventListener("click", function () {
       var sessionId = this.getAttribute("data-session-id");
@@ -4363,6 +4415,7 @@
     renderMonthlyGoalsCard();
     renderStatusCard();
     renderPlanCard();
+    syncQuickStartGate();
     renderStatRow();
     renderRecentList();
     renderSchedule();
@@ -4376,6 +4429,17 @@
       document.getElementById("manualEndDate").value = todayDateInputValue();
     }
   }
+
+  // 2026-09-22:「集中カウント開始」ボタン（day-start-card／on-break／今日の予定の各行／
+  // スケジュールの操作メニューなど、再描画のたびに作り直される箇所すべて）のクリックを、
+  // 個別に配線し直すのではなくここで一括して拾う。data-focus-gate属性がある要素なら
+  // どこをクリックしてもフラグを立てて再描画し、実際の開始ボタンに切り替える。
+  document.addEventListener("click", function (evt) {
+    var gateBtn = evt.target.closest ? evt.target.closest("[data-focus-gate]") : null;
+    if (!gateBtn) return;
+    focusCountArmed = true;
+    renderAll();
+  });
 
   if (tickInterval) clearInterval(tickInterval);
   tickInterval = setInterval(tick, 1000);
