@@ -234,6 +234,11 @@
   .timer-task-start { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
   .timer-session-block { margin-top: 14px; }
   .timer-session-elapsed { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  /* 2026-09-22: 90分の集中サイクルの残り時間バッジ。timer-session-elapsed と同じ見た目をベースにし、
+     残り5分を切ったら警告色（--series-4=中断中カラー）に変える。 */
+  .focus-cycle-badge { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .focus-cycle-badge.is-low { color: var(--series-4); border-color: var(--series-4); }
+  .focus-cycle-note { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
   .status-form .field-block { display: flex; flex-direction: column; gap: 0; }
@@ -823,6 +828,12 @@
   var HOUR_PX = 72; // 1時間あたりの高さ(px)。スケジュール（日表示）の縦の幅を広げたいというご要望で 48→72（1.5倍）に変更
   var MIN_BLOCK_HEIGHT = 27; // ブロックの最小の高さ(px)。1行分のラベルが見える高さを確保する（短い記録でも文字が消えないように）。HOUR_PXと同じ比率で拡大
 
+  // 2026-09-22:「1回の集中を90分までにして、超えたら自動的に中断状態にする」というご要望で追加。
+  // 90分は区間（segment）の開始からの経過時間で判定する。resumeSession() のたびに新しい区間が
+  // 作られるため、休憩から再開するたびに自動的に新しい90分の枠が始まる（追加のデータ保存は不要）。
+  var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
+  var focusCycleAutoPausedSessionId = null; // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すためのフラグ（再開時にクリアする、保存はしない一時的な値）
+
   // 2026-09-17：「2:00〜6:00は記入することがないので表示しない」とのご要望で、日表示のこの
   // 時間帯を非表示にする。実際の分（0〜1440、0時からの経過分）を、非表示区間の分だけ詰めた
   // 「表示用の分」に変換して、縦位置の計算に使う（この区間をまたいで記録がある場合も、
@@ -966,6 +977,24 @@
     var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
     if (m === 60) { h += 1; m = 0; }
     return h + "時間" + m + "分";
+  }
+  function formatMMSS(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return pad2(m) + ":" + pad2(s);
+  }
+  // 90分の集中サイクルは「今動いている区間（segment）が始まった時刻」からの経過時間で判定する。
+  // 再開（resumeSession）のたびに新しい区間が作られるため、休憩から戻るたびに自動的に
+  // 新しい90分の枠が始まる。
+  function currentSegmentStartIso(session) {
+    var segs = getSegments(session);
+    return segs[segs.length - 1].start;
+  }
+  function currentSegmentElapsedSec(session) {
+    return Math.max(0, Math.round((new Date() - parseLocal(currentSegmentStartIso(session))) / 1000));
+  }
+  function focusCycleRemainingSec(session) {
+    return FOCUS_CYCLE_SEC - currentSegmentElapsedSec(session);
   }
   function formatTimeShort(iso) {
     return splitIso(iso).time;
@@ -1275,7 +1304,7 @@
       state.onBreakSessionId = running.id;
       return;
     }
-    if (state.onBreakSessionId) { state.onBreakSessionId = null; return; }
+    if (state.onBreakSessionId) { state.onBreakSessionId = null; focusCycleAutoPausedSessionId = null; return; }
     var activeGeneralBreak = getActiveGeneralBreak();
     if (activeGeneralBreak) { activeGeneralBreak.end = nowLocalIso(); }
   }
@@ -1530,6 +1559,7 @@
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec(running) <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り ' + formatMMSS(focusCycleRemainingSec(running)) + '</div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
@@ -1565,17 +1595,20 @@
         '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
+        (focusCycleAutoPausedSessionId === onBreak.id ? '<p class="focus-cycle-note">90分の集中サイクルが経過したため、自動的に中断しました。</p>' : '') +
         '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' +
         '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
       document.getElementById("resumeBreakBtn").addEventListener("click", function () {
         resumeSession(onBreak);
         state.onBreakSessionId = null;
+        focusCycleAutoPausedSessionId = null;
         persistState();
         renderAll();
       });
       document.getElementById("breakNewLink").addEventListener("click", function (evt) {
         evt.preventDefault();
         state.onBreakSessionId = null;
+        focusCycleAutoPausedSessionId = null;
         persistState();
         renderAll();
       });
@@ -2077,6 +2110,17 @@
   function tick() {
     var running = getRunningSession();
     if (running) {
+      // 2026-09-22: 1回の集中を90分までにするご要望。今の区間の開始から90分経過したら、
+      // 手動の「■ 中断」ボタン（pauseBtn）と全く同じ手順で自動的に中断状態へ切り替える。
+      var focusRemainingSec = focusCycleRemainingSec(running);
+      if (focusRemainingSec <= 0) {
+        endRunningSession(running);
+        state.onBreakSessionId = running.id;
+        focusCycleAutoPausedSessionId = running.id;
+        persistState();
+        renderAll();
+        return;
+      }
       var runningTask = running.taskId ? getTaskById(running.taskId) : null;
       var sessionElapsedSec = durationSecOf(running);
       var priorTaskSec = 0;
@@ -2087,6 +2131,11 @@
       if (timerEl) timerEl.textContent = formatHMS(sessionElapsedSec);
       var sessionEl = document.getElementById("sessionElapsedTimer");
       if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
+      var focusBadgeEl = document.getElementById("focusCycleBadge");
+      if (focusBadgeEl) {
+        focusBadgeEl.textContent = "集中サイクル残り " + formatMMSS(focusRemainingSec);
+        focusBadgeEl.classList.toggle("is-low", focusRemainingSec <= 300);
+      }
       renderStatRow();
       // 枠の秒数カウントゲージ（目盛りドット型）：1分（60秒）で一周し、次の分でまたゼロから
       updateStatusGaugeFrame(sessionElapsedSec);
@@ -2217,6 +2266,7 @@
     var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
     if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
     if (state.onBreakSessionId === id) state.onBreakSessionId = null;
+    if (focusCycleAutoPausedSessionId === id) focusCycleAutoPausedSessionId = null;
     var deletedTaskId = target.taskId;
     state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
     // このタスクを参照する記録が他に残っていなければ、記録の無い「空のタスク」が
@@ -3357,6 +3407,7 @@
       if (onBreak && (onBreak.id === session.id || (session.taskId && onBreak.taskId === session.taskId))) {
         resumeSession(onBreak);
         state.onBreakSessionId = null;
+        focusCycleAutoPausedSessionId = null;
         persistState();
         renderAll();
         return;
