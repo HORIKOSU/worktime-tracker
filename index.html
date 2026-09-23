@@ -412,6 +412,14 @@
   .data-io-col { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
   .data-io-textarea { width: 100%; min-height: 90px; font-family: inherit; font-size: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box; }
   .data-io-file { font-size: 12px; color: var(--text-secondary); }
+  /* 2026-09-23：「ファイルを選択」ボタンが（ブラウザ標準のまま、周りに溶け込む灰色で）見づらい
+     とのご指摘。ボタン部分だけを他のボタン（.data-io-btn）と揃えた色付きデザインに変更する。
+     ::file-selector-buttonが標準、::-webkit-file-upload-buttonはSafari等向けの旧webkit記法。 */
+  .data-io-file::file-selector-button, .data-io-file::-webkit-file-upload-button {
+    appearance: none; border: none; background: var(--series-1); color: #fff; font-family: inherit;
+    font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: 8px; cursor: pointer; margin-right: 12px;
+  }
+  .data-io-file::file-selector-button:hover, .data-io-file::-webkit-file-upload-button:hover { opacity: 0.9; }
   .data-io-btn { appearance: none; border: 1px solid var(--series-1); background: var(--series-1); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
   .data-io-btn:hover { opacity: 0.9; }
   .data-io-btn.secondary { background: transparent; color: var(--series-1); }
