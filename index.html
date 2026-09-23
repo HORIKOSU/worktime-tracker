@@ -72,10 +72,14 @@
   /* 2026-09-23：90分の集中サイクル終了時・残り5分警告時に、PC全体に通知（OS通知）を出せる
      ようにするトグルボタン。ヘッダー右上に固定表示し、押すたびに通知の有効／無効を切り替える。
      初回はブラウザの通知許可ダイアログが出る（ユーザー操作からの呼び出しが必要なため、ここでのみ
-     Notification.requestPermission() を呼ぶ）。 */
-  .notify-toggle-btn { position: absolute; top: 16px; right: 20px; appearance: none; border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); color: #fff; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-  .notify-toggle-btn:hover { background: rgba(255,255,255,0.22); }
-  .notify-toggle-btn.is-on { background: #fff; color: var(--series-1); border-color: #fff; }
+     Notification.requestPermission() を呼ぶ）。
+     2026-09-23追記：オン／オフが一見して分かりにくいとのご指摘で、(1)アイコンをオフ＝🔕（ベルに
+     斜線）／オン＝🔔（通常のベル）で描き分ける、(2)オフは縁取りだけの控えめな見た目、オンは
+     白background＋差し色の点灯ドット付きではっきり目立つ見た目にする、の2点で違いを強めた。 */
+  .notify-toggle-btn { position: absolute; top: 16px; right: 20px; display: inline-flex; align-items: center; gap: 6px; appearance: none; border: 1px solid rgba(255,255,255,0.45); background: transparent; color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .notify-toggle-btn:hover { background: rgba(255,255,255,0.14); }
+  .notify-toggle-btn.is-on { background: #fff; color: var(--series-1); border-color: #fff; font-weight: 800; }
+  .notify-toggle-btn.is-on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--series-1); box-shadow: 0 0 0 2px rgba(63,174,121,0.25); }
   .notify-toggle-btn:disabled { opacity: 0.55; cursor: default; }
   nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
   nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
@@ -582,7 +586,7 @@
 
 <div class="app-top-fixed">
 <header class="app-header">
-  <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔔 通知オフ</button>
+  <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔕 通知オフ</button>
   <h1>⏱️ Taskmark</h1>
   <p>「開始」「休憩」ボタンを押すだけで作業時間を記録します。プロジェクト名・業務内容も一緒に記録できます。</p>
 </header>
@@ -859,6 +863,15 @@
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
   var focusCycleAutoPausedSessionId = null; // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すためのフラグ（再開時にクリアする、保存はしない一時的な値）
 
+  // 2026-09-23：「集中カウントを過ぎてから休憩を開始（＝中断）を押すまで、実際にどれくらい
+  // オーバーしていたか知りたい」というご要望で追加。ブラウザのタブを裏に回している間はタイマーの
+  // 動作が間引かれることがあり、90分ちょうどでは自動中断が検知されないことがある。また手動で
+  // 「■ 中断」を押した場合も、気づかず90分を超えてから押すことがある。そのどちらのケースでも、
+  // 実際に区切られた瞬間に「90分の上限を何秒超えていたか」を控えておき、中断中カードの説明文に
+  // 表示する（再開時・別の作業の開始時にクリアする、保存はしない一時的な値）。
+  var focusCycleOverageSessionId = null; // オーバー分を記録した対象セッションのID
+  var focusCycleOverageSec = 0; // そのセッションを区切った瞬間、90分をどれだけ超えていたか（秒）
+
   // 2026-09-23：「90分の集中サイクルが終わったとき」「残り5分を切ったとき」に、PC全体へ
   // OS標準の通知（ブラウザのNotification機能）を出したいというご要望で追加。
   // state.notifyEnabled は「通知を有効にする」トグルを押して許可が下りたときにtrueにする
@@ -878,14 +891,15 @@
     var btn = document.getElementById("notifyToggleBtn");
     if (!btn) return;
     if (!notificationsSupported()) {
-      btn.textContent = "🔔 通知非対応";
+      btn.textContent = "🔕 通知非対応";
       btn.disabled = true;
       btn.classList.remove("is-on");
       return;
     }
     btn.disabled = false;
     var on = !!state.notifyEnabled && Notification.permission === "granted";
-    btn.textContent = on ? "🔔 通知オン" : "🔔 通知オフ";
+    // オフ＝🔕（ベルに斜線）／オン＝🔔（通常のベル）でアイコン自体も描き分ける。
+    btn.textContent = on ? "🔔 通知オン" : "🔕 通知オフ";
     btn.classList.toggle("is-on", on);
   }
 
@@ -1078,6 +1092,22 @@
   }
   function focusCycleRemainingSec() {
     return FOCUS_CYCLE_SEC - focusStreakElapsedSec();
+  }
+  // 2026-09-23：中断中カードに表示する「集中サイクル関連の説明文」をまとめて組み立てる。
+  // ・自動中断（tick()が90分経過を検知して切り替えた場合）→ 従来通りの説明文。タブが裏に
+  // 　回っていた等の理由で検知が遅れ、実際には90分をさらに超えていた場合はその超過分を添える
+  // ・手動中断（気づかず90分を超えてから「■ 中断」を押した場合）→ 超過分だけを伝える説明文
+  // ・超過が無ければ何も表示しない（従来通り）
+  function focusCycleNoteHtml(session) {
+    var hasOverage = focusCycleOverageSessionId === session.id && focusCycleOverageSec > 5;
+    if (focusCycleAutoPausedSessionId === session.id) {
+      var delaySuffix = hasOverage ? "（本来のタイミングより" + formatMMSS(focusCycleOverageSec) + "遅れて検知されました）" : "";
+      return '<p class="focus-cycle-note">90分の集中サイクルが経過したため、自動的に中断しました' + delaySuffix + '。</p>';
+    }
+    if (hasOverage) {
+      return '<p class="focus-cycle-note">集中サイクルの90分をすでに' + formatMMSS(focusCycleOverageSec) + '超えた状態で中断しました。</p>';
+    }
+    return "";
   }
   function formatTimeShort(iso) {
     return splitIso(iso).time;
@@ -1387,7 +1417,7 @@
       state.onBreakSessionId = running.id;
       return;
     }
-    if (state.onBreakSessionId) { state.onBreakSessionId = null; focusCycleAutoPausedSessionId = null; return; }
+    if (state.onBreakSessionId) { state.onBreakSessionId = null; focusCycleAutoPausedSessionId = null; focusCycleOverageSessionId = null; focusCycleOverageSec = 0; return; }
     var activeGeneralBreak = getActiveGeneralBreak();
     if (activeGeneralBreak) { activeGeneralBreak.end = nowLocalIso(); }
   }
@@ -1704,6 +1734,11 @@
         persistState();
       });
       document.getElementById("pauseBtn").addEventListener("click", function () {
+        // 2026-09-23：気づかないうちに集中サイクルの90分をすでに超えていた場合、その超過分を
+        // 中断中カードに表示できるよう控えておく（超過が無ければ何も表示しない）。
+        var overage = focusCycleRemainingSec() < 0 ? -focusCycleRemainingSec() : 0;
+        focusCycleOverageSessionId = overage > 0 ? running.id : null;
+        focusCycleOverageSec = overage;
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         persistState();
@@ -1724,7 +1759,7 @@
         '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
-        (focusCycleAutoPausedSessionId === onBreak.id ? '<p class="focus-cycle-note">90分の集中サイクルが経過したため、自動的に中断しました。</p>' : '') +
+        focusCycleNoteHtml(onBreak) +
         (focusCountArmed ? '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' : focusGateButtonHtml("big-btn")) +
         '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
       if (focusCountArmed) {
@@ -1732,6 +1767,8 @@
           resumeSession(onBreak);
           state.onBreakSessionId = null;
           focusCycleAutoPausedSessionId = null;
+          focusCycleOverageSessionId = null;
+          focusCycleOverageSec = 0;
           persistState();
           renderAll();
         });
@@ -1740,6 +1777,8 @@
         evt.preventDefault();
         state.onBreakSessionId = null;
         focusCycleAutoPausedSessionId = null;
+        focusCycleOverageSessionId = null;
+        focusCycleOverageSec = 0;
         persistState();
         renderAll();
       });
@@ -2273,10 +2312,17 @@
       // 全く同じ手順で自動的に中断状態へ切り替える。
       var focusRemainingSec = focusCycleRemainingSec();
       if (focusRemainingSec <= 0) {
+        // 2026-09-23：タブが裏に回っていた等でtick()の実行が遅れ、検知した時点ですでに90分を
+        // さらに超えていることがある。その超過分を控えておき、中断中カードと通知に反映する。
+        var autoOverage = -focusRemainingSec;
+        focusCycleOverageSessionId = autoOverage > 0 ? running.id : null;
+        focusCycleOverageSec = autoOverage;
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         focusCycleAutoPausedSessionId = running.id;
-        showDesktopNotification("Taskmark", "90分の集中サイクルが経過したため、自動的に中断しました。");
+        showDesktopNotification("Taskmark", autoOverage > 5
+          ? "90分の集中サイクルが経過したため、自動的に中断しました（本来のタイミングより" + formatMMSS(autoOverage) + "遅れて検知されました）。"
+          : "90分の集中サイクルが経過したため、自動的に中断しました。");
         persistState();
         renderAll();
         return;
@@ -2433,6 +2479,7 @@
     if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
     if (state.onBreakSessionId === id) state.onBreakSessionId = null;
     if (focusCycleAutoPausedSessionId === id) focusCycleAutoPausedSessionId = null;
+    if (focusCycleOverageSessionId === id) { focusCycleOverageSessionId = null; focusCycleOverageSec = 0; }
     var deletedTaskId = target.taskId;
     state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
     // このタスクを参照する記録が他に残っていなければ、記録の無い「空のタスク」が
@@ -3577,6 +3624,8 @@
           resumeSession(onBreak);
           state.onBreakSessionId = null;
           focusCycleAutoPausedSessionId = null;
+          focusCycleOverageSessionId = null;
+          focusCycleOverageSec = 0;
           persistState();
           renderAll();
           return;
