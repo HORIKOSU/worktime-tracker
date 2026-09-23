@@ -259,6 +259,11 @@
      （--series-8＝赤系）に変わる。 */
   .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-7); background: var(--page-plane); border: 1px solid var(--series-7); border-radius: 999px; padding: 3px 11px; font-variant-numeric: tabular-nums; z-index: 2; }
   .focus-cycle-badge.is-low { color: var(--series-8); border-color: var(--series-8); }
+  /* 2026-09-23：「中断してから／休憩してから」の経過時間を、カードの文章の流れの中ではなく
+     集中サイクルバッジと同じく右上に固定表示する形に変更。色は、中断中カードの枠線・アイコンで
+     すでに使われている状態色（--series-4＝アンバー）を流用し、「中断中である」という意味と
+     揃える。 */
+  .break-elapsed-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-4); background: var(--page-plane); border: 1px solid var(--series-4); border-radius: 999px; padding: 3px 11px; font-variant-numeric: tabular-nums; z-index: 2; }
   .focus-cycle-note { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
@@ -1813,7 +1818,7 @@
         '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
-        '<div class="timer-session-elapsed" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
+        '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
         (focusCountArmed ? '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' : focusGateButtonHtml("big-btn")) +
         '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
@@ -1848,7 +1853,7 @@
         '<span class="status-badge on-break">☕ <span class="badge-typing">休憩中</span></span>' +
         '<div class="timer-project">業務全体の休憩中</div>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
-        '<div class="timer-session-elapsed" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
+        '<div class="break-elapsed-badge" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
         '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
