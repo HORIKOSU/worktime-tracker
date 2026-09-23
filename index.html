@@ -63,9 +63,17 @@
      header.app-header の上マージンをこのラッパーの padding-top に移し、sticky時に margin と
      ビューポート上端のあいだに背景が透けて見える隙間ができないようにしている。 */
   .app-top-fixed { position: sticky; top: 0; z-index: 50; background: var(--page-plane); padding-top: 16px; }
-  header.app-header { max-width: 920px; margin: 0 auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; }
-  header.app-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
-  header.app-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
+  header.app-header { max-width: 920px; margin: 0 auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; position: relative; }
+  header.app-header h1 { margin: 0 0 4px; padding-right: 96px; font-size: 20px; font-weight: 800; color: #fff; }
+  header.app-header p { margin: 0; padding-right: 96px; font-size: 13px; color: rgba(255,255,255,0.85); }
+  /* 2026-09-23：90分の集中サイクル終了時・残り5分警告時に、PC全体に通知（OS通知）を出せる
+     ようにするトグルボタン。ヘッダー右上に固定表示し、押すたびに通知の有効／無効を切り替える。
+     初回はブラウザの通知許可ダイアログが出る（ユーザー操作からの呼び出しが必要なため、ここでのみ
+     Notification.requestPermission() を呼ぶ）。 */
+  .notify-toggle-btn { position: absolute; top: 16px; right: 20px; appearance: none; border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); color: #fff; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .notify-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+  .notify-toggle-btn.is-on { background: #fff; color: var(--series-1); border-color: #fff; }
+  .notify-toggle-btn:disabled { opacity: 0.55; cursor: default; }
   nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
   nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
   nav.tabs button.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
@@ -510,6 +518,8 @@
   @media (max-width: 600px) {
     main { padding: 14px 12px; }
     header.app-header { padding: 16px 14px 12px; }
+    header.app-header h1, header.app-header p { padding-right: 78px; }
+    .notify-toggle-btn { top: 14px; right: 14px; font-size: 10px; padding: 4px 9px; }
     .card { padding: 14px; }
     #planListWrap, .plan-done-grid { grid-template-columns: 1fr; }
     .filter-item { min-width: 0; flex: 1 1 140px; }
@@ -566,6 +576,7 @@
 
 <div class="app-top-fixed">
 <header class="app-header">
+  <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔔 通知オフ</button>
   <h1>⏱️ Taskmark</h1>
   <p>「開始」「休憩」ボタンを押すだけで作業時間を記録します。プロジェクト名・業務内容も一緒に記録できます。</p>
 </header>
@@ -841,6 +852,36 @@
   // 作られるため、休憩から再開するたびに自動的に新しい90分の枠が始まる（追加のデータ保存は不要）。
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
   var focusCycleAutoPausedSessionId = null; // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すためのフラグ（再開時にクリアする、保存はしない一時的な値）
+
+  // 2026-09-23：「90分の集中サイクルが終わったとき」「残り5分を切ったとき」に、PC全体へ
+  // OS標準の通知（ブラウザのNotification機能）を出したいというご要望で追加。
+  // state.notifyEnabled は「通知を有効にする」トグルを押して許可が下りたときにtrueにする
+  // 永続化フラグ（未設定＝false扱いなので、既存データを開いても何もしない状態からスタートする）。
+  // focusCycleLowNotifiedStreakStart は「残り5分」の通知を同じ集中サイクル中に連呼しないための
+  // 一時的な目印（state.focusStreakStartIsoの値をそのまま控えておき、値が変わったら＝新しい
+  // サイクルが始まったら、また1回だけ通知できるようにする。保存はしない）。
+  var focusCycleLowNotifiedStreakStart = null;
+  function notificationsSupported() {
+    return typeof Notification !== "undefined";
+  }
+  function showDesktopNotification(title, body) {
+    if (!state.notifyEnabled || !notificationsSupported() || Notification.permission !== "granted") return;
+    try { new Notification(title, { body: body }); } catch (e) { /* 環境によっては生成に失敗することがあるため握りつぶす */ }
+  }
+  function syncNotifyToggleBtn() {
+    var btn = document.getElementById("notifyToggleBtn");
+    if (!btn) return;
+    if (!notificationsSupported()) {
+      btn.textContent = "🔔 通知非対応";
+      btn.disabled = true;
+      btn.classList.remove("is-on");
+      return;
+    }
+    btn.disabled = false;
+    var on = !!state.notifyEnabled && Notification.permission === "granted";
+    btn.textContent = on ? "🔔 通知オン" : "🔔 通知オフ";
+    btn.classList.toggle("is-on", on);
+  }
 
   // 2026-09-22:「集中カウント開始→業務開始ボタン」の2ステップにしたいというご要望で追加。
   // 「▶ 今すぐ開始」「予定からの開始」「▶ 作業に戻る」「☀ 開始する」「スケジュールからの再開」など、
@@ -1517,6 +1558,38 @@
       document.getElementById(btn.dataset.tab).classList.add("active");
     });
   });
+
+  // ---- 通知トグル（ヘッダー右上）----
+  // 2026-09-23追加。初回クリック時にブラウザの通知許可を求める（ユーザー操作の直後でないと
+  // 許可ダイアログが出せないブラウザがあるため、必ずこのクリックハンドラの中で呼ぶ）。
+  // すでに許可済みで有効化中なら、押すたびに通知のオン／オフだけを切り替える。
+  (function () {
+    var notifyBtn = document.getElementById("notifyToggleBtn");
+    if (!notifyBtn) return;
+    notifyBtn.addEventListener("click", function () {
+      if (!notificationsSupported()) return;
+      if (state.notifyEnabled && Notification.permission === "granted") {
+        state.notifyEnabled = false;
+        persistState();
+        syncNotifyToggleBtn();
+        return;
+      }
+      if (Notification.permission === "denied") {
+        window.alert("ブラウザ側で通知がブロックされています。ブラウザの設定からこのページの通知を許可してから、もう一度お試しください。");
+        return;
+      }
+      Notification.requestPermission().then(function (permission) {
+        if (permission === "granted") {
+          state.notifyEnabled = true;
+          persistState();
+          showDesktopNotification("Taskmark", "通知を有効にしました。90分経過時・残り5分になったときにお知らせします。");
+        } else {
+          state.notifyEnabled = false;
+        }
+        syncNotifyToggleBtn();
+      });
+    });
+  })();
 
   // ---- status card 秒数カウントゲージ（四角い枠を描き足していく方式） ----
   // 作業中カードの枠の少し外側に矩形（角丸の四角形）を重ね、その辺の長さぶんだけ
@@ -2206,9 +2279,16 @@
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         focusCycleAutoPausedSessionId = running.id;
+        showDesktopNotification("Taskmark", "90分の集中サイクルが経過したため、自動的に中断しました。");
         persistState();
         renderAll();
         return;
+      }
+      // 2026-09-23：残り5分（is-lowに切り替わるタイミング）で1回だけ通知する。
+      // 同じサイクル中に毎秒鳴らさないよう、直前に通知済みのサイクルの起点と比較して判定する。
+      if (focusRemainingSec <= 300 && focusCycleLowNotifiedStreakStart !== state.focusStreakStartIso) {
+        focusCycleLowNotifiedStreakStart = state.focusStreakStartIso;
+        showDesktopNotification("Taskmark", "集中サイクル残り5分を切りました。");
       }
       var runningTask = running.taskId ? getTaskById(running.taskId) : null;
       var sessionElapsedSec = durationSecOf(running);
@@ -4460,6 +4540,7 @@
     renderStatusCard();
     renderPlanCard();
     syncQuickStartGate();
+    syncNotifyToggleBtn();
     renderStatRow();
     renderRecentList();
     renderSchedule();
