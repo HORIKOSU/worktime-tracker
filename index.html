@@ -981,6 +981,8 @@
     session.end = null;
     if (memo !== undefined) session.memo = memo;
     focusCountArmed = false; // 実際に再開したので、次回また「集中カウント開始」から押し直してもらう
+    // 実際に休憩（中断）から戻ったタイミングなので、集中サイクルの起点はここでリセットする。
+    state.focusStreakStartIso = nowLocalIso();
   }
   function endRunningSession(session) {
     var now = nowLocalIso();
@@ -1003,18 +1005,20 @@
     var m = Math.floor(sec / 60), s = sec % 60;
     return pad2(m) + ":" + pad2(s);
   }
-  // 90分の集中サイクルは「今動いている区間（segment）が始まった時刻」からの経過時間で判定する。
-  // 再開（resumeSession）のたびに新しい区間が作られるため、休憩から戻るたびに自動的に
-  // 新しい90分の枠が始まる。
-  function currentSegmentStartIso(session) {
-    var segs = getSegments(session);
-    return segs[segs.length - 1].start;
+  // 2026-09-22:「タスクを跨いでも集中時間として通算カウントしたい」とのご要望で、
+  // 90分の集中サイクルは「セッション（区間）の開始時刻」ではなく、state.focusStreakStartIso
+  // （今の切れ目のない集中の始まり）からの経過時間で判定する。
+  // ・作業中のタスクから、休憩を挟まず別のタスクへ直接切り替えた場合 → 起点はそのまま引き継ぐ（通算）
+  // ・実際に休憩（■中断→▶作業に戻る）をはさんだ場合や、何もしていない状態から新規に開始した場合
+  //   → 起点をその瞬間にリセットする（新しい90分が始まる）
+  // 起点の更新は、実際に開始・再開する各関数（startTaskNow/startDailyRoutineTask/resumeSession、
+  // およびスケジュールからの再開）側で行う。
+  function focusStreakElapsedSec() {
+    if (!state.focusStreakStartIso) return 0;
+    return Math.max(0, Math.round((new Date() - parseLocal(state.focusStreakStartIso)) / 1000));
   }
-  function currentSegmentElapsedSec(session) {
-    return Math.max(0, Math.round((new Date() - parseLocal(currentSegmentStartIso(session))) / 1000));
-  }
-  function focusCycleRemainingSec(session) {
-    return FOCUS_CYCLE_SEC - currentSegmentElapsedSec(session);
+  function focusCycleRemainingSec() {
+    return FOCUS_CYCLE_SEC - focusStreakElapsedSec();
   }
   function formatTimeShort(iso) {
     return splitIso(iso).time;
@@ -1341,12 +1345,16 @@
   // 作業中・中断中・休憩中であっても、それらを自動で区切ってから開始する
   // （clearCurrentActivityToStartAnother。2026-09-16〜）ため、常に true を返す。
   function startTaskNow(project, memo, number, remarks) {
+    // 「タスクを跨いでも集中時間として通算したい」とのご要望に対応。作業中のタスクから
+    // 休憩を挟まず直接切り替える場合は、集中サイクルの起点を引き継ぐ（リセットしない）。
+    var continuingFocusStreak = !!getRunningSession();
     clearCurrentActivityToStartAnother();
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
 
     if (!task) task = createTask(project, memo, number);
     else applyTypedNumberToTask(task, number);
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: remarks || "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+    if (!continuingFocusStreak) state.focusStreakStartIso = nowLocalIso();
     persistState();
     focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
@@ -1361,11 +1369,13 @@
   // 「ルーティン」・空欄に固定。常に1クリックで同じタスクに続けて記録を開始する。
   // こちらも作業中・中断中・休憩中であれば自動で区切ってから開始する。
   function startDailyRoutineTask() {
+    var continuingFocusStreak = !!getRunningSession();
     clearCurrentActivityToStartAnother();
     var project = "ルーティン", memo = "";
     var task = openTasks().find(function (t) { return t.project === project && (t.memo || "") === memo; });
     if (!task) task = createTask(project, memo, "");
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+    if (!continuingFocusStreak) state.focusStreakStartIso = nowLocalIso();
     persistState();
     focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
@@ -1554,6 +1564,12 @@
     var card = document.getElementById("statusCard");
     var running = getRunningSession();
     if (running) {
+      // 旧バージョンのデータ（focusStreakStartIsoを持たない）を開いた場合の救済措置。
+      // 動いているセッションがあるのに起点が無ければ、その場で今の区間の開始時刻を起点にする。
+      if (!state.focusStreakStartIso) {
+        var runningSegsForMigration = getSegments(running);
+        state.focusStreakStartIso = runningSegsForMigration[runningSegsForMigration.length - 1].start;
+      }
       var segs = getSegments(running);
       var segLabel = segs.length > 1 ? "区間：" : "開始：";
       var segText = segs.map(function (seg) { return formatTimeShort(seg.start) + "〜" + (seg.end ? formatTimeShort(seg.end) : ""); }).join("、");
@@ -1581,7 +1597,7 @@
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
-        '<div class="focus-cycle-badge' + (focusCycleRemainingSec(running) <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り ' + formatMMSS(focusCycleRemainingSec(running)) + '</div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り ' + formatMMSS(focusCycleRemainingSec()) + '</div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
@@ -2158,9 +2174,15 @@
   function tick() {
     var running = getRunningSession();
     if (running) {
-      // 2026-09-22: 1回の集中を90分までにするご要望。今の区間の開始から90分経過したら、
-      // 手動の「■ 中断」ボタン（pauseBtn）と全く同じ手順で自動的に中断状態へ切り替える。
-      var focusRemainingSec = focusCycleRemainingSec(running);
+      // 旧バージョンのデータ（focusStreakStartIsoを持たない）を開いた場合の救済措置。
+      if (!state.focusStreakStartIso) {
+        var runningSegsForMigration = getSegments(running);
+        state.focusStreakStartIso = runningSegsForMigration[runningSegsForMigration.length - 1].start;
+      }
+      // 2026-09-22: 1回の集中を90分までにするご要望。集中の起点（タスクを跨いでも通算、
+      // 実際に休憩を挟むとリセット）から90分経過したら、手動の「■ 中断」ボタン（pauseBtn）と
+      // 全く同じ手順で自動的に中断状態へ切り替える。
+      var focusRemainingSec = focusCycleRemainingSec();
       if (focusRemainingSec <= 0) {
         endRunningSession(running);
         state.onBreakSessionId = running.id;
@@ -3465,6 +3487,7 @@
 
         // タップしたブロックが今の作業中・中断中のタスクとは別物であれば、そちらは自動で
         // 区切ってから、このブロックのタスクを新たに開始する（2026-09-16〜）。
+        var continuingFocusStreak = !!getRunningSession();
         clearCurrentActivityToStartAnother();
         var project = session.project, memo = session.memo || "", number = session.number || "";
         var task = session.taskId ? getTaskById(session.taskId) : null;
@@ -3476,6 +3499,7 @@
         }
         applyTypedNumberToTask(task, number);
         state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
+        if (!continuingFocusStreak) state.focusStreakStartIso = nowLocalIso();
         persistState();
         focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
         renderAll();
