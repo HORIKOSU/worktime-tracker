@@ -234,10 +234,13 @@
   .timer-task-start { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
   .timer-session-block { margin-top: 14px; }
   .timer-session-elapsed { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-  /* 2026-09-22: 90分の集中サイクルの残り時間バッジ。timer-session-elapsed と同じ見た目をベースにし、
-     残り5分を切ったら警告色（--series-4=中断中カラー）に変える。 */
-  .focus-cycle-badge { font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-  .focus-cycle-badge.is-low { color: var(--series-4); border-color: var(--series-4); }
+  /* 2026-09-22: 90分の集中サイクルの残り時間バッジ。
+     2026-09-23：カード内の文章の流れに埋もれて見えにくかったため、カード右上の角に固定表示する
+     形に変更。色も、中断中（--series-4）や作業中の枠線と紛らわしくならないよう、このバッジ専用の
+     紫系の色（--series-7）にした。残り5分を切ったら、削除ボタンなどでも使っている警告色
+     （--series-8＝赤系）に変わる。 */
+  .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-7); background: var(--page-plane); border: 1px solid var(--series-7); border-radius: 999px; padding: 3px 11px; font-variant-numeric: tabular-nums; z-index: 2; }
+  .focus-cycle-badge.is-low { color: var(--series-8); border-color: var(--series-8); }
   .focus-cycle-note { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
@@ -904,6 +907,15 @@
   // 目印に、クリックはdocument側で一括して拾う（再描画のたびに作り直されるボタンにもその都度効くようにするため）。
   function focusGateButtonHtml(baseClass) {
     return '<button type="button" class="' + baseClass + ' focus-count-btn" data-focus-gate="1">● 集中カウント開始</button>';
+  }
+  // 2026-09-23：「今日の予定からタスクを切り替える場合、集中時間は通算されるのに『集中カウント開始』
+  // ボタンを挟むのはおかしいのでは」というご指摘を受けて追加。すでに作業中（getRunningSession()）の
+  // ときに開始系のボタンを押すのは、必ず「休憩を挟まないタスクの切り替え＝集中サイクルは継続」になる
+  // （中断中・アイドル状態から新規に始める場合だけが「新しく集中し始める」ケースで、その場合のみ
+  // ゲートを挟む意味がある）。そのため、既に作業中であればゲートを満たしたものとして扱い、
+  // その場で直接の開始ボタンを表示する。
+  function focusGateSatisfied() {
+    return focusCountArmed || !!getRunningSession();
   }
 
   function pad2(n) { n = String(n); return n.length < 2 ? "0" + n : n; }
@@ -1877,7 +1889,9 @@
       startBtn.addEventListener("click", function () {
         // 2026-09-22:「集中カウント開始→業務開始」の2ステップ化。1回目のクリックは
         // 「これから始める」という合図だけで、実際のタスク開始（2回目のクリック）はまだ行わない。
-        if (!focusCountArmed) {
+        // 2026-09-23：ただし、既に作業中のタスクからの切り替えは集中サイクルが継続するだけなので
+        // ゲートは不要（focusGateSatisfied）。
+        if (!focusGateSatisfied()) {
           focusCountArmed = true;
           renderAll();
           return;
@@ -1907,7 +1921,7 @@
   function syncQuickStartGate() {
     var btn = document.getElementById("startBtn");
     if (!btn) return;
-    if (focusCountArmed) {
+    if (focusGateSatisfied()) {
       btn.textContent = "▶ 今すぐ開始";
       btn.classList.remove("focus-count-btn");
     } else {
@@ -1962,7 +1976,7 @@
           (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
-          (focusCountArmed ? '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' : focusGateButtonHtml("plan-start-btn")) +
+          (focusGateSatisfied() ? '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' : focusGateButtonHtml("plan-start-btn")) +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
           '</div>' +
@@ -2050,7 +2064,12 @@
       });
     });
 
-    wrap.querySelectorAll(".plan-start-btn").forEach(function (btn) {
+    // 2026-09-23：data-focus-gate（「集中カウント開始」のゲート仮ボタン）にも
+    // 同じ .plan-start-btn クラスが付いているため、除外せずに querySelectorAll すると
+    // ゲート未達の仮ボタンにまで「即座に開始する」本処理が二重に紐づいてしまう
+    // （1回目のクリックでゲートを飛ばして本当に開始されてしまう）。ここでは
+    // ゲート仮ボタンを明示的に除外し、本物の開始ボタンにのみ本処理を紐づける。
+    wrap.querySelectorAll(".plan-start-btn:not([data-focus-gate])").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
         if (!plan) return;
@@ -3436,7 +3455,7 @@
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
         '<div class="schedule-block-menu-info"><strong>' + escapeHtml(menuLabel) + '</strong></div>' +
         '<div class="schedule-block-menu-actions">' +
-        (focusCountArmed ? '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' : focusGateButtonHtml("sched-block-resume-btn")) +
+        (focusGateSatisfied() ? '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' : focusGateButtonHtml("sched-block-resume-btn")) +
         '<button type="button" class="sched-block-edit-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">編集</button>' +
         '<button type="button" class="sched-block-delete-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">削除</button>' +
         '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
@@ -3465,7 +3484,8 @@
     var menuEl = document.querySelector(".schedule-block-menu");
     if (!menuEl) return;
 
-    var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn");
+    // 2026-09-23：plan-start-btn と同じ理由で、ゲート仮ボタン（data-focus-gate）を除外する。
+    var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn:not([data-focus-gate])");
     if (schedResumeBtn) {
       schedResumeBtn.addEventListener("click", function () {
         var sessionId = this.getAttribute("data-session-id");
