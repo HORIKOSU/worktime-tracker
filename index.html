@@ -39,15 +39,18 @@
        アプリ全体の基調色（プライマリカラー）としてのみ使われているため、2026-0914の配色変更で
        ここだけ新しい配色（ダークグリーン）に差し替えている。--series-2（作業中）・--series-4（中断中）は
        状態を表す意味を持つ色のため、今回のデザイン変更でも色相は変更していない（--series-8＝削除などの
-       危険操作は暗い背景でも視認できるよう明度のみ引き上げた）。--series-3/5/6/7 は現在CSS上どこからも
-       参照されていない未使用の変数（過去のカラーパレットの名残）のため、今回は値を変更していない。 */
+       危険操作は暗い背景でも視認できるよう明度のみ引き上げた）。--series-3/5/6 は現在CSS上どこからも
+       参照されていない未使用の変数（過去のカラーパレットの名残）のため、今回は値を変更していない。
+       --series-7 は集中サイクル残りバッジ専用の色として2026-09-23に使い始めたが、当初の値は
+       この暗い背景（--page-plane・作業中カードの背景）に対して暗すぎて見づらかったため、
+       同日中に見やすい明るい紫（ラベンダー寄り）へ変更した。 */
     --series-1:       #3fae79;
     --series-2:       #eb6834;
     --series-3:       #1baf7a;
     --series-4:       #eda100;
     --series-5:       #e87ba4;
     --series-6:       #008300;
-    --series-7:       #4a3aa7;
+    --series-7:       #b39ddb;
     --series-8:       #ff6b6a;
     --success:        #3fae79;
     --danger:         #e0605f;
@@ -201,11 +204,14 @@
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.012); opacity: 0.93; }
   }
+  /* 2026-09-23：「タイプした後は少しずつ消えるのではなく、一気に消してからまたタイプが
+     始まるようにしたい」とのご要望で、消える部分だけ実質的な瞬間切り替えに変更した
+     （84%→85%の1%＝0.026秒というごく短い間に幅を戻すことで、消える動きを一気に見せる）。 */
   @keyframes badgeTyping {
-    0%, 5% { width: 0; animation-timing-function: steps(3, end); }
-    55% { width: 3.2em; animation-timing-function: steps(3, end); }
-    85% { width: 3.2em; animation-timing-function: steps(3, end); }
-    95%, 100% { width: 0; }
+    0%, 4% { width: 0; animation-timing-function: steps(3, end); }
+    50% { width: 3.2em; animation-timing-function: steps(3, end); }
+    84% { width: 3.2em; }
+    85%, 100% { width: 0; }
   }
   @keyframes badgeCaretBlink {
     0%, 100% { border-color: currentColor; }
@@ -1960,15 +1966,9 @@
     // すでに作業中・中断中・休憩中の場合は、先にそちらを終わらせてもらう（同時に2つは開始できないため）。
     if (startBtn) {
       startBtn.addEventListener("click", function () {
-        // 2026-09-22:「集中カウント開始→業務開始」の2ステップ化。1回目のクリックは
-        // 「これから始める」という合図だけで、実際のタスク開始（2回目のクリック）はまだ行わない。
-        // 2026-09-23：ただし、既に作業中のタスクからの切り替えは集中サイクルが継続するだけなので
-        // ゲートは不要（focusGateSatisfied）。
-        if (!focusGateSatisfied()) {
-          focusCountArmed = true;
-          renderAll();
-          return;
-        }
+        // 2026-09-23：「タスクを登録」フォームは、プロジェクト名などをすでに手入力してから
+        // 押す操作のため、この場所にも「集中カウント開始」の確認をもう1段挟む必要はないとの
+        // ご指摘を受け、このボタンはゲートを経由せず常にその場で開始する。
         var project = projectInput.value.trim();
         if (!project) {
           window.alert("プロジェクト名を入力してください。");
@@ -1988,19 +1988,16 @@
     }
   }
 
-  // 「▶ 今すぐ開始」ボタンは他の開始ボタンと違い、フォームごと固定DOMとして最初の1回しか
-  // 生成されない（wirePlanAddFormOnce）。そのためrenderAll()のたびにここでラベル・見た目だけを
-  // 「集中カウント開始」⇔「▶ 今すぐ開始」の状態に同期する（要素自体は作り直さない）。
+  // 2026-09-23：「タスクを登録」フォームの「▶ 今すぐ開始」は、手入力した内容を確認して
+  // 押す操作のためゲート（集中カウント開始の確認）の対象から外した。以前のこの関数は
+  // ラベルを「集中カウント開始」⇔「▶ 今すぐ開始」で切り替えていたが、常に後者で固定でよい
+  // ため、万一（保存済みの古い状態などで）別のラベル・クラスが残っていても必ず正しい表示に
+  // 戻す簡単な同期だけを行う。
   function syncQuickStartGate() {
     var btn = document.getElementById("startBtn");
     if (!btn) return;
-    if (focusGateSatisfied()) {
-      btn.textContent = "▶ 今すぐ開始";
-      btn.classList.remove("focus-count-btn");
-    } else {
-      btn.textContent = "● 集中カウント開始";
-      btn.classList.add("focus-count-btn");
-    }
+    btn.textContent = "▶ 今すぐ開始";
+    btn.classList.remove("focus-count-btn");
   }
 
   function renderPlanCard() {
