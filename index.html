@@ -861,16 +861,20 @@
   // 90分は区間（segment）の開始からの経過時間で判定する。resumeSession() のたびに新しい区間が
   // 作られるため、休憩から再開するたびに自動的に新しい90分の枠が始まる（追加のデータ保存は不要）。
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
-  var focusCycleAutoPausedSessionId = null; // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すためのフラグ（再開時にクリアする、保存はしない一時的な値）
+  // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すための
+  // フラグ（state.focusCycleAutoPausedSessionId）。2026-09-23：タブを閉じて開き直した後でも中断中
+  // カードの説明文が消えないよう、一時変数ではなくstate（localStorageに保存される側）に持たせる
+  // ようにした（以前はモジュール変数で保存していなかったため、ページを再読み込みすると説明文が
+  // 消えてしまっていた）。値が無い場合はundefinedになるが、比較先のセッションIDと一致しないため
+  // 判定上は「無し」として扱われ、特別な初期化は不要。
 
   // 2026-09-23：「集中カウントを過ぎてから休憩を開始（＝中断）を押すまで、実際にどれくらい
   // オーバーしていたか知りたい」というご要望で追加。ブラウザのタブを裏に回している間はタイマーの
   // 動作が間引かれることがあり、90分ちょうどでは自動中断が検知されないことがある。また手動で
   // 「■ 中断」を押した場合も、気づかず90分を超えてから押すことがある。そのどちらのケースでも、
-  // 実際に区切られた瞬間に「90分の上限を何秒超えていたか」を控えておき、中断中カードの説明文に
-  // 表示する（再開時・別の作業の開始時にクリアする、保存はしない一時的な値）。
-  var focusCycleOverageSessionId = null; // オーバー分を記録した対象セッションのID
-  var focusCycleOverageSec = 0; // そのセッションを区切った瞬間、90分をどれだけ超えていたか（秒）
+  // 実際に区切られた瞬間に「90分の上限を何秒超えていたか」をstate.focusCycleOverageSessionId／
+  // state.focusCycleOverageSec に控えておき、中断中カードの説明文に表示する（再開時・別の作業の
+  // 開始時にクリアする）。上と同じ理由で、こちらも一時変数ではなくstate側に持たせている。
 
   // 2026-09-23：「90分の集中サイクルが終わったとき」「残り5分を切ったとき」に、PC全体へ
   // OS標準の通知（ブラウザのNotification機能）を出したいというご要望で追加。
@@ -1099,13 +1103,13 @@
   // ・手動中断（気づかず90分を超えてから「■ 中断」を押した場合）→ 超過分だけを伝える説明文
   // ・超過が無ければ何も表示しない（従来通り）
   function focusCycleNoteHtml(session) {
-    var hasOverage = focusCycleOverageSessionId === session.id && focusCycleOverageSec > 5;
-    if (focusCycleAutoPausedSessionId === session.id) {
-      var delaySuffix = hasOverage ? "（本来のタイミングより" + formatMMSS(focusCycleOverageSec) + "遅れて検知されました）" : "";
+    var hasOverage = state.focusCycleOverageSessionId === session.id && state.focusCycleOverageSec > 5;
+    if (state.focusCycleAutoPausedSessionId === session.id) {
+      var delaySuffix = hasOverage ? "（本来のタイミングより" + formatMMSS(state.focusCycleOverageSec) + "遅れて検知されました）" : "";
       return '<p class="focus-cycle-note">90分の集中サイクルが経過したため、自動的に中断しました' + delaySuffix + '。</p>';
     }
     if (hasOverage) {
-      return '<p class="focus-cycle-note">集中サイクルの90分をすでに' + formatMMSS(focusCycleOverageSec) + '超えた状態で中断しました。</p>';
+      return '<p class="focus-cycle-note">集中サイクルの90分をすでに' + formatMMSS(state.focusCycleOverageSec) + '超えた状態で中断しました。</p>';
     }
     return "";
   }
@@ -1417,7 +1421,7 @@
       state.onBreakSessionId = running.id;
       return;
     }
-    if (state.onBreakSessionId) { state.onBreakSessionId = null; focusCycleAutoPausedSessionId = null; focusCycleOverageSessionId = null; focusCycleOverageSec = 0; return; }
+    if (state.onBreakSessionId) { state.onBreakSessionId = null; state.focusCycleAutoPausedSessionId = null; state.focusCycleOverageSessionId = null; state.focusCycleOverageSec = 0; return; }
     var activeGeneralBreak = getActiveGeneralBreak();
     if (activeGeneralBreak) { activeGeneralBreak.end = nowLocalIso(); }
   }
@@ -1737,8 +1741,8 @@
         // 2026-09-23：気づかないうちに集中サイクルの90分をすでに超えていた場合、その超過分を
         // 中断中カードに表示できるよう控えておく（超過が無ければ何も表示しない）。
         var overage = focusCycleRemainingSec() < 0 ? -focusCycleRemainingSec() : 0;
-        focusCycleOverageSessionId = overage > 0 ? running.id : null;
-        focusCycleOverageSec = overage;
+        state.focusCycleOverageSessionId = overage > 0 ? running.id : null;
+        state.focusCycleOverageSec = overage;
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         persistState();
@@ -1766,9 +1770,9 @@
         document.getElementById("resumeBreakBtn").addEventListener("click", function () {
           resumeSession(onBreak);
           state.onBreakSessionId = null;
-          focusCycleAutoPausedSessionId = null;
-          focusCycleOverageSessionId = null;
-          focusCycleOverageSec = 0;
+          state.focusCycleAutoPausedSessionId = null;
+          state.focusCycleOverageSessionId = null;
+          state.focusCycleOverageSec = 0;
           persistState();
           renderAll();
         });
@@ -1776,9 +1780,9 @@
       document.getElementById("breakNewLink").addEventListener("click", function (evt) {
         evt.preventDefault();
         state.onBreakSessionId = null;
-        focusCycleAutoPausedSessionId = null;
-        focusCycleOverageSessionId = null;
-        focusCycleOverageSec = 0;
+        state.focusCycleAutoPausedSessionId = null;
+        state.focusCycleOverageSessionId = null;
+        state.focusCycleOverageSec = 0;
         persistState();
         renderAll();
       });
@@ -2315,11 +2319,11 @@
         // 2026-09-23：タブが裏に回っていた等でtick()の実行が遅れ、検知した時点ですでに90分を
         // さらに超えていることがある。その超過分を控えておき、中断中カードと通知に反映する。
         var autoOverage = -focusRemainingSec;
-        focusCycleOverageSessionId = autoOverage > 0 ? running.id : null;
-        focusCycleOverageSec = autoOverage;
+        state.focusCycleOverageSessionId = autoOverage > 0 ? running.id : null;
+        state.focusCycleOverageSec = autoOverage;
         endRunningSession(running);
         state.onBreakSessionId = running.id;
-        focusCycleAutoPausedSessionId = running.id;
+        state.focusCycleAutoPausedSessionId = running.id;
         showDesktopNotification("Taskmark", autoOverage > 5
           ? "90分の集中サイクルが経過したため、自動的に中断しました（本来のタイミングより" + formatMMSS(autoOverage) + "遅れて検知されました）。"
           : "90分の集中サイクルが経過したため、自動的に中断しました。");
@@ -2478,8 +2482,8 @@
     var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
     if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
     if (state.onBreakSessionId === id) state.onBreakSessionId = null;
-    if (focusCycleAutoPausedSessionId === id) focusCycleAutoPausedSessionId = null;
-    if (focusCycleOverageSessionId === id) { focusCycleOverageSessionId = null; focusCycleOverageSec = 0; }
+    if (state.focusCycleAutoPausedSessionId === id) state.focusCycleAutoPausedSessionId = null;
+    if (state.focusCycleOverageSessionId === id) { state.focusCycleOverageSessionId = null; state.focusCycleOverageSec = 0; }
     var deletedTaskId = target.taskId;
     state.sessions = state.sessions.filter(function (s) { return s.id !== id; });
     // このタスクを参照する記録が他に残っていなければ、記録の無い「空のタスク」が
@@ -3623,9 +3627,9 @@
         if (onBreak && (onBreak.id === session.id || (session.taskId && onBreak.taskId === session.taskId))) {
           resumeSession(onBreak);
           state.onBreakSessionId = null;
-          focusCycleAutoPausedSessionId = null;
-          focusCycleOverageSessionId = null;
-          focusCycleOverageSec = 0;
+          state.focusCycleAutoPausedSessionId = null;
+          state.focusCycleOverageSessionId = null;
+          state.focusCycleOverageSec = 0;
           persistState();
           renderAll();
           return;
