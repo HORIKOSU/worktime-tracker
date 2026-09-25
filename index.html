@@ -401,7 +401,13 @@
   .action-card-label { font-size: 14px; font-weight: 700; text-align: center; line-height: 1.3; }
   .action-card.start { background: var(--series-1); color: #fff; }
   .action-card.break { background: var(--series-4); color: #fff; }
-  .running-memo-field { max-width: 380px; margin: 0 auto 14px; text-align: left; }
+  /* 2026-09-25：「備考」を「業務内容」の右に並べて表示したいとのご要望を受け、業務内容の
+     入力欄と備考の表示欄を横並びの行（running-memo-row）にまとめた。画面が狭い場合は
+     flex-wrapで自然に縦積みになる。 */
+  .running-memo-row { display: flex; gap: 12px; max-width: 420px; margin: 0 auto 14px; align-items: flex-end; flex-wrap: wrap; }
+  .running-memo-field { flex: 1 1 180px; margin: 0; text-align: left; }
+  .timer-remarks-inline { flex: 1 1 160px; text-align: left; }
+  .timer-remarks-inline-text { font-size: 13px; color: var(--text-secondary); padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-1); box-sizing: border-box; word-break: break-word; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
   .running-memo-field input[type="text"] { padding: 12px 14px; border-radius: 10px; }
@@ -501,12 +507,22 @@
   .hist-save-btn { appearance: none; border: 1px solid var(--success); background: var(--success); color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-cancel-btn { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .hist-entry-edit { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 8px; width: 100%; }
+  /* 2026-09-25：ダッシュボード・スケジュール表から履歴タブの編集フォームへ飛んだとき、
+     一覧のどの項目を編集しているのか一目でわかるよう、自動スクロール後に一瞬だけ
+     枠を光らせる。 */
+  .hist-entry-edit.jump-highlight { animation: histEditJumpFlash 1.4s ease-out; }
+  @keyframes histEditJumpFlash {
+    0% { box-shadow: 0 0 0 4px rgba(63, 174, 121, 0.55); }
+    100% { box-shadow: 0 0 0 4px rgba(63, 174, 121, 0); }
+  }
   .hist-edit-fields { display: flex; flex-wrap: wrap; gap: 10px; }
   .hist-edit-field { display: flex; flex-direction: column; gap: 3px; min-width: 110px; flex: 1 1 130px; }
   .hist-edit-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
   .hist-edit-field input, .hist-edit-field select { width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
   .hist-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .seg-break-row { background: #2b2417; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  /* 2026-09-25：休憩の項目だけ背景色（アンバー系）が付いていたため、開始・終了の枠と
+     同じ見た目になるよう色を統一し、目立ちすぎないようにした。 */
+  .seg-break-row { background: var(--page-plane); }
   .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #d9a441; margin-bottom: 6px; }
   .e-break-remove { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .e-break-remove:hover { background: var(--page-plane); }
@@ -1854,7 +1870,6 @@
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
-        (running.remarks ? '<div class="timer-remarks">備考：' + escapeHtml(running.remarks) + '</div>' : '') +
         '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
         '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り<span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
@@ -1862,7 +1877,10 @@
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '</div>' +
+        '<div class="running-memo-row">' +
         '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
+        (running.remarks ? '<div class="timer-remarks-inline"><label class="field-label">備考</label><div class="timer-remarks-inline-text">' + escapeHtml(running.remarks) + '</div></div>' : '') +
+        '</div>' +
         '<div class="focus-cycle-override-field">' +
         '<label class="field-label" for="focusCycleOverrideInput">集中サイクルを今回だけ変更</label>' +
         '<div class="focus-cycle-override-row">' +
@@ -2687,6 +2705,23 @@
     renderAll();
   }
 
+  // 2026-09-25：ダッシュボードの「最近の記録」・スケジュール表から履歴タブの編集フォームへ
+  // 飛んだ直後に呼ぶ。編集フォームの位置まで自動スクロールし、一瞬枠を光らせることで、
+  // 一覧の中のどの項目を編集しているのか一目でわかるようにする。
+  function scrollToAndHighlightHistoryEdit() {
+    requestAnimationFrame(function () {
+      var target = document.querySelector(".hist-entry-edit");
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.remove("jump-highlight");
+      // 直前にも同じクラスが付いていた場合にアニメーションが再生されないことがあるため、
+      // 一度リフローを挟んでから付け直す。
+      void target.offsetWidth;
+      target.classList.add("jump-highlight");
+      setTimeout(function () { target.classList.remove("jump-highlight"); }, 1600);
+    });
+  }
+
   document.getElementById("recentList").addEventListener("click", function (evt) {
     var editBtn = evt.target.closest ? evt.target.closest(".hist-edit-btn") : null;
     if (editBtn) {
@@ -2694,6 +2729,7 @@
       var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
       if (historyTabBtn) historyTabBtn.click();
       renderHistoryList();
+      scrollToAndHighlightHistoryEdit();
       return;
     }
     var delBtn = evt.target.closest ? evt.target.closest(".hist-delete-btn") : null;
@@ -3857,6 +3893,7 @@
       generalBreakEditingId = null;
       if (historyTabBtn) historyTabBtn.click();
       renderHistoryList();
+      scrollToAndHighlightHistoryEdit();
     });
 
     menuEl.querySelector(".sched-block-delete-btn").addEventListener("click", function () {
@@ -3955,6 +3992,7 @@
       }
       if (historyTabBtn) historyTabBtn.click();
       renderHistoryList();
+      scrollToAndHighlightHistoryEdit();
       return;
     }
     // 進行中（作業中）のブロックは再開の対象にならないため、これまでどおり直接編集フォームを開く。
@@ -3965,6 +4003,7 @@
       scheduleBlockMenuState = null;
       if (historyTabBtn) historyTabBtn.click();
       renderHistoryList();
+      scrollToAndHighlightHistoryEdit();
       return;
     }
     // 通常の記録ブロックをタップした場合は、「▶ 今から再開」「編集」を選べる操作メニューをその場に開く。
