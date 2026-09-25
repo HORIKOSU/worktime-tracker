@@ -404,9 +404,15 @@
   .action-card.break { background: var(--series-4); color: #fff; }
   /* 2026-09-25：業務内容・番号・備考の表示は、何度か横並びのレイアウトを試したが、
      最終的に「業務内容：〇〇」のように項目ごとに1行ずつ、カード内の他の読み取り専用
-     テキスト（タスクの開始日：〇〇 など）と同じ見た目で縦に並べる形に落ち着いた。 */
-  .running-memo-row { margin: 0 auto 12px; }
-  .timer-inline-line { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; word-break: break-word; }
+     テキスト（タスクの開始日：〇〇 など）と同じ見た目で縦に並べる形に落ち着いた。
+     2026-09-25追記：「業務内容」（4文字）と「番号」「備考」（2文字）でラベルの文字数が
+     違うため、コロンの位置がバラバラだった。ラベル部分を固定幅にして、コロンの位置を
+     縦に揃えた。 */
+  .running-memo-row { align-self: stretch; text-align: center; margin: 0 0 12px; }
+  .memo-lines-group { display: inline-block; max-width: 100%; text-align: left; }
+  .timer-inline-line { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; display: flex; align-items: flex-start; justify-content: flex-start; }
+  .timer-inline-line .inline-line-label { display: inline-block; width: 4.4em; flex: none; text-align: left; }
+  .timer-inline-line .inline-line-value { flex: 0 1 auto; min-width: 0; text-align: left; word-break: break-word; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
   /* 2026-09-23：集中サイクルの時間（デフォルト90分）を、その場だけ一時的に変更できる項目。
@@ -1889,11 +1895,11 @@
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '</div>' +
-        '<div class="running-memo-row">' +
-        (running.memo ? '<div class="timer-inline-line">業務内容：' + escapeHtml(running.memo) + '</div>' : '') +
-        (running.number ? '<div class="timer-inline-line">番号：' + escapeHtml(running.number) + '</div>' : '') +
-        (running.remarks ? '<div class="timer-inline-line">備考：' + escapeHtml(running.remarks) + '</div>' : '') +
-        '</div>' +
+        '<div class="running-memo-row"><div class="memo-lines-group">' +
+        (running.memo ? '<div class="timer-inline-line"><span class="inline-line-label">業務内容</span>：<span class="inline-line-value">' + escapeHtml(running.memo) + '</span></div>' : '') +
+        (running.number ? '<div class="timer-inline-line"><span class="inline-line-label">番号</span>：<span class="inline-line-value">' + escapeHtml(running.number) + '</span></div>' : '') +
+        (running.remarks ? '<div class="timer-inline-line"><span class="inline-line-label">備考</span>：<span class="inline-line-value">' + escapeHtml(running.remarks) + '</span></div>' : '') +
+        '</div></div>' +
         '<div class="focus-cycle-override-field">' +
         '<label class="field-label" for="focusCycleOverrideInput">集中サイクルを今回だけ変更</label>' +
         '<div class="focus-cycle-override-row">' +
