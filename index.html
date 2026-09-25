@@ -256,6 +256,9 @@
   .status-badge.running { background: var(--project-color, var(--series-2)); color: #fff; }
   .timer-display { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .timer-project { font-size: 15px; font-weight: 700; color: var(--project-color-text, var(--series-1)); margin-bottom: 4px; }
+  /* 2026-09-25：「現在の状況」カードにも番号・備考を表示してほしいとのご要望。番号は元々
+     timer-project内にバッジで表示済みだったため、備考のみこのクラスで追加表示する。 */
+  .timer-remarks { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
   .timer-total-line { display: flex; align-items: baseline; justify-content: center; gap: 6px; margin: 2px 0; }
   .timer-total-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
   .timer-memo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
@@ -507,8 +510,8 @@
   .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #d9a441; margin-bottom: 6px; }
   .e-break-remove { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .e-break-remove:hover { background: var(--page-plane); }
-  .e-add-break { appearance: none; border: 1px dashed var(--series-4); background: transparent; color: #d9a441; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-  .e-add-break:hover { background: #2b2417; }
+  .e-add-break { appearance: none; border: none; background: transparent; color: #d9a441; font-size: 12px; font-weight: 600; padding: 6px 4px; cursor: pointer; }
+  .e-add-break:hover { text-decoration: underline; }
 
   /* schedule tab: month calendar + day timeline */
   .mode-toggle { display: flex; gap: 4px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
@@ -1851,6 +1854,7 @@
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
+        (running.remarks ? '<div class="timer-remarks">備考：' + escapeHtml(running.remarks) + '</div>' : '') +
         '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
         '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り<span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
@@ -1916,6 +1920,7 @@
         '<div class="status-icon-circle on-break">■</div>' +
         '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
+        (onBreak.remarks ? '<div class="timer-remarks">備考：' + escapeHtml(onBreak.remarks) + '</div>' : '') +
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
