@@ -267,7 +267,7 @@
      形に変更。色も、中断中（--series-4）や作業中の枠線と紛らわしくならないよう、このバッジ専用の
      紫系の色（--series-7）にした。残り5分を切ったら、削除ボタンなどでも使っている警告色
      （--series-8＝赤系）に変わる。 */
-  .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-7); background: var(--page-plane); border: 1px solid var(--series-7); border-radius: 999px; padding: 3px 11px; font-variant-numeric: tabular-nums; z-index: 2; }
+  .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 15px; font-weight: 800; color: var(--series-7); background: var(--page-plane); border: 2px solid var(--series-7); border-radius: 999px; padding: 6px 16px; font-variant-numeric: tabular-nums; z-index: 2; }
   .focus-cycle-badge.is-low { color: var(--series-8); border-color: var(--series-8); }
   /* 2026-09-23：「中断してから／休憩してから」の経過時間を、カードの文章の流れの中ではなく
      集中サイクルバッジと同じく右上に固定表示する形に変更。色は、中断中カードの枠線・アイコンで
@@ -406,7 +406,7 @@
      説明文が出たり消えたりするたびに下の中断ボタン等の位置がズレてしまっていた。集中サイクル
      残りバッジ（右上）の真下に固定配置し、上端(top)だけで位置決めすることで、説明文の有無に
      関わらず入力欄・適用ボタンの位置が変わらないようにしている。 */
-  .focus-cycle-override-field { position: absolute; top: 46px; right: 14px; max-width: 210px; margin: 0; text-align: right; z-index: 2; }
+  .focus-cycle-override-field { position: absolute; top: 58px; right: 14px; max-width: 210px; margin: 0; text-align: right; z-index: 2; }
   .focus-cycle-override-field .field-label { font-size: 10.5px; margin-bottom: 4px; text-align: right; white-space: nowrap; }
   .focus-cycle-override-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
   .focus-cycle-override-row input[type="number"] { width: 56px; flex: none; padding: 5px 8px; border-radius: 8px; font-size: 12px; }
@@ -586,8 +586,12 @@
     .cal-day { min-height: 44px; font-size: 11px; }
     .day-segment-block { left: 44px; }
     /* 2026-09-23：画面幅が狭いと、右上の集中サイクル系バッジ2つ分の横幅が中央の「作業中」バッジ等と
-       近くなり、説明文が2行になったときに重なってしまうため、この幅では右上パネルをさらに細くする。 */
-    .focus-cycle-override-field { max-width: 132px; }
+       近くなり、説明文が2行になったときに重なってしまうため、この幅では右上パネルをさらに細くする。
+       2026-09-25：バッジ本体を大きくしたご要望に伴い、この幅では逆にバッジが「現在の状況」の
+       見出しに被ってしまうため、この幅でだけ少し小さめのサイズに戻す（下の入力欄側の位置もズレる
+       ため合わせて調整）。 */
+    .focus-cycle-badge { font-size: 12px; padding: 4px 12px; border-width: 1.5px; }
+    .focus-cycle-override-field { max-width: 132px; top: 50px; }
     .focus-cycle-override-field .field-label { font-size: 9.5px; white-space: normal; }
   }
   /* 名称の一括編集（名称管理タブ） */
