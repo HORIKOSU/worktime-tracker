@@ -275,6 +275,14 @@
      揃える。 */
   .break-elapsed-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-4); background: var(--page-plane); border: 1px solid var(--series-4); border-radius: 999px; padding: 3px 11px; font-variant-numeric: tabular-nums; z-index: 2; }
   .focus-cycle-note { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+  /* 2026-09-25：休憩が始まるたびに、休憩の過ごし方をランダムに1件提案するボックス。
+     ボタン等で使っている状態色（アンバー＝series-4、紫＝series-7）とは別に、既存のメインボタン
+     の色（series-1＝緑）を使い、「前向きな提案」であることを警告色と混同しないようにする。 */
+  .break-tip-box { max-width: 380px; margin: 14px auto 4px; text-align: left; background: var(--page-plane); border: 1px solid var(--series-1); border-radius: 12px; padding: 12px 16px; }
+  .break-tip-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--series-1); }
+  .break-tip-time { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; }
+  .break-tip-cat { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+  .break-tip-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 2px; line-height: 1.5; }
   .status-form { max-width: 380px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 16px; }
   .status-form input[type="text"] { padding: 12px 14px; border-radius: 10px; }
   .status-form .field-block { display: flex; flex-direction: column; gap: 0; }
@@ -916,6 +924,39 @@
   // 90分は区間（segment）の開始からの経過時間で判定する。resumeSession() のたびに新しい区間が
   // 作られるため、休憩から再開するたびに自動的に新しい90分の枠が始まる（追加のデータ保存は不要）。
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
+
+  // 2026-09-25：「休憩中に何をすればいいか分からない」を減らすため、休憩が始まるたびに
+  // ランダムで1件、休憩の過ごし方を提案する。項目は03.memo/260925_休憩アイデアメモ.md の内容。
+  var BREAK_TIPS = [
+    { cat: "身体を動かす系", time: "5分", text: "1フロア分、階段を上り下りする" },
+    { cat: "身体を動かす系", time: "5分", text: "ビルの外に出て1周歩く" },
+    { cat: "身体を動かす系", time: "5分", text: "給湯室まで歩いてお茶やコーヒーを淹れる" },
+    { cat: "身体を動かす系", time: "5分", text: "肩甲骨を回す・首を回すストレッチをその場で行う" },
+    { cat: "視覚をリセットする系", time: "5分", text: "窓の外や遠くの景色を1〜2分眺める" },
+    { cat: "視覚をリセットする系", time: "5分", text: "屋上やベランダがあれば外の空気を吸いに行く" },
+    { cat: "視覚をリセットする系", time: "5分", text: "目を閉じて何も見ない時間を作る" },
+    { cat: "自律神経を整える系", time: "3〜5分", text: "白湯や常温の水をゆっくり飲む" },
+    { cat: "自律神経を整える系", time: "3〜5分", text: "深呼吸を10回行う（吸う4秒・吐く8秒など）" },
+    { cat: "自律神経を整える系", time: "3〜5分", text: "好きな香りのハンドクリームやアロマを使う" }
+  ];
+  function pickRandomBreakTip() {
+    return BREAK_TIPS[Math.floor(Math.random() * BREAK_TIPS.length)];
+  }
+  // 休憩が始まった瞬間に1件選び、state.currentBreakTip に控えておく（休憩中は再描画のたびに
+  // 変わってしまわないよう、休憩ごとに固定・localStorageに保存）。休憩終了時にnullへ戻す。
+  function breakTipHtml() {
+    if (!state.currentBreakTip) {
+      state.currentBreakTip = pickRandomBreakTip();
+      persistState();
+    }
+    var tip = state.currentBreakTip;
+    return '<div class="break-tip-box">' +
+      '<div class="break-tip-head">💡 休憩のヒント<span class="break-tip-time">' + escapeHtml(tip.time) + '</span></div>' +
+      '<div class="break-tip-cat">' + escapeHtml(tip.cat) + '</div>' +
+      '<div class="break-tip-text">' + escapeHtml(tip.text) + '</div>' +
+      '</div>';
+  }
+
   // 直近で「90分経過による自動中断」が発生したセッションのID。中断カードに専用の説明を出すための
   // フラグ（state.focusCycleAutoPausedSessionId）。2026-09-23：タブを閉じて開き直した後でも中断中
   // カードの説明文が消えないよう、一時変数ではなくstate（localStorageに保存される側）に持たせる
@@ -1850,6 +1891,8 @@
         state.focusCycleOverageSec = overage;
         endRunningSession(running);
         state.onBreakSessionId = running.id;
+        // 2026-09-25：休憩が始まったので、休憩の過ごし方をランダムに1件選んでおく。
+        state.currentBreakTip = pickRandomBreakTip();
         persistState();
         renderAll();
       });
@@ -1870,6 +1913,7 @@
         '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
+        breakTipHtml() +
         (focusCountArmed ? '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' : focusGateButtonHtml("big-btn")) +
         '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
       if (focusCountArmed) {
@@ -1879,6 +1923,7 @@
           state.focusCycleAutoPausedSessionId = null;
           state.focusCycleOverageSessionId = null;
           state.focusCycleOverageSec = 0;
+          state.currentBreakTip = null;
           persistState();
           renderAll();
         });
@@ -1889,6 +1934,7 @@
         state.focusCycleAutoPausedSessionId = null;
         state.focusCycleOverageSessionId = null;
         state.focusCycleOverageSec = 0;
+        state.currentBreakTip = null;
         persistState();
         renderAll();
       });
@@ -1905,9 +1951,11 @@
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
+        breakTipHtml() +
         '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
         activeGeneralBreak.end = nowLocalIso();
+        state.currentBreakTip = null;
         persistState();
         renderAll();
       });
@@ -1946,6 +1994,7 @@
 
       document.getElementById("generalBreakBtn").addEventListener("click", function () {
         getGeneralBreaks().push({ id: generateId(), start: nowLocalIso(), end: null });
+        state.currentBreakTip = pickRandomBreakTip();
         persistState();
         renderAll();
       });
@@ -2431,6 +2480,7 @@
         endRunningSession(running);
         state.onBreakSessionId = running.id;
         state.focusCycleAutoPausedSessionId = running.id;
+        state.currentBreakTip = pickRandomBreakTip();
         var autoPauseMsg = autoOverage > 5
           ? "90分の集中サイクルが経過したため、自動的に中断しました（本来のタイミングより" + formatMMSS(autoOverage) + "遅れて検知されました）。"
           : "90分の集中サイクルが経過したため、自動的に中断しました。";
