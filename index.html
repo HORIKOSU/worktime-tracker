@@ -267,8 +267,11 @@
      形に変更。色も、中断中（--series-4）や作業中の枠線と紛らわしくならないよう、このバッジ専用の
      紫系の色（--series-7）にした。残り5分を切ったら、削除ボタンなどでも使っている警告色
      （--series-8＝赤系）に変わる。 */
-  .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 15px; font-weight: 800; color: var(--series-7); background: var(--page-plane); border: 2px solid var(--series-7); border-radius: 999px; padding: 6px 16px; font-variant-numeric: tabular-nums; z-index: 2; }
+  .focus-cycle-badge { position: absolute; top: 14px; right: 14px; font-size: 11px; font-weight: 700; color: var(--series-7); background: var(--page-plane); border: 1px solid var(--series-7); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; z-index: 2; }
   .focus-cycle-badge.is-low { color: var(--series-8); border-color: var(--series-8); }
+  /* 2026-09-25：バッジ全体を大きくしたら、ラベル文字（「集中サイクル残り」）まで大きくなって
+     場所を取りすぎたため、ラベルは元のサイズに戻し、数字（残り時間）だけ大きいままにする。 */
+  .focus-cycle-badge-num { font-size: 16px; font-weight: 800; margin-left: 5px; }
   /* 2026-09-23：「中断してから／休憩してから」の経過時間を、カードの文章の流れの中ではなく
      集中サイクルバッジと同じく右上に固定表示する形に変更。色は、中断中カードの枠線・アイコンで
      すでに使われている状態色（--series-4＝アンバー）を流用し、「中断中である」という意味と
@@ -406,7 +409,7 @@
      説明文が出たり消えたりするたびに下の中断ボタン等の位置がズレてしまっていた。集中サイクル
      残りバッジ（右上）の真下に固定配置し、上端(top)だけで位置決めすることで、説明文の有無に
      関わらず入力欄・適用ボタンの位置が変わらないようにしている。 */
-  .focus-cycle-override-field { position: absolute; top: 58px; right: 14px; max-width: 210px; margin: 0; text-align: right; z-index: 2; }
+  .focus-cycle-override-field { position: absolute; top: 52px; right: 14px; max-width: 210px; margin: 0; text-align: right; z-index: 2; }
   .focus-cycle-override-field .field-label { font-size: 10.5px; margin-bottom: 4px; text-align: right; white-space: nowrap; }
   .focus-cycle-override-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
   .focus-cycle-override-row input[type="number"] { width: 56px; flex: none; padding: 5px 8px; border-radius: 8px; font-size: 12px; }
@@ -587,11 +590,10 @@
     .day-segment-block { left: 44px; }
     /* 2026-09-23：画面幅が狭いと、右上の集中サイクル系バッジ2つ分の横幅が中央の「作業中」バッジ等と
        近くなり、説明文が2行になったときに重なってしまうため、この幅では右上パネルをさらに細くする。
-       2026-09-25：バッジ本体を大きくしたご要望に伴い、この幅では逆にバッジが「現在の状況」の
-       見出しに被ってしまうため、この幅でだけ少し小さめのサイズに戻す（下の入力欄側の位置もズレる
-       ため合わせて調整）。 */
-    .focus-cycle-badge { font-size: 12px; padding: 4px 12px; border-width: 1.5px; }
-    .focus-cycle-override-field { max-width: 132px; top: 50px; }
+       2026-09-25：バッジのラベル文字は元のサイズに戻したので専用の縮小は不要になったが、数字
+       （.focus-cycle-badge-num）だけは常に大きいままのため、この幅でだけ少し控えめにする。 */
+    .focus-cycle-badge-num { font-size: 14px; }
+    .focus-cycle-override-field { max-width: 132px; }
     .focus-cycle-override-field .field-label { font-size: 9.5px; white-space: normal; }
   }
   /* 名称の一括編集（名称管理タブ） */
@@ -1850,7 +1852,7 @@
         '<span class="status-badge running">● 作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">今回：</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
-        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り ' + formatMMSS(focusCycleRemainingSec()) + '</div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge">集中サイクル残り<span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
@@ -2515,8 +2517,9 @@
       var sessionEl = document.getElementById("sessionElapsedTimer");
       if (sessionEl) sessionEl.textContent = "合計：" + formatHMS(priorTaskSec + sessionElapsedSec);
       var focusBadgeEl = document.getElementById("focusCycleBadge");
+      var focusBadgeNumEl = document.getElementById("focusCycleBadgeNum");
       if (focusBadgeEl) {
-        focusBadgeEl.textContent = "集中サイクル残り " + formatMMSS(focusRemainingSec);
+        if (focusBadgeNumEl) focusBadgeNumEl.textContent = formatMMSS(focusRemainingSec);
         focusBadgeEl.classList.toggle("is-low", focusRemainingSec <= 300);
       }
       renderStatRow();
