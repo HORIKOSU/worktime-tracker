@@ -403,10 +403,13 @@
   .action-card.start { background: var(--series-1); color: #fff; }
   .action-card.break { background: var(--series-4); color: #fff; }
   /* 2026-09-25：「備考」「番号」を「業務内容」の右に並べて表示したいとのご要望を受け、
-     業務内容の入力欄・備考・番号の表示欄を横並びの行（running-memo-row）にまとめた。
+     業務内容・備考・番号の表示欄を横並びの行（running-memo-row）にまとめた。
      画面が狭い場合はflex-wrapで自然に縦積みになる。
      2026-09-25追記：プロジェクト名を大きく目立たせる一方、この行の3項目は目立たせる
-     必要が無いとのご要望を受け、文字サイズ・余白を控えめに小さくした。 */
+     必要が無いとのご要望を受け、文字サイズ・余白を控えめに小さくした。
+     2026-09-25追記：業務内容だけその場で編集できる仕様だったが、備考・番号と挙動が
+     揃っておらず紛らわしいとのご指摘を受け、業務内容も備考・番号と同じ読み取り専用の
+     表示に統一した（値が無ければ他の2項目と同様に非表示）。編集は履歴タブから行う。 */
   .running-memo-row { display: flex; gap: 10px; width: 100%; max-width: 560px; margin: 0 auto 12px; align-items: flex-end; flex-wrap: wrap; }
   .running-memo-row .field-label { font-size: 10.5px; margin-bottom: 3px; }
   .running-memo-field { flex: 1 1 160px; margin: 0; text-align: left; }
@@ -414,7 +417,6 @@
   .timer-inline-value { font-size: 12px; color: var(--text-secondary); padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); box-sizing: border-box; word-break: break-word; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
-  .running-memo-field input[type="text"] { font-size: 13px; padding: 7px 9px; border-radius: 8px; }
   /* 2026-09-23：集中サイクルの時間（デフォルト90分）を、その場だけ一時的に変更できる項目。
      次の新しいサイクルからは自動的にデフォルトへ戻るため、常設の設定というより「一時的な
      調整用の小さな入力欄」という見た目にしている。
@@ -1832,10 +1834,24 @@
     fillRect.style.strokeDashoffset = (perimeter * (1 - pct)).toFixed(2);
   }
   var statusGaugeResizeTimer = null;
-  window.addEventListener("resize", function () {
+  function scheduleStatusGaugeLayout() {
     clearTimeout(statusGaugeResizeTimer);
     statusGaugeResizeTimer = setTimeout(layoutStatusGaugeFrame, 150);
-  });
+  }
+  window.addEventListener("resize", scheduleStatusGaugeLayout);
+  // 2026-09-25：「横幅を変えると枠のタイマーがズレる」とのご指摘。windowのresizeイベントは
+  // ブラウザの外側のウィンドウサイズが変わったときしか発火しないため、サイドパネル・分割
+  // 画面の幅変更などブラウザの外枠自体は変わらずカードの実際の幅だけが変わるケースを検知
+  // できず、枠が古いサイズのままズレて表示されていた。ResizeObserverでカード要素自体の
+  // 実寸の変化を直接監視するように変更し、原因を問わずカードの幅・高さが変われば
+  // 必ず追従するようにした。
+  if (typeof ResizeObserver !== "undefined") {
+    var statusCardEl = document.getElementById("statusCard");
+    if (statusCardEl) {
+      var statusCardResizeObserver = new ResizeObserver(scheduleStatusGaugeLayout);
+      statusCardResizeObserver.observe(statusCardEl);
+    }
+  }
 
   // ---- status card (start / stop) ----
   function renderStatusCard() {
@@ -1882,7 +1898,7 @@
         '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '</div>' +
         '<div class="running-memo-row">' +
-        '<div class="running-memo-field"><label class="field-label">業務内容</label><input type="text" id="runningMemoInput" value="' + escapeHtml(running.memo || "") + '" placeholder="例、企画"></div>' +
+        (running.memo ? '<div class="running-memo-field"><label class="field-label">業務内容</label><div class="timer-inline-value">' + escapeHtml(running.memo) + '</div></div>' : '') +
         (running.remarks ? '<div class="timer-remarks-inline"><label class="field-label">備考</label><div class="timer-inline-value">' + escapeHtml(running.remarks) + '</div></div>' : '') +
         (running.number ? '<div class="timer-number-inline"><label class="field-label">番号</label><div class="timer-inline-value">' + escapeHtml(running.number) + '</div></div>' : '') +
         '</div>' +
@@ -1899,10 +1915,6 @@
         '<button type="button" class="big-btn break" id="pauseBtn">■ 中断</button>' +
         '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝一時停止（休憩・他の作業への切り替えもこちら）。</p>';
-      document.getElementById("runningMemoInput").addEventListener("input", function () {
-        running.memo = this.value;
-        persistState();
-      });
       document.getElementById("focusCycleOverrideApplyBtn").addEventListener("click", function () {
         // 2026-09-23：集中サイクルの時間をその場だけ一時的に変更する。次の新しいサイクルからは
         // 自動的にデフォルトの90分に戻る（resumeSession/startTaskNow等でリセットされる）。
