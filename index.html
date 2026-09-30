@@ -185,6 +185,8 @@
   tr.proj-row-toggle.expanded .proj-row-arrow { transform: rotate(90deg); }
   tr.proj-memo-row td { padding-left: 26px; color: var(--text-secondary); font-size: 12.5px; background: var(--page-plane); }
   tr.proj-memo-row .memo-name { color: var(--text-secondary); }
+  /* 2026-09-30：業務内容の行をさらにトグルして開く、番号ごとの内訳（3階層目）。 */
+  tr.proj-number-row td { padding-left: 44px; color: var(--text-muted); font-size: 12px; background: var(--page-plane); }
   .empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px; }
   .hist-quick-filter-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--series-1); color: var(--series-1); border-radius: 999px; padding: 5px 8px 5px 14px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; }
   .hist-quick-filter-badge .hqf-clear { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: none; background: transparent; color: inherit; font-size: 12px; cursor: pointer; line-height: 1; padding: 0; }
@@ -868,20 +870,15 @@
       <details class="table-toggle"><summary>表で見る</summary><div id="projectTableWrap"></div></details>
     </div>
 
-    <!-- 2026-09-29：「番号ごとの合計時間も表示して欲しい」とのご要望で追加。番号は自由入力の
-         識別ラベル（例、H案件の1_1）で未設定の記録も多いため、番号が設定されている記録だけを
-         対象に、番号ごとの合計作業時間を多い順の表で表示する。 -->
-    <div class="card">
-      <h2>番号別の合計作業時間<span class="sub" id="numberChartSub">全期間の合計作業時間</span></h2>
-      <div id="numberTableWrap"></div>
-    </div>
-
     <!-- 2026-09-29：「今日の予定に対して毎日の完了した達成率を記録して欲しい」とのご要望で追加。
          「今日の予定」は日付ごとに登録されており、完了チェックも既にあるため、新しいデータを
-         持たせるのではなく、日付ごとの件数・完了数から達成率を都度計算して表示する。 -->
+         持たせるのではなく、日付ごとの件数・完了数から達成率を都度計算して表示する。
+         2026-09-30追記：グラフでも見たいとのご要望があり、他の集計グラフ（日別・週別の作業時間）
+         と同じ見た目のバーチャートを追加した。 -->
     <div class="card">
       <h2>日別の予定達成率<span class="sub" id="planRateSub">全期間</span></h2>
-      <div id="planRateTableWrap"></div>
+      <div class="chart-wrap"><canvas id="planRateChart"></canvas></div>
+      <details class="table-toggle"><summary>表で見る</summary><div id="planRateTableWrap"></div></details>
     </div>
   </section>
 
@@ -2378,7 +2375,7 @@
         renderPlanCard();
         // 2026-09-29：「日別の予定達成率」（集計タブ）は完了チェックの数から都度計算しているため、
         // チェックのたびに再計算しないと、集計タブを開いたときに古い達成率のまま表示されてしまう。
-        if (document.getElementById("planRateTableWrap")) renderPlanRateTable();
+        if (document.getElementById("planRateTableWrap")) renderPlanRateChart();
       });
     });
 
@@ -2390,7 +2387,7 @@
         persistState();
         renderPlanCard();
         // 削除で件数が変わるため、こちらも「日別の予定達成率」に反映する（理由は達成チェック時と同じ）。
-        if (document.getElementById("planRateTableWrap")) renderPlanRateTable();
+        if (document.getElementById("planRateTableWrap")) renderPlanRateChart();
       });
     });
 
@@ -4470,7 +4467,7 @@
   });
 
   // ---- stats tab ----
-  var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null;
+  var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null, planRateChartInstance = null;
   var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2", "#00897b", "#ad1477", "#92400e", "#7cb342"];
 
   // 集計タブの期間フィルター（開始日・終了日とも空文字なら「全期間」＝これまでの挙動と同じ）
@@ -4656,7 +4653,27 @@
     });
     return map;
   }
+
+  // 2026-09-30：「番号ごとの合計時間」は別のカードにせず、「プロジェクト別の内訳」の
+  // 業務内容の行をさらにトグルして開いたときの3階層目として表示してほしいとのご要望で、
+  // プロジェクト名 → 業務内容 → 番号 → 合計秒数、の入れ子マップに変更した。
+  function totalsByProjectMemoNumberMap() {
+    var map = {};
+    state.sessions.forEach(function (s) {
+      var proj = projectLabel(s);
+      var memo = (s.memo && s.memo.trim()) ? s.memo.trim() : "(業務内容未設定)";
+      var num = (s.number && s.number.trim()) ? s.number.trim() : "(番号未設定)";
+      getSegments(s).forEach(function (seg) {
+        if (!statsPeriodMatches(seg.start.slice(0, 10))) return;
+        if (!map[proj]) map[proj] = {};
+        if (!map[proj][memo]) map[proj][memo] = {};
+        map[proj][memo][num] = (map[proj][memo][num] || 0) + segmentDurationSec(seg);
+      });
+    });
+    return map;
+  }
   var expandedStatsProjects = {}; // プロジェクト別の内訳表で、業務内容の内訳を開いているプロジェクト名
+  var expandedStatsProjectMemos = {}; // 上記のさらに1段下、番号の内訳を開いている「プロジェクト名||業務内容」のキー
 
   function renderProjectChart() {
     var map = totalsByProjectMap();
@@ -4719,6 +4736,7 @@
     });
 
     var memoMap = totalsByProjectMemoMap();
+    var numberMap = totalsByProjectMemoNumberMap();
     var tableWrap = document.getElementById("projectTableWrap");
     var html = '<table class="data-table proj-breakdown-table"><thead><tr><th>プロジェクト</th><th class="num">合計作業時間</th></tr></thead><tbody>';
     entries.forEach(function (e) {
@@ -4731,42 +4749,31 @@
         '<td class="num">' + formatHM(e.sec) + '</td></tr>';
       if (isOpen) {
         memoEntries.forEach(function (m) {
-          html += '<tr class="proj-memo-row"><td><span class="memo-name">' + escapeHtml(m.name) + '</span></td><td class="num">' + formatHM(m.sec) + '</td></tr>';
+          // 2026-09-30：業務内容の行をさらにトグルすると、その業務内容の中の番号ごとの
+          // 合計作業時間（3階層目）が開くようにした。
+          var numEntries = Object.keys((numberMap[e.name] || {})[m.name] || {}).map(function (k) {
+            return { name: k, sec: numberMap[e.name][m.name][k] };
+          }).sort(function (a, b) { return b.sec - a.sec; });
+          var hasNumberBreakdown = numEntries.length > 1 || (numEntries.length === 1 && numEntries[0].name !== "(番号未設定)");
+          var memoKey = e.name + "||" + m.name;
+          var isMemoOpen = hasNumberBreakdown && !!expandedStatsProjectMemos[memoKey];
+          html += '<tr class="proj-memo-row' + (hasNumberBreakdown ? ' proj-row-toggle' : '') + (isMemoOpen ? ' expanded' : '') + '" data-project="' + escapeHtml(e.name) + '" data-memo="' + escapeHtml(m.name) + '">' +
+            '<td>' + (hasNumberBreakdown ? '<span class="proj-row-arrow">▶</span>' : '') + '<span class="memo-name">' + escapeHtml(m.name) + '</span></td>' +
+            '<td class="num">' + formatHM(m.sec) + '</td></tr>';
+          if (isMemoOpen) {
+            numEntries.forEach(function (n) {
+              var label = n.name === "(番号未設定)" ? escapeHtml(n.name) : '<span class="number-badge">' + escapeHtml(n.name) + '</span>';
+              html += '<tr class="proj-number-row"><td>' + label + '</td><td class="num">' + formatHM(n.sec) + '</td></tr>';
+            });
+          }
         });
       }
     });
     tableWrap.innerHTML = html + "</tbody></table>";
   }
 
-  // 番号（自由入力の識別ラベル、例：H案件の1_1）→ 合計秒数のマップ。
-  // 番号が未設定の記録は「番号ごとの集計」という趣旨に合わないため対象外にする。
-  function totalsByNumberMap() {
-    var map = {};
-    state.sessions.forEach(function (s) {
-      var num = s.number && s.number.trim();
-      if (!num) return;
-      getSegments(s).forEach(function (seg) {
-        if (!statsPeriodMatches(seg.start.slice(0, 10))) return;
-        map[num] = (map[num] || 0) + segmentDurationSec(seg);
-      });
-    });
-    return map;
-  }
-  function renderNumberTable() {
-    var map = totalsByNumberMap();
-    var entries = Object.keys(map).map(function (k) { return { name: k, sec: map[k] }; }).sort(function (a, b) { return b.sec - a.sec; });
-    document.getElementById("numberChartSub").textContent = (statsPeriodStart || statsPeriodEnd) ? statsPeriodLabelText() + "の合計作業時間" : "全期間の合計作業時間";
-    var wrap = document.getElementById("numberTableWrap");
-    if (!entries.length) { wrap.innerHTML = '<div class="empty-state">番号を設定した記録がありません。</div>'; return; }
-    var html = '<table class="data-table"><thead><tr><th>番号</th><th class="num">合計作業時間</th></tr></thead><tbody>';
-    entries.forEach(function (e) {
-      html += '<tr><td><span class="number-badge">' + escapeHtml(e.name) + '</span></td><td class="num">' + formatHM(e.sec) + '</td></tr>';
-    });
-    wrap.innerHTML = html + "</tbody></table>";
-  }
-
   // 「今日の予定」の日付ごとの件数・完了数から達成率を算出する（達成率専用のデータは持たず、
-  // 既存の予定データからその都度計算する）。
+  // 既存の予定データからその都度計算する）。新しい順で返す（表はこの順のまま使う）。
   function dailyPlanRateRows() {
     var byDate = {};
     getPlans().forEach(function (p) {
@@ -4781,9 +4788,45 @@
       return { date: d, total: c.total, done: c.done, rate: rate };
     });
   }
-  function renderPlanRateTable() {
+  // 2026-09-30：「グラフでも見たい」とのご要望で、表に加えてバーチャートも表示するようにした。
+  // 色は「達成」を表す既存の緑（--series-1 / #3fae79。今月の目標の達成バッジなどと同じ）を使う。
+  // 「今日の予定」が1件も無い日はグラフから除外する（0%と実際に達成率0%だった日を区別するため、
+  // 対象が無い日を0%のバーとして描画しない）。
+  function renderPlanRateChart() {
     var rows = dailyPlanRateRows();
     document.getElementById("planRateSub").textContent = (statsPeriodStart || statsPeriodEnd) ? statsPeriodLabelText() : "全期間";
+
+    var chronological = rows.slice().reverse(); // 表は新しい順、グラフは古い→新しいの時系列で見せる
+    var labels = chronological.map(function (r) { var p = r.date.split("-"); return p[1] + "/" + p[2]; });
+    var rateData = chronological.map(function (r) { return r.rate; });
+
+    var ctx = document.getElementById("planRateChart").getContext("2d");
+    if (planRateChartInstance) planRateChartInstance.destroy();
+    if (chronological.length) {
+      planRateChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: { labels: labels, datasets: [{ label: "達成率(%)", data: rateData, backgroundColor: "#3fae79", borderRadius: 4, maxBarThickness: 18 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (item) {
+                  var r = chronological[item.dataIndex];
+                  return item.parsed.y + "%（" + r.done + " / " + r.total + " 件）";
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, max: 100, ticks: { color: "#a9b0ad", font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: "#2a2f37" } }
+          }
+        }
+      });
+    }
+
     var wrap = document.getElementById("planRateTableWrap");
     if (!rows.length) { wrap.innerHTML = '<div class="empty-state">「今日の予定」の記録がありません。</div>'; return; }
     var html = '<table class="data-table"><thead><tr><th>日付</th><th class="num">完了/件数</th><th class="num">達成率</th></tr></thead><tbody>';
@@ -4820,16 +4863,22 @@
     renderDailyChart();
     renderWeeklyChart();
     renderProjectChart();
-    renderNumberTable();
-    renderPlanRateTable();
+    renderPlanRateChart();
   }
   document.getElementById("dailyProjectFilter").addEventListener("change", renderDailyChart);
   document.getElementById("weeklyProjectFilter").addEventListener("change", renderWeeklyChart);
   document.getElementById("projectTableWrap").addEventListener("click", function (e) {
     var row = e.target.closest(".proj-row-toggle");
     if (!row) return;
-    var name = row.getAttribute("data-project");
-    if (expandedStatsProjects[name]) delete expandedStatsProjects[name]; else expandedStatsProjects[name] = true;
+    var memoName = row.getAttribute("data-memo");
+    if (memoName !== null) {
+      // 業務内容の行（プロジェクト名＋業務内容の組み合わせ）のトグル＝番号の内訳を開閉する
+      var memoKey = row.getAttribute("data-project") + "||" + memoName;
+      if (expandedStatsProjectMemos[memoKey]) delete expandedStatsProjectMemos[memoKey]; else expandedStatsProjectMemos[memoKey] = true;
+    } else {
+      var name = row.getAttribute("data-project");
+      if (expandedStatsProjects[name]) delete expandedStatsProjects[name]; else expandedStatsProjects[name] = true;
+    }
     renderProjectChart();
   });
   document.getElementById("statsPeriodStartInput").addEventListener("change", function () {
