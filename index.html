@@ -867,6 +867,22 @@
       <div class="chart-wrap" id="projectChartWrap"><canvas id="projectChart"></canvas></div>
       <details class="table-toggle"><summary>表で見る</summary><div id="projectTableWrap"></div></details>
     </div>
+
+    <!-- 2026-09-29：「番号ごとの合計時間も表示して欲しい」とのご要望で追加。番号は自由入力の
+         識別ラベル（例、H案件の1_1）で未設定の記録も多いため、番号が設定されている記録だけを
+         対象に、番号ごとの合計作業時間を多い順の表で表示する。 -->
+    <div class="card">
+      <h2>番号別の合計作業時間<span class="sub" id="numberChartSub">全期間の合計作業時間</span></h2>
+      <div id="numberTableWrap"></div>
+    </div>
+
+    <!-- 2026-09-29：「今日の予定に対して毎日の完了した達成率を記録して欲しい」とのご要望で追加。
+         「今日の予定」は日付ごとに登録されており、完了チェックも既にあるため、新しいデータを
+         持たせるのではなく、日付ごとの件数・完了数から達成率を都度計算して表示する。 -->
+    <div class="card">
+      <h2>日別の予定達成率<span class="sub" id="planRateSub">全期間</span></h2>
+      <div id="planRateTableWrap"></div>
+    </div>
   </section>
 
   <section id="names" class="panel">
@@ -2360,6 +2376,9 @@
         plan.done = cb.checked;
         persistState();
         renderPlanCard();
+        // 2026-09-29：「日別の予定達成率」（集計タブ）は完了チェックの数から都度計算しているため、
+        // チェックのたびに再計算しないと、集計タブを開いたときに古い達成率のまま表示されてしまう。
+        if (document.getElementById("planRateTableWrap")) renderPlanRateTable();
       });
     });
 
@@ -2370,6 +2389,8 @@
         if (planEditingId === id) planEditingId = null;
         persistState();
         renderPlanCard();
+        // 削除で件数が変わるため、こちらも「日別の予定達成率」に反映する（理由は達成チェック時と同じ）。
+        if (document.getElementById("planRateTableWrap")) renderPlanRateTable();
       });
     });
 
@@ -4717,6 +4738,61 @@
     tableWrap.innerHTML = html + "</tbody></table>";
   }
 
+  // 番号（自由入力の識別ラベル、例：H案件の1_1）→ 合計秒数のマップ。
+  // 番号が未設定の記録は「番号ごとの集計」という趣旨に合わないため対象外にする。
+  function totalsByNumberMap() {
+    var map = {};
+    state.sessions.forEach(function (s) {
+      var num = s.number && s.number.trim();
+      if (!num) return;
+      getSegments(s).forEach(function (seg) {
+        if (!statsPeriodMatches(seg.start.slice(0, 10))) return;
+        map[num] = (map[num] || 0) + segmentDurationSec(seg);
+      });
+    });
+    return map;
+  }
+  function renderNumberTable() {
+    var map = totalsByNumberMap();
+    var entries = Object.keys(map).map(function (k) { return { name: k, sec: map[k] }; }).sort(function (a, b) { return b.sec - a.sec; });
+    document.getElementById("numberChartSub").textContent = (statsPeriodStart || statsPeriodEnd) ? statsPeriodLabelText() + "の合計作業時間" : "全期間の合計作業時間";
+    var wrap = document.getElementById("numberTableWrap");
+    if (!entries.length) { wrap.innerHTML = '<div class="empty-state">番号を設定した記録がありません。</div>'; return; }
+    var html = '<table class="data-table"><thead><tr><th>番号</th><th class="num">合計作業時間</th></tr></thead><tbody>';
+    entries.forEach(function (e) {
+      html += '<tr><td><span class="number-badge">' + escapeHtml(e.name) + '</span></td><td class="num">' + formatHM(e.sec) + '</td></tr>';
+    });
+    wrap.innerHTML = html + "</tbody></table>";
+  }
+
+  // 「今日の予定」の日付ごとの件数・完了数から達成率を算出する（達成率専用のデータは持たず、
+  // 既存の予定データからその都度計算する）。
+  function dailyPlanRateRows() {
+    var byDate = {};
+    getPlans().forEach(function (p) {
+      if (!statsPeriodMatches(p.date)) return;
+      if (!byDate[p.date]) byDate[p.date] = { total: 0, done: 0 };
+      byDate[p.date].total++;
+      if (p.done) byDate[p.date].done++;
+    });
+    return Object.keys(byDate).sort().reverse().map(function (d) {
+      var c = byDate[d];
+      var rate = c.total ? Math.round((c.done / c.total) * 100) : 0;
+      return { date: d, total: c.total, done: c.done, rate: rate };
+    });
+  }
+  function renderPlanRateTable() {
+    var rows = dailyPlanRateRows();
+    document.getElementById("planRateSub").textContent = (statsPeriodStart || statsPeriodEnd) ? statsPeriodLabelText() : "全期間";
+    var wrap = document.getElementById("planRateTableWrap");
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state">「今日の予定」の記録がありません。</div>'; return; }
+    var html = '<table class="data-table"><thead><tr><th>日付</th><th class="num">完了/件数</th><th class="num">達成率</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr><td>' + escapeHtml(formatDateHeading(r.date)) + '</td><td class="num">' + r.done + ' / ' + r.total + '</td><td class="num">' + r.rate + '%</td></tr>';
+    });
+    wrap.innerHTML = html + "</tbody></table>";
+  }
+
   function renderStatsStatRow() {
     var hasPeriod = !!(statsPeriodStart || statsPeriodEnd);
     var totalSec = 0;
@@ -4744,6 +4820,8 @@
     renderDailyChart();
     renderWeeklyChart();
     renderProjectChart();
+    renderNumberTable();
+    renderPlanRateTable();
   }
   document.getElementById("dailyProjectFilter").addEventListener("change", renderDailyChart);
   document.getElementById("weeklyProjectFilter").addEventListener("change", renderWeeklyChart);
