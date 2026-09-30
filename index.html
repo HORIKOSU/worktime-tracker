@@ -702,7 +702,7 @@
     <div class="dashboard-top-grid">
       <div class="dashboard-left-col">
         <div class="card plan-card">
-          <h2>今日の予定</h2>
+          <h2>今日の予定<span class="sub" id="todayWorkedTimeSub"></span></h2>
           <div id="planListWrap"></div>
         </div>
 
@@ -2673,6 +2673,13 @@
       '<div class="stat-tile"><div class="label">今日の合計</div><div class="value">' + formatHM(todaySec) + '</div></div>' +
       '<div class="stat-tile"><div class="label">今週の合計</div><div class="value">' + formatHM(weekSec) + '</div></div>' +
       '<div class="stat-tile"><div class="label">今月の合計</div><div class="value">' + formatHM(monthSec) + '</div></div>';
+
+    // 2026-09-30：「今日の予定の右側に今日の実施時間についても表示して欲しい」とのご要望で追加。
+    // 上ですでに計算済みの todaySec（今日の合計＝今日の実施時間）をそのまま使い、
+    // 「今日の予定」カードの見出し右にも同じ値を表示する（tick()経由で毎秒呼ばれるため、
+    // 作業中はここもリアルタイムに更新される）。
+    var todayWorkedSub = document.getElementById("todayWorkedTimeSub");
+    if (todayWorkedSub) todayWorkedSub.textContent = "今日の実施時間：" + formatHM(todaySec);
   }
 
   // 1件分の記録行のHTML（最近の記録・タスクでまとめた場合の内訳行の両方で使う共通テンプレート）
