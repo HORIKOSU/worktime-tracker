@@ -383,6 +383,9 @@
   .plan-row-memo { font-size: 13px; font-weight: 600; color: var(--text-primary); }
   .plan-row-remarks { font-size: 12px; color: var(--text-muted); }
   .plan-row.done .plan-row-remarks { text-decoration: line-through; }
+  .plan-row-worked { font-size: 12px; font-weight: 700; color: var(--series-1); }
+  .plan-row-worked.plan-row-worked-empty { display: none; }
+  .plan-row.done .plan-row-worked { color: var(--text-muted); }
   .plan-row-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-start; }
   .plan-start-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 10px; font-weight: 700; padding: 4px 7px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .plan-start-btn:hover { background: var(--series-1); color: #fff; }
@@ -702,7 +705,7 @@
     <div class="dashboard-top-grid">
       <div class="dashboard-left-col">
         <div class="card plan-card">
-          <h2>今日の予定<span class="sub" id="todayWorkedTimeSub"></span></h2>
+          <h2>今日の予定</h2>
           <div id="planListWrap"></div>
         </div>
 
@@ -1617,6 +1620,16 @@
     if (!running) return false;
     return running.project === p.project && (running.memo || "") === (p.memo || "") && (running.number || "") === (p.number || "");
   }
+  // 「今日の予定」の各項目について、同じプロジェクト名・業務内容・番号で実際に記録された
+  // 今日分の作業時間を合算する。2026-10-02：「今日の実施時間は合計ではなく、タスクごとの
+  // 項目に表示してほしい」とのご要望で、見出し右の合計表示をやめ、この予定項目ごとの
+  // 実施時間表示に変更した。
+  function planWorkedSecToday(p) {
+    var todayStr = todayDateInputValue();
+    return sumSegmentSecWhere(function (seg, s) {
+      return isSameDate(seg.start, todayStr) && s.project === p.project && (s.memo || "") === (p.memo || "") && (s.number || "") === (p.number || "");
+    });
+  }
   // 何かしら「作業中・中断中・休憩中」の状態であれば、それを区切ってから新しいタスクを
   // 開始できるようにする共通処理。2026-09-16：以前は「別のタスクの開始」ボタンを押しても
   // 何も起きず（アラートで拒否するだけ）、先に手動で中断するか休憩から戻る必要があったが、
@@ -2346,6 +2359,10 @@
           (isActivePlan ? ' <span class="plan-row-active-badge">実施中</span>' : '') +
           (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
           '</div>' +
+          (function () {
+            var workedSec = planWorkedSecToday(p);
+            return '<div class="plan-row-worked' + (workedSec > 0 ? '' : ' plan-row-worked-empty') + '" data-plan-id="' + escapeHtml(p.id) + '">実施：' + formatHM(workedSec) + '</div>';
+          })() +
           (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
@@ -2628,6 +2645,17 @@
       renderStatRow();
       // 枠の秒数カウントゲージ（目盛りドット型）：1分（60秒）で一周し、次の分でまたゼロから
       updateStatusGaugeFrame(sessionElapsedSec);
+      // 2026-10-02：「今日の予定」のうち、いま実施中のタスクと同じ項目（プロジェクト名・業務内容・
+      // 番号が一致）の実施時間表示も、毎秒リアルタイムに更新する（行全体を再描画すると
+      // ドラッグ操作中の状態等を壊しかねないため、該当する表示だけをピンポイントで更新する）。
+      todayPlans().forEach(function (p) {
+        if (p.done || !planMatchesRunningSession(p)) return;
+        var workedEl = document.querySelector('.plan-row-worked[data-plan-id="' + p.id + '"]');
+        if (!workedEl) return;
+        var workedSec = planWorkedSecToday(p);
+        workedEl.textContent = "実施：" + formatHM(workedSec);
+        workedEl.classList.toggle("plan-row-worked-empty", workedSec <= 0);
+      });
     } else {
       // 2026-09-23：「中断してもなお作業をしている場合」に、中断（または一般休憩）してからの
       // 経過時間をその場でリアルタイムに表示する。作業中でないときだけ該当するため、
@@ -2691,13 +2719,6 @@
       '<div class="stat-tile"><div class="label">今日の合計</div><div class="value">' + formatHM(todaySec) + '</div></div>' +
       '<div class="stat-tile"><div class="label">今週の合計</div><div class="value">' + formatHM(weekSec) + '</div></div>' +
       '<div class="stat-tile"><div class="label">今月の合計</div><div class="value">' + formatHM(monthSec) + '</div></div>';
-
-    // 2026-09-30：「今日の予定の右側に今日の実施時間についても表示して欲しい」とのご要望で追加。
-    // 上ですでに計算済みの todaySec（今日の合計＝今日の実施時間）をそのまま使い、
-    // 「今日の予定」カードの見出し右にも同じ値を表示する（tick()経由で毎秒呼ばれるため、
-    // 作業中はここもリアルタイムに更新される）。
-    var todayWorkedSub = document.getElementById("todayWorkedTimeSub");
-    if (todayWorkedSub) todayWorkedSub.textContent = "今日の実施時間：" + formatHM(todaySec);
   }
 
   // 1件分の記録行のHTML（最近の記録・タスクでまとめた場合の内訳行の両方で使う共通テンプレート）
