@@ -139,9 +139,11 @@
      確定結果として固定し、達成率・編集・削除・追加を受け付けない状態にする（取り消しで解除）。 */
   .monthly-goals-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #06251a; font-family: inherit; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
   .monthly-goals-confirm-btn:hover { opacity: 0.9; }
-  .monthly-goals-confirm-btn.undo { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-weight: 700; }
-  .monthly-goals-confirm-btn.undo:hover { border-color: var(--series-4); color: var(--series-4); opacity: 1; }
-  .monthly-goals-confirmed-badge { font-size: 12px; font-weight: 800; color: #06251a; background: var(--series-1); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  /* 2026-10-05：「確定済みと確定を取り消すのボタンが目立つので調整して」とのご要望で、塗りつぶし・
+     枠線をやめ、どちらも小さな控えめなテキスト表示にした（取り消しは下線付きのテキストリンク風）。 */
+  .monthly-goals-confirm-btn.undo { background: transparent; border: none; padding: 2px 4px; color: var(--text-muted); font-size: 11px; font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+  .monthly-goals-confirm-btn.undo:hover { color: var(--text-secondary); opacity: 1; }
+  .monthly-goals-confirmed-badge { font-size: 11px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
   .monthly-goals-total.confirmed { border-color: var(--series-1); }
   .monthly-goal-rate-btn:disabled, .monthly-goal-checkbox:disabled { cursor: default; }
   .monthly-goals-total-value { font-size: 18px; font-weight: 800; color: var(--series-1); white-space: nowrap; }
@@ -926,6 +928,15 @@
       <div class="chart-wrap"><canvas id="planRateChart"></canvas></div>
       <details class="table-toggle"><summary>表で見る</summary><div id="planRateTableWrap"></div></details>
     </div>
+
+    <!-- 2026-10-05：「集計タブで目標達成率を月別にグラフにして」とのご要望で追加。「今月の目標」カードの
+         総合達成率（各目標の達成率の平均。確定済みの月は確定した値）を、月ごとに並べて見せる。
+         期間フィルターには連動させず、目標を登録した全ての月を表示する。 -->
+    <div class="card">
+      <h2>月別の目標達成率<span class="sub">総合達成率（濃い＝確定済み／薄い＝集計中）</span></h2>
+      <div class="chart-wrap"><canvas id="goalRateChart"></canvas></div>
+      <details class="table-toggle"><summary>表で見る</summary><div id="goalRateTableWrap"></div></details>
+    </div>
   </section>
 
   <section id="names" class="panel">
@@ -1518,6 +1529,12 @@
     return d.length === 2 ? parseInt(d[0], 10) + "/" + parseInt(d[1], 10) : "";
   }
   function renderMonthlyGoalsCard() {
+    renderMonthlyGoalsCardBody();
+    // 集計タブの「月別の目標達成率」も、達成率の変更・確定・追加・削除のたびに最新にしておく
+    // （集計タブを開いたときにだけ再計算すると、変更直後は古い値のままになるため）。
+    if (document.getElementById("goalRateChart") && typeof renderGoalRateChart === "function") renderGoalRateChart();
+  }
+  function renderMonthlyGoalsCardBody() {
     var wrap = document.getElementById("monthlyGoalsCard");
     if (!wrap) return;
     var nowKey = currentMonthKey();
@@ -4662,7 +4679,7 @@
   });
 
   // ---- stats tab ----
-  var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null, planRateChartInstance = null;
+  var dailyChartInstance = null, weeklyChartInstance = null, projectChartInstance = null, planRateChartInstance = null, goalRateChartInstance = null;
   var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948", "#0891b2", "#00897b", "#ad1477", "#92400e", "#7cb342"];
 
   // 集計タブの期間フィルター（開始日・終了日とも空文字なら「全期間」＝これまでの挙動と同じ）
@@ -5031,6 +5048,69 @@
     wrap.innerHTML = html + "</tbody></table>";
   }
 
+  // 月ごとの目標の総合達成率（古い月→新しい月）。確定済みの月は確定した値、そうでなければ
+  // その時点の各目標の達成率の平均。目標が1件も無い月は含めない。
+  function monthlyGoalRateRows() {
+    var byMonth = {};
+    getMonthlyGoals().forEach(function (g) {
+      if (!g.month) return;
+      if (!byMonth[g.month]) byMonth[g.month] = [];
+      byMonth[g.month].push(g);
+    });
+    return Object.keys(byMonth).sort().map(function (m) {
+      var goals = byMonth[m];
+      var conf = getGoalConfirmation(m);
+      var avg = Math.round(goals.reduce(function (sum, g) { return sum + (g.rate || 0); }, 0) / goals.length);
+      return {
+        month: m, count: goals.length,
+        full: goals.filter(function (g) { return (g.rate || 0) >= 100; }).length,
+        rate: conf ? conf.rate : avg,
+        confirmed: !!conf
+      };
+    });
+  }
+  function renderGoalRateChart() {
+    var canvas = document.getElementById("goalRateChart");
+    if (!canvas) return;
+    var rows = monthlyGoalRateRows();
+    var labels = rows.map(function (r) { return monthKeyLabel(r.month); });
+    if (goalRateChartInstance) goalRateChartInstance.destroy();
+    goalRateChartInstance = null;
+    if (rows.length) {
+      goalRateChartInstance = new Chart(canvas.getContext("2d"), {
+        type: "bar",
+        data: { labels: labels, datasets: [{
+          label: "総合達成率(%)",
+          data: rows.map(function (r) { return r.rate; }),
+          backgroundColor: rows.map(function (r) { return r.confirmed ? "#3fae79" : "rgba(63,174,121,0.45)"; }),
+          borderColor: "#3fae79", borderWidth: 1, borderRadius: 4, maxBarThickness: 36
+        }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function (item) {
+              var r = rows[item.dataIndex];
+              return item.parsed.y + "%（" + (r.confirmed ? "確定済み" : "集計中") + "・目標" + r.count + "件）";
+            } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 11 }, maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, max: 100, ticks: { color: "#a9b0ad", font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: "#2a2f37" } }
+          }
+        }
+      });
+    }
+    var wrap = document.getElementById("goalRateTableWrap");
+    if (!wrap) return;
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state">「今月の目標」の記録がありません。</div>'; return; }
+    var html = '<table class="data-table"><thead><tr><th>月</th><th class="num">目標数</th><th class="num">100%達成</th><th class="num">総合達成率</th><th>状態</th></tr></thead><tbody>';
+    rows.slice().reverse().forEach(function (r) {
+      html += '<tr><td>' + escapeHtml(monthKeyLabel(r.month)) + '</td><td class="num">' + r.count + ' 件</td><td class="num">' + r.full + ' 件</td><td class="num">' + r.rate + '%</td><td>' + (r.confirmed ? '✓ 確定済み' : '集計中') + '</td></tr>';
+    });
+    wrap.innerHTML = html + "</tbody></table>";
+  }
+
   function renderStatsStatRow() {
     var hasPeriod = !!(statsPeriodStart || statsPeriodEnd);
     var totalSec = 0;
@@ -5059,6 +5139,7 @@
     renderWeeklyChart();
     renderProjectChart();
     renderPlanRateChart();
+    renderGoalRateChart();
   }
   document.getElementById("dailyProjectFilter").addEventListener("change", renderDailyChart);
   document.getElementById("weeklyProjectFilter").addEventListener("change", renderWeeklyChart);
