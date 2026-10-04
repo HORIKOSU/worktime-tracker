@@ -108,6 +108,14 @@
   .monthly-goals-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .monthly-goals-header h2 { margin: 0; }
   .monthly-goals-month { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 6px; }
+  /* 2026-10-04：「今月の目標で過去の分が見れなくなったので見れるようにして」とのご要望で、
+     月を前後に切り替えるナビ（‹ 2026年9月 › ＋「今月」）を追加。 */
+  .monthly-goals-nav { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; vertical-align: middle; }
+  .monthly-goals-nav-btn { appearance: none; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-secondary); font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .monthly-goals-nav-btn:hover:not(:disabled) { border-color: var(--series-1); color: var(--series-1); }
+  .monthly-goals-nav-btn:disabled { opacity: 0.35; cursor: default; }
+  .monthly-goals-nav-btn.today { color: var(--series-1); border-color: var(--series-1); }
+  .monthly-goals-past-note { font-size: 11px; color: var(--text-muted); margin: -4px 0 10px; }
   .monthly-goals-progress { font-size: 12px; font-weight: 700; color: var(--series-1); background: var(--page-plane); border: 1px solid var(--border); padding: 3px 12px; border-radius: 999px; white-space: nowrap; }
   .monthly-goals-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   /* 2026-09-28：目標ごとに「達成率」（0/25/50/75/100%のボタン選択）を記録できるように追加。
@@ -963,6 +971,7 @@
   var namesEditingKind = null; // 「名称管理」で編集中の種類（"project"|"memo"|"number"）。1件のみ
   var namesEditingValue = null; // 編集中の元の値（置き換え対象を特定するため）
   var colorPickingValue = null; // 「名称管理」のプロジェクト名で、色を手動指定中の値（1件のみ）。null以外ならその値のプロジェクトの色編集UIを表示する
+  var monthlyGoalViewMonth = null; // 「今月の目標」で表示中の月（"YYYY-MM"）。null＝今月
   var monthlyGoalEditingId = null; // 「今月の目標」で編集中の目標のID（1件のみ）
   // 編集中の区間・休憩の作業用データ（保存前の一時的な状態）。
   // null のときは s.segments からその都度組み立てる。「休憩を追加」「休憩を削除」の
@@ -1436,10 +1445,26 @@
     var parts = monthKey.split("-");
     return parts[0] + "年" + parseInt(parts[1], 10) + "月";
   }
+  function shiftMonthKey(monthKey, delta) {
+    var parts = monthKey.split("-");
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1 + delta, 1);
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2);
+  }
+  // 登録済みの目標のうち一番古い月（無ければ今月）。これより前には戻れないようにする。
+  function earliestGoalMonthKey() {
+    var earliest = currentMonthKey();
+    getMonthlyGoals().forEach(function (g) { if (g.month && g.month < earliest) earliest = g.month; });
+    return earliest;
+  }
   function renderMonthlyGoalsCard() {
     var wrap = document.getElementById("monthlyGoalsCard");
     if (!wrap) return;
-    var monthKey = currentMonthKey();
+    var nowKey = currentMonthKey();
+    if (!monthlyGoalViewMonth || monthlyGoalViewMonth > nowKey) monthlyGoalViewMonth = nowKey;
+    var monthKey = monthlyGoalViewMonth;
+    var isCurrentMonth = monthKey === nowKey;
+    var canGoPrev = monthKey > earliestGoalMonthKey();
+    var canGoNext = monthKey < nowKey;
     var goals = getMonthlyGoals().filter(function (g) { return g.month === monthKey; });
     var doneCount = goals.filter(function (g) { return g.done; }).length;
     // 「番号」欄（H案件の1_1のような自由入力の識別ラベル）とは別に、今月の目標が
@@ -1476,19 +1501,29 @@
             '<button type="button" class="monthly-goal-delete-btn" data-goal-id="' + escapeHtml(g.id) + '" title="削除">×</button>' +
             '</div>';
         }).join("")
-      : '<p class="generated-note">今月の目標はまだ登録されていません。下のフォームから追加できます。</p>';
+      : (isCurrentMonth
+          ? '<p class="generated-note">今月の目標はまだ登録されていません。下のフォームから追加できます。</p>'
+          : '<p class="generated-note">この月に登録された目標はありません。</p>');
     wrap.innerHTML =
       '<div class="monthly-goals-header">' +
-      '<h2>今月の目標<span class="monthly-goals-month">（' + escapeHtml(monthKeyLabel(monthKey)) + '）</span></h2>' +
+      '<h2>' + (isCurrentMonth ? '今月の目標' : '過去の目標') + '<span class="monthly-goals-month">（' + escapeHtml(monthKeyLabel(monthKey)) + '）</span>' +
+      '<span class="monthly-goals-nav">' +
+      '<button type="button" class="monthly-goals-nav-btn" data-goal-nav="prev"' + (canGoPrev ? '' : ' disabled') + ' title="前の月">‹</button>' +
+      '<button type="button" class="monthly-goals-nav-btn" data-goal-nav="next"' + (canGoNext ? '' : ' disabled') + ' title="次の月">›</button>' +
+      (isCurrentMonth ? '' : '<button type="button" class="monthly-goals-nav-btn today" data-goal-nav="today">今月</button>') +
+      '</span></h2>' +
       (goals.length ? '<span class="monthly-goals-progress">' + doneCount + ' / ' + goals.length + ' 達成</span>' : '') +
       '</div>' +
+      (isCurrentMonth ? '' : '<div class="monthly-goals-past-note">過去の月の目標です（達成率の更新・編集・削除は可能。新規追加は今月のみ）。</div>') +
       '<div class="monthly-goals-list" id="monthlyGoalsList">' + listHtml + '</div>' +
-      '<div class="monthly-goal-add-row">' +
-      '<input type="text" id="monthlyGoalProjectInput" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
-      '<input type="text" id="monthlyGoalMemoInput" placeholder="業務内容（任意）">' +
-      '<input type="text" id="monthlyGoalNumberInput" placeholder="番号（任意）">' +
-      '<button type="button" class="monthly-goal-add-btn" id="monthlyGoalAddBtn">＋ 追加</button>' +
-      '</div>';
+      (isCurrentMonth
+        ? '<div class="monthly-goal-add-row">' +
+          '<input type="text" id="monthlyGoalProjectInput" placeholder="例、H案件（完了させたいタスク）" list="projectList">' +
+          '<input type="text" id="monthlyGoalMemoInput" placeholder="業務内容（任意）">' +
+          '<input type="text" id="monthlyGoalNumberInput" placeholder="番号（任意）">' +
+          '<button type="button" class="monthly-goal-add-btn" id="monthlyGoalAddBtn">＋ 追加</button>' +
+          '</div>'
+        : '');
   }
   function addMonthlyGoal() {
     var projectInput = document.getElementById("monthlyGoalProjectInput");
@@ -1525,6 +1560,18 @@
     var wrap = document.getElementById("monthlyGoalsCard");
     if (!wrap) return;
     wrap.addEventListener("click", function (evt) {
+      var navBtn = evt.target.closest ? evt.target.closest(".monthly-goals-nav-btn") : null;
+      if (navBtn) {
+        if (navBtn.disabled) return;
+        var dir = navBtn.getAttribute("data-goal-nav");
+        var base = monthlyGoalViewMonth || currentMonthKey();
+        if (dir === "prev") monthlyGoalViewMonth = shiftMonthKey(base, -1);
+        else if (dir === "next") monthlyGoalViewMonth = shiftMonthKey(base, 1);
+        else monthlyGoalViewMonth = null;
+        monthlyGoalEditingId = null;
+        renderMonthlyGoalsCard();
+        return;
+      }
       var addBtn = evt.target.closest ? evt.target.closest("#monthlyGoalAddBtn") : null;
       if (addBtn) { addMonthlyGoal(); return; }
       var rateBtn = evt.target.closest ? evt.target.closest(".monthly-goal-rate-btn") : null;
