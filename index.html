@@ -653,6 +653,18 @@
   .resize-handle { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; z-index: 3; touch-action: none; }
   .resize-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 26px; height: 3px; margin-left: -13px; margin-top: -1.5px; border-radius: 2px; background: rgba(255,255,255,0.85); opacity: 0; transition: opacity 0.12s; }
   .day-break-block .resize-handle::after { background: rgba(227,181,99,0.55); }
+  /* 2026-10-05：短い休憩（10分前後＝高さ12px程度）は、上下のつまみ（高さ9px）が重なって本体の
+     クリックできる場所が無くなり、休憩の操作メニュー（削除など）が開けなかったため、
+     低い図形ではつまみを細く・外側にずらして、中央をクリックできるようにする。 */
+  .day-segment-block.day-block-short .resize-handle { height: 4px; }
+  .day-segment-block.day-block-short .resize-handle-top { top: -2px; }
+  .day-segment-block.day-block-short .resize-handle-bottom { bottom: -2px; }
+  /* さらに低い休憩（5分前後＝高さ6px程度）は文字も入らず、本体を直接クリックするのが難しいため、
+     上下に6pxずつ広げたクリック範囲（::before）を付け、隣の記録より手前に出して操作メニューを開けるようにする。
+     文字は表示できないので隠し、マウスを乗せると title で時間帯を確認できる。 */
+  .day-break-block.day-block-tiny { overflow: visible; z-index: 4; }
+  .day-break-block.day-block-tiny > .day-segment-name, .day-break-block.day-block-tiny > .day-segment-time { display: none; }
+  .day-break-block.day-block-tiny::before { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; z-index: 5; }
   .resize-handle-top { top: -3px; }
   .resize-handle-bottom { bottom: -3px; }
   .day-segment-block:hover .resize-handle::after, .day-segment-block.resizing .resize-handle::after { opacity: 1; }
@@ -1226,6 +1238,10 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); usingLocalData = true; } catch (e) {}
   }
 
+  // 以前のデータ（中断・再開を1つの記録の中の複数区間として持つもの）を、区間ごとの別々の記録に直す。
+  // 埋め込みデータ（まだブラウザに保存していない状態）の場合は、この場では保存せず、何か記録した時に保存される。
+  if (migrateSplitSessions() && usingLocalData) persistState();
+
   function updateDataStatusLine() {
     var el = document.getElementById("dataStatusLine");
     if (!el) return;
@@ -1334,19 +1350,80 @@
     getSegments(s).forEach(function (seg) { total += segmentDurationSec(seg); });
     return total;
   }
-  function resumeSession(session, memo) {
-    if (!session.segments || !session.segments.length) {
-      session.segments = [{ start: session.start, end: session.end }];
+  // 2026-10-05：「区切られているごとに登録をして」とのご要望（事前確認で「中断・再開で分かれた作業を
+  // 別々の記録にする」を選択）で、中断・再開のたびに同じ記録へ区間を足すのをやめた。
+  // 休憩から戻るたびに、新しい記録として登録する（同じタスク・同じプロジェクト名／業務内容／番号）。
+  // 中断していた時間は「休憩」の記録として登録し、カレンダーに残してあとから個別に削除できるようにする。
+  function cloneSessionForChunk(base, group) {
+    var c = {};
+    Object.keys(base).forEach(function (k) { if (k !== "segments") c[k] = base[k]; });
+    c.id = generateId();
+    c.start = group[0].start;
+    c.startMs = parseLocal(group[0].start).getTime();
+    c.end = group[group.length - 1].end || null;
+    if (group.length > 1) c.segments = group.map(function (g) { return { start: g.start, end: g.end || null }; });
+    return c;
+  }
+  function newBreakRecord(start, end) {
+    return { id: generateId(), start: start, end: end, fromTask: true };
+  }
+  // 複数の区間を持つ記録を、区間ごとの別々の記録に分ける。
+  //  gapIndex … 数値なら、その区間と次の区間のつなぎ目だけで分ける。undefined ならすべてのつなぎ目で分ける。
+  //  registerBreaks … true なら、つなぎ目の時間を「休憩」の記録として登録する（false なら空白の時間のままにする）。
+  // 元の記録のIDは「一番最後（今に一番近い）の区間」が引き継ぐ。作業中・中断中などの状態が
+  // 記録のIDで管理されているため、それらが指す記録を変えないようにするため。
+  function splitSessionSegments(session, gapIndex, registerBreaks) {
+    var segs = session.segments;
+    if (!segs || segs.length < 2) return false;
+    var groups = [[segs[0]]];
+    for (var i = 1; i < segs.length; i++) {
+      var doSplit = (gapIndex === undefined || i - 1 === gapIndex);
+      if (doSplit) {
+        groups.push([segs[i]]);
+        if (registerBreaks && segs[i - 1].end && segs[i].start && parseLocal(segs[i].start) > parseLocal(segs[i - 1].end)) {
+          getGeneralBreaks().push(newBreakRecord(segs[i - 1].end, segs[i].start));
+        }
+      } else {
+        groups[groups.length - 1].push(segs[i]);
+      }
     }
-    session.segments.push({ start: nowLocalIso(), end: null });
-    session.end = null;
-    if (memo !== undefined) session.memo = memo;
+    if (groups.length < 2) return false;
+    var made = [];
+    for (var g = 0; g < groups.length - 1; g++) made.push(cloneSessionForChunk(session, groups[g]));
+    var lastGroup = groups[groups.length - 1];
+    session.start = lastGroup[0].start;
+    session.startMs = parseLocal(lastGroup[0].start).getTime();
+    session.end = lastGroup[lastGroup.length - 1].end || null;
+    if (lastGroup.length > 1) session.segments = lastGroup; else delete session.segments;
+    var at = state.sessions.indexOf(session);
+    state.sessions.splice.apply(state.sessions, [at, 0].concat(made));
+    return true;
+  }
+  // 以前のデータ（中断・再開を1つの記録の中の複数区間として持っているもの）を、区間ごとの別々の
+  // 記録に直す。つなぎ目の時間は休憩の記録として登録するので、カレンダー上の見た目は変わらない。
+  function migrateSplitSessions() {
+    var changed = false;
+    state.sessions.slice().forEach(function (s) {
+      if (s.segments && s.segments.length > 1 && splitSessionSegments(s, undefined, true)) changed = true;
+    });
+    return changed;
+  }
+  function resumeSession(session, memo) {
+    var now = nowLocalIso();
+    if (session.end && parseLocal(now) > parseLocal(session.end)) {
+      getGeneralBreaks().push(newBreakRecord(session.end, now));
+    }
+    var fresh = cloneSessionForChunk(session, [{ start: now, end: null }]);
+    fresh.startMs = Date.now();
+    if (memo !== undefined) fresh.memo = memo;
+    state.sessions.push(fresh);
     focusCountArmed = false; // 実際に再開したので、次回また「集中カウント開始」から押し直してもらう
     // 実際に休憩（中断）から戻ったタイミングなので、集中サイクルの起点はここでリセットする。
     state.focusStreakStartIso = nowLocalIso();
     // 2026-09-23：集中サイクルの時間を一時的に変更する機能を追加。「一時的」＝その場の1回だけ
     // 適用し、次の新しいサイクル（＝ここ）からはまたデフォルトの90分に戻る。
     state.focusCycleOverrideSec = null;
+    return fresh;
   }
   function endRunningSession(session) {
     var now = nowLocalIso();
@@ -2315,7 +2392,7 @@
         '<span class="status-badge on-break">■ <span class="badge-typing">中断中</span></span>' +
         '<div class="timer-project">' + (onBreakTask ? '<span class="task-id-badge">' + escapeHtml(onBreakTask.id) + '</span> ' : '') + escapeHtml(projectLabel(onBreak)) + (onBreak.number ? ' <span class="number-badge">' + escapeHtml(onBreak.number) + '</span>' : '') + '</div>' +
         (onBreak.remarks ? '<div class="timer-remarks">備考：' + escapeHtml(onBreak.remarks) + '</div>' : '') +
-        '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(durationSecOf(onBreak))) + '</div>' +
+        '<div class="timer-memo">これまでの合計 ' + escapeHtml(formatHM(onBreakTask ? taskTotalSec(onBreakTask) : durationSecOf(onBreak))) + '</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
         breakTipHtml() +
@@ -3555,6 +3632,10 @@
         }
       }
 
+      // 2026-10-05：「区切られているごとに登録」とのご要望により、編集フォームで休憩を追加して
+      // 複数の区間になった場合も、区間ごとの別々の記録に分け、休憩は休憩の記録として登録する。
+      if (session.segments && session.segments.length > 1) splitSessionSegments(session, undefined, true);
+
       persistState();
       historyEditingId = null;
       historyEditDraftSegments = null;
@@ -4167,7 +4248,7 @@
         var blockNameText = projectLabel(b.session) + (blockMemo ? '・' + blockMemo : '') + (blockNumber ? '（' + blockNumber + '）' : '');
         // 中断・再開のない（区間が1つだけの）記録のみ、丸ごとドラッグ移動できる。
         var workMovable = !b.running && b.segsLength === 1;
-        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.running ? ' running' : '') + (workMovable ? ' day-segment-movable' : '') +
+        html += '<div' + (b.running ? ' id="runningDayBlock"' : '') + ' class="day-segment-block' + (b.height < 28 ? ' day-block-short' : '') + (b.running ? ' running' : '') + (workMovable ? ' day-segment-movable' : '') +
           '" data-id="' + escapeHtml(b.session.id) + '" data-block-kind="work" data-session-id="' + escapeHtml(b.session.id) + '" data-seg-index="' + b.segIndex + '" title="' + escapeHtml(blockNameText) + '"' +
           ' style="top:' + b.top + 'px; height:' + b.height + 'px; background:' + color + ';">' +
           resizeHandlesHtml(true, !b.running) +
@@ -4183,7 +4264,7 @@
         // 一般休憩（タスクに紐づかない休憩）のみ丸ごと移動できる。タスクの一時中断区間（task-break）は
         // 前後のセグメントから自動的に算出される表示のため、移動対象にはしない。
         var breakMovable = (b.kind === "general-break") && !b.ongoing;
-        html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.ongoing ? ' running' : '') + (breakMovable ? ' day-segment-movable' : '') + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
+        html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.height < 28 ? ' day-block-short' : '') + (b.height < 16 ? ' day-block-tiny' : '') + (b.ongoing ? ' running' : '') + (breakMovable ? ' day-segment-movable' : '') + '" title="' + escapeHtml('☕ 休憩 ' + formatTimeShort(b.startIso) + '〜' + (b.endIso ? formatTimeShort(b.endIso) : '')) + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
           resizeHandlesHtml(true, !b.ongoing) +
           '<div class="day-segment-name">☕ 休憩</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
@@ -4199,7 +4280,16 @@
     // 記録ブロックをタップしたときに開く操作メニュー（▶ 再開／編集）。
     // 手動追加した記録などタスクに紐づいていないセッションもあるため、プロジェクト名・業務内容は
     // タスクではなくセッション自体から表示する（再開時にタスクを特定／新規作成する処理と合わせるため）。
-    if (scheduleBlockMenuState) {
+    if (scheduleBlockMenuState && scheduleBlockMenuState.kind === "break") {
+      html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
+        '<div class="schedule-block-menu-info"><strong>☕ 休憩</strong>　' + escapeHtml(scheduleBlockMenuState.label || "") + '</div>' +
+        '<div class="schedule-block-menu-actions">' +
+        '<button type="button" class="sched-block-edit-btn sched-break-edit-btn">編集</button>' +
+        '<button type="button" class="sched-block-delete-btn sched-break-delete-btn">削除</button>' +
+        '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
+        '</div>' +
+        '</div>';
+    } else if (scheduleBlockMenuState) {
       var menuSession = state.sessions.find(function (s) { return s.id === scheduleBlockMenuState.sessionId; });
       var menuLabel = menuSession ? (projectLabel(menuSession) + (menuSession.memo ? "・" + menuSession.memo : "") + (menuSession.number ? "（" + menuSession.number + "）" : "")) : "";
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
@@ -4233,6 +4323,47 @@
   function wireScheduleBlockMenu() {
     var menuEl = document.querySelector(".schedule-block-menu");
     if (!menuEl) return;
+
+    // 休憩ブロックの操作メニュー（編集／削除／閉じる）
+    if (scheduleBlockMenuState && scheduleBlockMenuState.kind === "break") {
+      var bm = scheduleBlockMenuState;
+      menuEl.querySelector(".sched-break-edit-btn").addEventListener("click", function () {
+        scheduleBlockMenuState = null;
+        menuEl.remove();
+        var histTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+        var histFilter = document.getElementById("histProjectFilter");
+        if (histFilter) histFilter.value = "__all__";
+        if (bm.breakId) { generalBreakEditingId = bm.breakId; historyEditingId = null; }
+        else { historyEditingId = bm.sessionId; generalBreakEditingId = null; }
+        historyEditDraftSegments = null;
+        if (histTabBtn) histTabBtn.click();
+        renderHistoryList();
+        scrollToAndHighlightHistoryEdit();
+      });
+      menuEl.querySelector(".sched-break-delete-btn").addEventListener("click", function () {
+        if (bm.breakId) {
+          // 休憩の記録そのものを削除する。その時間は空白になる（前後の作業はそのまま）。
+          if (!window.confirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になります。この操作は元に戻せません。")) return;
+          state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== bm.breakId; });
+          if (generalBreakEditingId === bm.breakId) generalBreakEditingId = null;
+        } else {
+          // 1つの記録の中の中断区間（以前の形式のデータ）は、その場所で記録を前後2つに分ける。
+          // 休憩の時間は作業時間に含めず、空白のままにする。
+          var bsession = state.sessions.find(function (s) { return s.id === bm.sessionId; });
+          if (!bsession) { scheduleBlockMenuState = null; renderScheduleDayView(true); return; }
+          if (!window.confirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になり、前後の作業は別々の記録に分かれます。この操作は元に戻せません。")) return;
+          splitSessionSegments(bsession, bm.segIndex, false);
+        }
+        scheduleBlockMenuState = null;
+        persistState();
+        renderAll();
+      });
+      menuEl.querySelector(".sched-block-menu-close-btn").addEventListener("click", function () {
+        scheduleBlockMenuState = null;
+        renderScheduleDayView(true);
+      });
+      return;
+    }
 
     // 2026-09-23：plan-start-btn と同じ理由で、ゲート仮ボタン（data-focus-gate）を除外する。
     var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn:not([data-focus-gate])");
@@ -4371,10 +4502,24 @@
     var histFilterEl = document.getElementById("histProjectFilter");
     if (histFilterEl) histFilterEl.value = "__all__";
     if (block.classList.contains("day-break-block")) {
-      // タスクの休憩は、その休憩を含むタスクの記録の編集フォームを開く（休憩の追加・削除・時刻変更はそこから行える）。
-      // 一般休憩は専用の編集フォームを開く。
       var sessionId = block.getAttribute("data-session-id");
       var breakId = block.getAttribute("data-break-id");
+      // 2026-10-05：「カレンダー内の休憩も削除できるようにして」とのご要望で、終わっている休憩は
+      // 作業ブロックと同じように操作メニュー（編集／削除）をその場に開く。いままさに続いている
+      // 休憩（進行中）は、これまでどおり編集フォームへ移動する（今の状態そのものなので削除の対象外）。
+      if (!block.classList.contains("running")) {
+        var breakKey = breakId ? "gb:" + breakId : "tb:" + sessionId + ":" + block.getAttribute("data-seg-index");
+        if (scheduleBlockMenuState && scheduleBlockMenuState.key === breakKey) {
+          scheduleBlockMenuState = null;
+        } else {
+          var breakTimeEl = block.querySelector(".day-segment-time");
+          scheduleBlockMenuState = { kind: "break", key: breakKey, sessionId: sessionId, breakId: breakId, segIndex: parseInt(block.getAttribute("data-seg-index"), 10), label: breakTimeEl ? breakTimeEl.textContent : "", top: parseFloat(block.style.top) };
+        }
+        renderScheduleDayView(true);
+        return;
+      }
+      // タスクの休憩は、その休憩を含むタスクの記録の編集フォームを開く（休憩の追加・削除・時刻変更はそこから行える）。
+      // 一般休憩は専用の編集フォームを開く。
       scheduleBlockMenuState = null;
       if (sessionId) {
         historyEditingId = sessionId;
@@ -4405,7 +4550,7 @@
     }
     // 通常の記録ブロックをタップした場合は、「▶ 今から再開」「編集」を選べる操作メニューをその場に開く。
     var tappedSessionId = block.getAttribute("data-session-id");
-    if (scheduleBlockMenuState && scheduleBlockMenuState.sessionId === tappedSessionId) {
+    if (scheduleBlockMenuState && scheduleBlockMenuState.kind !== "break" && scheduleBlockMenuState.sessionId === tappedSessionId) {
       // 同じブロックを再度タップしたら閉じる。
       scheduleBlockMenuState = null;
     } else {
@@ -5318,6 +5463,7 @@
       // 取り込んだデータに「作業中」の記録が複数できてしまう場合があるため、
       // 一番新しく開始したものだけを作業中として残し、他は矛盾解消のためそのままにする（手動編集で調整可能）。
     }
+    migrateSplitSessions();
     persistState();
     document.getElementById("dataImportArea").value = "";
     document.getElementById("dataImportFile").value = "";
