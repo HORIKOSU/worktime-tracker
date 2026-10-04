@@ -131,6 +131,22 @@
      月を前後に切り替えるナビ（‹ 2026年9月 › ＋「今月」）を追加。 */
   /* 2026-10-05：「目標についてトータルの達成率を表示する場所を用意して」とのご要望で追加。
      表示中の月の全目標の達成率（0/25/50/75/100%）の平均を、バー付きで表示する。 */
+  /* 2026-10-05：「前月の目標の繰越の場合それも反映できるようにしたい」とのご要望で追加。
+     前月の未達成（達成率100%未満）の目標を、前月の達成率を引き継いで今月へ繰り越せる。 */
+  .monthly-goal-carried-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--series-4); border: 1px solid var(--series-4); border-radius: 999px; padding: 0 7px; margin-left: 4px; white-space: nowrap; vertical-align: middle; }
+  .monthly-goal-carried-out { display: inline-block; font-size: 10px; font-weight: 600; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 999px; padding: 0 7px; margin-left: 4px; white-space: nowrap; vertical-align: middle; }
+  .monthly-goals-carry-btn { appearance: none; border: 1px solid var(--series-4); background: transparent; color: var(--series-4); font-family: inherit; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .monthly-goals-carry-btn:hover { background: var(--series-4); color: #241900; }
+  .monthly-goals-header-right { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .goal-prompt-carry { margin-bottom: 14px; padding: 10px 12px; border: 1px dashed var(--series-4); border-radius: 10px; }
+  .goal-prompt-carry-title { font-size: 12px; font-weight: 700; color: var(--series-4); margin: 0 0 8px; }
+  .goal-prompt-carry-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; cursor: pointer; }
+  .goal-prompt-carry-item input { width: 16px; height: 16px; flex: none; cursor: pointer; }
+  .goal-prompt-carry-rate { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .goal-prompt-carry-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .goal-prompt-carry-btn { appearance: none; border: 1px solid var(--series-4); background: transparent; color: var(--series-4); font-family: inherit; font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 10px; cursor: pointer; }
+  .goal-prompt-carry-btn:hover { background: var(--series-4); color: #241900; }
+  .goal-prompt-carry-btn.sub { border-color: var(--border); color: var(--text-muted); font-weight: 600; }
   .monthly-goals-total { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); }
   .monthly-goals-total-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
   .monthly-goals-total-bar { flex: 1 1 auto; height: 8px; border-radius: 999px; background: var(--surface-1); border: 1px solid var(--border); overflow: hidden; min-width: 60px; }
@@ -1008,6 +1024,7 @@
     <p class="goal-prompt-eyebrow" id="goalPromptEyebrow"></p>
     <p class="goal-prompt-title">今月の目標は何ですか？</p>
     <p class="goal-prompt-note">今月中に完了させたいタスクを記入してください（複数OK）。あとからダッシュボードの「今月の目標」でも追加・編集できます。</p>
+    <div class="goal-prompt-carry" id="goalPromptCarry" style="display:none"></div>
     <div class="goal-prompt-form">
       <input type="text" id="goalPromptProjectInput" placeholder="例、H案件（完了させたいタスク）" list="projectList">
       <input type="text" id="goalPromptMemoInput" placeholder="業務内容（任意）">
@@ -1520,6 +1537,27 @@
     getMonthlyGoals().forEach(function (g) { if (g.month && g.month < earliest) earliest = g.month; });
     return earliest;
   }
+  // ---- 前月からの繰越（2026-10-05） ----
+  // 前月の目標のうち、達成率が100%未満でまだ繰り越していないもの。
+  function previousMonthKey() { return shiftMonthKey(currentMonthKey(), -1); }
+  function carryCandidates() {
+    var prev = previousMonthKey();
+    return getMonthlyGoals().filter(function (g) { return g.month === prev && (g.rate || 0) < 100 && !g.carriedToMonth; });
+  }
+  // 選んだ目標を今月へ繰り越す。前月の達成率を引き継ぎ、前月側の目標には「繰越済み」を記録する
+  // （前月の達成率・確定済みの総合達成率はそのまま変えない）。
+  function carryOverGoals(ids) {
+    var cur = currentMonthKey();
+    var count = 0;
+    carryCandidates().forEach(function (g) {
+      if (ids.indexOf(g.id) < 0) return;
+      getMonthlyGoals().push({ id: generateId(), month: cur, project: g.project, memo: g.memo || "", number: g.number || "", done: false, rate: g.rate || 0, carriedFromMonth: g.month, carriedFromId: g.id, createdAt: nowLocalIso() });
+      g.carriedToMonth = cur;
+      count++;
+    });
+    if (count) { persistState(); monthlyGoalViewMonth = null; renderMonthlyGoalsCard(); }
+    return count;
+  }
   // 月ごとの「確定」記録：{ "YYYY-MM": { rate: 確定した総合達成率, count: 目標の件数, confirmedAt: ISO日時 } }
   function getGoalConfirmation(monthKey) {
     return (state.monthlyGoalConfirmations && state.monthlyGoalConfirmations[monthKey]) || null;
@@ -1575,7 +1613,7 @@
           return '<div class="monthly-goal-row' + (g.done ? ' done' : '') + '" data-goal-id="' + escapeHtml(g.id) + '">' +
             '<input type="checkbox" class="monthly-goal-checkbox" data-goal-id="' + escapeHtml(g.id) + '"' + (g.done ? ' checked' : '') + (isLocked ? ' disabled' : '') + '>' +
             '<div class="monthly-goal-seq" title="今月の目標に登録した順番">' + seqByGoalId[g.id] + '</div>' +
-            '<div class="monthly-goal-text" title="' + escapeHtml(g.project + (g.memo ? "　＞　" + g.memo : "")) + '">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + (g.number ? ' <span class="number-badge">' + escapeHtml(g.number) + '</span>' : '') + '</div>' +
+            '<div class="monthly-goal-text" title="' + escapeHtml(g.project + (g.memo ? "　＞　" + g.memo : "")) + '">' + escapeHtml(g.project) + (g.memo ? ' <span class="monthly-goal-memo">＞ ' + escapeHtml(g.memo) + '</span>' : '') + (g.number ? ' <span class="number-badge">' + escapeHtml(g.number) + '</span>' : '') + (g.carriedFromMonth ? '<span class="monthly-goal-carried-badge" title="' + escapeHtml(monthKeyLabel(g.carriedFromMonth)) + 'から繰越">繰越</span>' : '') + (g.carriedToMonth ? '<span class="monthly-goal-carried-out" title="' + escapeHtml(monthKeyLabel(g.carriedToMonth)) + 'へ繰越済み">→繰越済み</span>' : '') + '</div>' +
             '<div class="monthly-goal-rate-group">' +
             '<span class="monthly-goal-rate-label">達成率</span>' +
             rateBtnsHtml +
@@ -1595,7 +1633,10 @@
       '<button type="button" class="monthly-goals-nav-btn" data-goal-nav="next"' + (canGoNext ? '' : ' disabled') + ' title="次の月">›</button>' +
       (isCurrentMonth ? '' : '<button type="button" class="monthly-goals-nav-btn today" data-goal-nav="today">今月</button>') +
       '</span></h2>' +
+      '<span class="monthly-goals-header-right">' +
+      (isCurrentMonth && !isLocked && carryCandidates().length ? '<button type="button" class="monthly-goals-carry-btn" data-goal-carry-open="1" title="前月の未達成の目標を今月へ繰り越します">↪ 前月から繰越（' + carryCandidates().length + '件）</button>' : '') +
       (goals.length ? '<span class="monthly-goals-progress">' + doneCount + ' / ' + goals.length + ' 達成</span>' : '') +
+      '</span>' +
       '</div>' +
       (goals.length
         ? '<div class="monthly-goals-total' + (isLocked ? ' confirmed' : '') + '" id="monthlyGoalsTotal"><span class="monthly-goals-total-label">' + (isLocked ? '確定した総合達成率' : '総合達成率') + '</span>' +
@@ -1666,6 +1707,8 @@
         renderMonthlyGoalsCard();
         return;
       }
+      var carryOpenBtn = evt.target.closest ? evt.target.closest("[data-goal-carry-open]") : null;
+      if (carryOpenBtn) { showGoalPrompt(true); return; }
       var confirmBtn = evt.target.closest ? evt.target.closest("[data-goal-confirm]") : null;
       if (confirmBtn) {
         var cKey = monthlyGoalViewMonth || currentMonthKey();
@@ -1706,6 +1749,12 @@
       var deleteBtn = evt.target.closest ? evt.target.closest(".monthly-goal-delete-btn") : null;
       if (deleteBtn) {
         var id = deleteBtn.getAttribute("data-goal-id");
+        // 繰越してきた目標を削除した場合は、元の目標を「繰越済み」から戻し、もう一度繰り越せるようにする
+        var deletingGoal = getMonthlyGoals().find(function (g) { return g.id === id; });
+        if (deletingGoal && deletingGoal.carriedFromId) {
+          var sourceGoal = getMonthlyGoals().find(function (g) { return g.id === deletingGoal.carriedFromId; });
+          if (sourceGoal) delete sourceGoal.carriedToMonth;
+        }
         state.monthlyGoals = getMonthlyGoals().filter(function (g) { return g.id !== id; });
         if (monthlyGoalEditingId === id) monthlyGoalEditingId = null;
         persistState();
@@ -5064,6 +5113,7 @@
       return {
         month: m, count: goals.length,
         full: goals.filter(function (g) { return (g.rate || 0) >= 100; }).length,
+        carried: goals.filter(function (g) { return !!g.carriedFromMonth; }).length,
         rate: conf ? conf.rate : avg,
         confirmed: !!conf
       };
@@ -5091,7 +5141,7 @@
             legend: { display: false },
             tooltip: { callbacks: { label: function (item) {
               var r = rows[item.dataIndex];
-              return item.parsed.y + "%（" + (r.confirmed ? "確定済み" : "集計中") + "・目標" + r.count + "件）";
+              return item.parsed.y + "%（" + (r.confirmed ? "確定済み" : "集計中") + "・目標" + r.count + "件" + (r.carried ? "、うち繰越" + r.carried + "件" : "") + "）";
             } } }
           },
           scales: {
@@ -5104,9 +5154,9 @@
     var wrap = document.getElementById("goalRateTableWrap");
     if (!wrap) return;
     if (!rows.length) { wrap.innerHTML = '<div class="empty-state">「今月の目標」の記録がありません。</div>'; return; }
-    var html = '<table class="data-table"><thead><tr><th>月</th><th class="num">目標数</th><th class="num">100%達成</th><th class="num">総合達成率</th><th>状態</th></tr></thead><tbody>';
+    var html = '<table class="data-table"><thead><tr><th>月</th><th class="num">目標数</th><th class="num">うち繰越</th><th class="num">100%達成</th><th class="num">総合達成率</th><th>状態</th></tr></thead><tbody>';
     rows.slice().reverse().forEach(function (r) {
-      html += '<tr><td>' + escapeHtml(monthKeyLabel(r.month)) + '</td><td class="num">' + r.count + ' 件</td><td class="num">' + r.full + ' 件</td><td class="num">' + r.rate + '%</td><td>' + (r.confirmed ? '✓ 確定済み' : '集計中') + '</td></tr>';
+      html += '<tr><td>' + escapeHtml(monthKeyLabel(r.month)) + '</td><td class="num">' + r.count + ' 件</td><td class="num">' + r.carried + ' 件</td><td class="num">' + r.full + ' 件</td><td class="num">' + r.rate + '%</td><td>' + (r.confirmed ? '✓ 確定済み' : '集計中') + '</td></tr>';
     });
     wrap.innerHTML = html + "</tbody></table>";
   }
@@ -5326,17 +5376,47 @@
     pi.focus();
     return true;
   }
-  function showGoalPrompt() {
+  // 前月の未達成の目標を、チェックボックスで選んで今月へ繰り越すための欄
+  function renderGoalPromptCarry() {
+    var box = document.getElementById("goalPromptCarry");
+    if (!box) return;
+    var cands = carryCandidates();
+    if (!cands.length) { box.style.display = "none"; box.innerHTML = ""; return; }
+    var prevM = parseInt(previousMonthKey().split("-")[1], 10);
+    box.style.display = "";
+    box.innerHTML = '<p class="goal-prompt-carry-title">' + prevM + '月の未達成の目標を繰り越す（前月の達成率を引き継ぎます）</p>' +
+      cands.map(function (g) {
+        return '<label class="goal-prompt-carry-item"><input type="checkbox" class="goal-prompt-carry-check" value="' + escapeHtml(g.id) + '">' +
+          '<span>' + escapeHtml(g.project) + (g.memo ? ' ＞ ' + escapeHtml(g.memo) : '') + (g.number ? ' <span class="number-badge">' + escapeHtml(g.number) + '</span>' : '') + '</span>' +
+          '<span class="goal-prompt-carry-rate">前月 ' + (g.rate || 0) + '%</span></label>';
+      }).join("") +
+      '<div class="goal-prompt-carry-actions"><button type="button" class="goal-prompt-carry-btn" data-carry-apply="1">選んだ目標を繰越</button>' +
+      '<button type="button" class="goal-prompt-carry-btn sub" data-carry-all="1">すべて選択</button></div>';
+  }
+  function checkedCarryIds() {
+    return Array.prototype.slice.call(document.querySelectorAll("#goalPromptCarry .goal-prompt-carry-check:checked")).map(function (el) { return el.value; });
+  }
+  function applyCarryFromPrompt() {
+    var ids = checkedCarryIds();
+    if (!ids.length) return 0;
+    var n = carryOverGoals(ids);
+    renderGoalPromptCarry();
+    document.getElementById("goalPromptList").innerHTML = goalPromptListHtml();
+    return n;
+  }
+  function showGoalPrompt(carryMode) {
     var overlay = document.getElementById("goalPromptOverlay");
     if (!overlay) return;
     var m = parseInt(currentMonthKey().split("-")[1], 10);
-    document.getElementById("goalPromptEyebrow").textContent = m + "月になりました";
+    document.getElementById("goalPromptEyebrow").textContent = carryMode ? m + "月へ前月の目標を繰越" : m + "月になりました";
+    renderGoalPromptCarry();
     document.getElementById("goalPromptList").innerHTML = goalPromptListHtml();
     overlay.setAttribute("aria-hidden", "false");
     var pi = document.getElementById("goalPromptProjectInput");
     if (pi) pi.focus();
   }
   function closeGoalPrompt() {
+    applyCarryFromPrompt(); // チェックしたままの繰越対象があれば取りこぼさず繰り越してから閉じる
     addGoalFromPrompt(); // 入力途中の項目があれば取りこぼさず追加してから閉じる
     state.goalPromptMonth = currentMonthKey();
     persistState();
@@ -5356,9 +5436,15 @@
   function wireGoalPromptOnce() {
     document.getElementById("goalPromptAddBtn").addEventListener("click", addGoalFromPrompt);
     document.getElementById("goalPromptCloseBtn").addEventListener("click", closeGoalPrompt);
+    document.getElementById("goalPromptOverlay").addEventListener("click", function (evt) {
+      if (evt.target.closest("[data-carry-apply]")) { applyCarryFromPrompt(); return; }
+      if (evt.target.closest("[data-carry-all]")) {
+        document.querySelectorAll("#goalPromptCarry .goal-prompt-carry-check").forEach(function (c) { c.checked = true; });
+      }
+    });
     document.getElementById("goalPromptOverlay").addEventListener("keydown", function (evt) {
       if (evt.isComposing || evt.keyCode === 229) return;
-      if (evt.key === "Enter" && evt.target.tagName === "INPUT") { evt.preventDefault(); addGoalFromPrompt(); }
+      if (evt.key === "Enter" && evt.target.tagName === "INPUT" && evt.target.type === "text") { evt.preventDefault(); addGoalFromPrompt(); }
       else if (evt.key === "Escape") { closeGoalPrompt(); }
     });
   }
