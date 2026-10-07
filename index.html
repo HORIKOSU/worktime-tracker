@@ -2396,27 +2396,30 @@
         '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
         breakTipHtml() +
-        (focusCountArmed ? '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業に戻る</button>' : focusGateButtonHtml("big-btn")) +
-        '<button type="button" class="big-btn secondary" id="breakNewLink">別の作業を始める</button>';
-      if (focusCountArmed) {
-        document.getElementById("resumeBreakBtn").addEventListener("click", function () {
-          resumeSession(onBreak);
-          state.onBreakSessionId = null;
-          state.focusCycleAutoPausedSessionId = null;
-          state.focusCycleOverageSessionId = null;
-          state.focusCycleOverageSec = 0;
-          state.currentBreakTip = null;
-          persistState();
-          renderAll();
-        });
-      }
-      document.getElementById("breakNewLink").addEventListener("click", function (evt) {
-        evt.preventDefault();
+        '<button type="button" class="big-btn start focus-count-btn" id="resumeBreakBtn">● 集中カウントを開始</button>' +
+        '<button type="button" class="big-btn secondary" id="breakStartBtn">☕ 休憩を開始</button>';
+      // 2026-10-07：中断後の現在の状況は「集中カウントを開始」「休憩を開始」の2択にした。
+      // 「集中カウントを開始」＝この作業をその場で再開して集中カウントを新しく始める（ゲート不要の1クリック）。
+      // 「休憩を開始」＝タスクに紐づかない休憩（業務全体の休憩）へ移行。休憩は中断した時刻から
+      // 続けて数える（中断〜今の間が記録の空白にならないようにするため）。
+      document.getElementById("resumeBreakBtn").addEventListener("click", function () {
+        resumeSession(onBreak);
+        focusCountArmed = false;
         state.onBreakSessionId = null;
         state.focusCycleAutoPausedSessionId = null;
         state.focusCycleOverageSessionId = null;
         state.focusCycleOverageSec = 0;
         state.currentBreakTip = null;
+        persistState();
+        renderAll();
+      });
+      document.getElementById("breakStartBtn").addEventListener("click", function () {
+        getGeneralBreaks().push({ id: generateId(), start: onBreak.end || nowLocalIso(), end: null });
+        state.onBreakSessionId = null;
+        state.focusCycleAutoPausedSessionId = null;
+        state.focusCycleOverageSessionId = null;
+        state.focusCycleOverageSec = 0;
+        if (!state.currentBreakTip) state.currentBreakTip = pickRandomBreakTip();
         persistState();
         renderAll();
       });
