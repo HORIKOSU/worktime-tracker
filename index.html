@@ -186,9 +186,9 @@
      画面幅が足りない場合のみ行全体を横スクロールできるようにして、必ず1行の高さに収める。 */
   .monthly-goal-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); overflow-x: auto; }
   /* 2026-10-08：「今月の目標のデザインはおすすめで」とのご指定で、候補①＋②＋⑤を採用。
-     ①左に太い緑の色帯（完了はグレー帯）／②内容の部分だけ薄い緑の背景／⑤完了した目標はかなり薄く。 */
-  .monthly-goal-row { border-left: 6px solid var(--series-1); }
-  .monthly-goal-row.done { opacity: 0.35; border-left-color: var(--text-muted); }
+     ②内容の部分だけ薄い緑の背景／⑤完了した目標はかなり薄く。
+     （同日「左の線は不要」とのご指示で、①の左の色帯は取りやめた。） */
+  .monthly-goal-row.done { opacity: 0.35; }
   .monthly-goal-row.done .monthly-goal-text { text-decoration: line-through; }
   .monthly-goal-rate-group { display: flex; align-items: center; gap: 3px; flex: none; }
   .monthly-goal-rate-label { font-size: 10px; color: var(--text-muted); flex: none; white-space: nowrap; opacity: 0.8; }
