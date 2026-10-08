@@ -4481,6 +4481,11 @@
       var nowMin = isToday ? minutesOfDay(nowLocalIso()) : 24 * 60;
       var newHeight = Math.max((scheduleDisplayMin(nowMin) / 60) * HOUR_PX - top, MIN_BLOCK_HEIGHT);
       el.style.height = newHeight + "px";
+      // 2026-10-08：「作業中のカレンダーの移動ができない？」とのご指摘で修正。作業開始直後は高さが
+      // ごく小さいため day-block-short（つまみを細い4pxにする指定）が付くが、その後時間が経って
+      // ブロックが伸びてもクラスが外れず、上の縁のつまみが細いままで掴めなかった。高さに合わせて付け外しする。
+      el.classList.toggle("day-block-short", newHeight < 28);
+      if (el.classList.contains("day-break-block")) el.classList.toggle("day-block-tiny", newHeight < 16);
       if (isToday) {
         var timeEl = el.querySelector(".day-segment-time");
         if (timeEl) timeEl.textContent = timeEl.textContent.split("〜")[0] + "〜" + formatTimeShort(nowLocalIso());
