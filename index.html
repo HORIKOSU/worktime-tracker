@@ -170,7 +170,7 @@
   .monthly-goals-confirmed-badge { font-size: 11px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
   .monthly-goals-total.confirmed { border-color: var(--series-1); }
   .monthly-goal-rate-btn:disabled, .monthly-goal-checkbox:disabled { cursor: default; }
-  .monthly-goals-total-value { font-size: 18px; font-weight: 800; color: var(--series-1); white-space: nowrap; }
+  .monthly-goals-total-value { font-size: 15px; font-weight: 800; color: var(--series-1); white-space: nowrap; }
   .monthly-goals-nav { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; vertical-align: middle; }
   .monthly-goals-nav-btn { appearance: none; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-secondary); font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
   .monthly-goals-nav-btn:hover:not(:disabled) { border-color: var(--series-1); color: var(--series-1); }
@@ -184,24 +184,34 @@
      2026-09-28追記：達成率ボタンを別行にしたところ2行になってしまい「一行におさまるように」との
      ご指摘があったため、1行の横並びに戻した。項目名が長い場合は折り返さず省略（...）表示にし、
      画面幅が足りない場合のみ行全体を横スクロールできるようにして、必ず1行の高さに収める。 */
-  .monthly-goal-row { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); overflow-x: auto; }
+  .monthly-goal-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); overflow-x: auto; }
   .monthly-goal-row.done { opacity: 0.6; }
   .monthly-goal-row.done .monthly-goal-text { text-decoration: line-through; }
-  .monthly-goal-rate-group { display: flex; align-items: center; gap: 4px; flex: none; }
-  .monthly-goal-rate-label { font-size: 11px; color: var(--text-muted); flex: none; white-space: nowrap; }
-  .monthly-goal-rate-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; cursor: pointer; flex: none; white-space: nowrap; }
+  .monthly-goal-rate-group { display: flex; align-items: center; gap: 3px; flex: none; }
+  .monthly-goal-rate-label { font-size: 10px; color: var(--text-muted); flex: none; white-space: nowrap; opacity: 0.8; }
+  .monthly-goal-rate-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-muted); font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 999px; cursor: pointer; flex: none; white-space: nowrap; }
   .monthly-goal-rate-btn:hover:not(:disabled) { border-color: var(--series-1); color: var(--series-1); }
-  .monthly-goal-rate-btn.active { background: var(--series-1); border-color: var(--series-1); color: #06251a; }
+  .monthly-goal-rate-btn.active, .monthly-goal-rate-btn.active:hover:not(:disabled) { background: var(--series-1); border-color: var(--series-1); color: #06251a; }
   .monthly-goal-checkbox { width: 18px; height: 18px; flex: none; cursor: pointer; }
   /* 2026-09-20：自由入力の「番号」欄（number-badge）とは別に、目標がいくつ登録されているか・
      何番目かをひと目で分かるよう、登録順の連番バッジを追加（今日の予定の plan-row-seq と同じ考え方）。 */
-  .monthly-goal-seq { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--series-1); color: #06251a; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+  .monthly-goal-seq { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--series-1); color: #06251a; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   .monthly-goal-row.done .monthly-goal-seq { background: var(--surface-1); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
-  .monthly-goal-text { flex: 1 1 auto; font-size: 14px; min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .monthly-goal-text .monthly-goal-memo { color: var(--text-secondary); }
+  /* 2026-10-08：「今月の目標の内容をもっと目立たせたい。%はもっと小さくて良い」とのご要望で、目標の内容
+     （プロジェクト名・業務内容）を大きく太く、達成率（%）ボタンは小さく控えめに調整。 */
+  .monthly-goal-text { flex: 1 1 auto; font-size: 17px; font-weight: 800; color: var(--text-primary, #fff); min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .monthly-goal-text .monthly-goal-memo { color: var(--text-secondary); font-size: 15px; font-weight: 600; }
   .monthly-goal-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex: none; white-space: nowrap; }
   .monthly-goal-delete-btn { appearance: none; border: none; background: none; color: var(--text-muted); font-size: 17px; line-height: 1; cursor: pointer; padding: 4px 6px; flex: none; }
   .monthly-goal-delete-btn:hover { color: var(--danger); }
+  /* 2026-10-08：スマホ幅では目標の内容が「H案…」のように切れてしまうため、狭い画面だけ
+     達成率・編集・削除を2行目に回し、1行目は内容をできるだけ広く表示する（PC幅は従来どおり1行）。 */
+  @media (max-width: 560px) {
+    .monthly-goal-row { flex-wrap: wrap; row-gap: 6px; overflow-x: visible; }
+    .monthly-goal-text { flex: 1 1 120px; }
+    .monthly-goal-rate-group { margin-left: 52px; }
+    .monthly-goal-edit-btn { margin-left: auto; }
+  }
   .monthly-goal-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
   .monthly-goal-add-row input[type="text"] { flex: 1 1 160px; min-width: 0; }
   .monthly-goal-add-btn { appearance: none; border: none; background: var(--series-1); color: #fff; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 10px; cursor: pointer; flex: none; }
