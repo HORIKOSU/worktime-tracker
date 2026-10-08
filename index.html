@@ -185,7 +185,10 @@
      ご指摘があったため、1行の横並びに戻した。項目名が長い場合は折り返さず省略（...）表示にし、
      画面幅が足りない場合のみ行全体を横スクロールできるようにして、必ず1行の高さに収める。 */
   .monthly-goal-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); overflow-x: auto; }
-  .monthly-goal-row.done { opacity: 0.6; }
+  /* 2026-10-08：「今月の目標のデザインはおすすめで」とのご指定で、候補①＋②＋⑤を採用。
+     ①左に太い緑の色帯（完了はグレー帯）／②内容の部分だけ薄い緑の背景／⑤完了した目標はかなり薄く。 */
+  .monthly-goal-row { border-left: 6px solid var(--series-1); }
+  .monthly-goal-row.done { opacity: 0.35; border-left-color: var(--text-muted); }
   .monthly-goal-row.done .monthly-goal-text { text-decoration: line-through; }
   .monthly-goal-rate-group { display: flex; align-items: center; gap: 3px; flex: none; }
   .monthly-goal-rate-label { font-size: 10px; color: var(--text-muted); flex: none; white-space: nowrap; opacity: 0.8; }
@@ -199,7 +202,7 @@
   .monthly-goal-row.done .monthly-goal-seq { background: var(--surface-1); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
   /* 2026-10-08：「今月の目標の内容をもっと目立たせたい。%はもっと小さくて良い」とのご要望で、目標の内容
      （プロジェクト名・業務内容）を大きく太く、達成率（%）ボタンは小さく控えめに調整。 */
-  .monthly-goal-text { flex: 1 1 auto; font-size: 17px; font-weight: 800; color: var(--text-primary, #fff); min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .monthly-goal-text { flex: 1 1 auto; background: var(--tint-sand); border-radius: 8px; padding: 8px 12px; font-size: 17px; font-weight: 800; color: var(--text-primary, #fff); min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .monthly-goal-text .monthly-goal-memo { color: var(--text-secondary); font-size: 15px; font-weight: 600; }
   .monthly-goal-edit-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; flex: none; white-space: nowrap; }
   .monthly-goal-delete-btn { appearance: none; border: none; background: none; color: var(--text-muted); font-size: 17px; line-height: 1; cursor: pointer; padding: 4px 6px; flex: none; }
@@ -3524,6 +3527,11 @@
         if (otherActiveBreak) { window.alert("すでに進行中の一般休憩が他にあります。先にそちらを終了してください。"); return; }
       }
 
+      if (!sameTimeRanges([{ start: gb.start, end: gb.end }], [{ start: gbStart, end: gbEnd }])) {
+        var gbConflict = findTimeConflict([{ start: gbStart, end: gbEnd }], null, gbId);
+        if (gbConflict) { window.alert(timeConflictMessage(gbConflict)); return; }
+      }
+
       gb.start = gbStart;
       gb.end = gbEnd;
       persistState();
@@ -3614,6 +3622,12 @@
           if (!prevEnd) { window.alert("休憩" + i + "の終了日時（作業再開時刻）を入力してください。"); return; }
           if (parseLocal(seg.start) < parseLocal(prevEnd)) { window.alert("休憩" + i + "の終了時刻は、休憩の開始より後にしてください。"); return; }
         }
+      }
+
+      // 作業の各区間（休憩を挟んでいれば複数）が、他の記録・休憩と重ならないか確認する。
+      if (!sameTimeRanges(getSegments(session), newSegs)) {
+        var editConflict = findTimeConflict(newSegs, id, null);
+        if (editConflict) { window.alert(timeConflictMessage(editConflict)); return; }
       }
 
       session.project = project;
@@ -4577,6 +4591,52 @@
   var activeMove = null; // 予定を丸ごとドラッグ移動中のみ値が入る: { pointerId, kind, sessionId, breakId, segIndex, session, seg, gb, durationMin, startClientY, startValueMin, originalStartMin, moved }
   var resizeJustHappened = false; // ドラッグ操作（伸縮・丸ごと移動どちらも）の直後に click イベントで編集フォームへ遷移してしまわないようにするためのフラグ
 
+  // 2026-10-08：「スケジュールで重複して登録できる仕様になっているよね？重複を防ぎたい」とのご要望で追加。
+  // カレンダーのドラッグ移動・伸縮は元から重なりを避けていたが、履歴タブの「記録を追加」や編集フォーム
+  // （作業・休憩）は重なったまま保存できてしまっていた。保存前に、指定した時間帯（ISO文字列の組）が
+  // 既存の作業区間・休憩と重ならないかを調べ、最初に見つかった重なり（なければnull）を返す。
+  // 隣り合うだけ（A終了＝B開始）は重なりではない。終了が無い（作業中・休憩中）ものは現在時刻まで。
+  // 日をまたぐ記録にも対応するため、日付ではなく絶対時刻（ミリ秒）で比べる。
+  function findTimeConflict(intervals, excludeSessionId, excludeBreakId) {
+    var nowMs = parseLocal(nowLocalIso()).getTime();
+    var mine = intervals.map(function (iv) {
+      return { start: parseLocal(iv.start).getTime(), end: iv.end ? parseLocal(iv.end).getTime() : nowMs };
+    });
+    function hit(startIso, endIso) {
+      var a = parseLocal(startIso).getTime(), b = endIso ? parseLocal(endIso).getTime() : nowMs;
+      return mine.some(function (m) { return m.start < b && m.end > a; });
+    }
+    for (var i = 0; i < state.sessions.length; i++) {
+      var sess = state.sessions[i];
+      if (sess.id === excludeSessionId) continue;
+      var segs = getSegments(sess);
+      for (var j = 0; j < segs.length; j++) {
+        if (segs[j].start && hit(segs[j].start, segs[j].end)) {
+          return { label: projectLabel(sess), start: segs[j].start, end: segs[j].end };
+        }
+      }
+    }
+    var brs = getGeneralBreaks();
+    for (var k = 0; k < brs.length; k++) {
+      if (brs[k].id === excludeBreakId) continue;
+      if (brs[k].start && hit(brs[k].start, brs[k].end)) {
+        return { label: "休憩", start: brs[k].start, end: brs[k].end };
+      }
+    }
+    return null;
+  }
+  function timeConflictMessage(c) {
+    var range = formatDateHeading(c.start.slice(0, 10)) + " " + formatTimeShort(c.start) + "〜" + (c.end ? formatTimeShort(c.end) : "");
+    return "「" + c.label + "」" + range + " と時間が重なっています。重ならない時間に変更してください。";
+  }
+  // 編集前と時間（開始・終了）が同じか。重なりの検査は、時間を変えたときだけ行う
+  // （すでに重なっている過去の記録の名前やメモだけを直したい場合まで止めないため）。
+  function sameTimeRanges(oldSegs, newSegs) {
+    if (oldSegs.length !== newSegs.length) return false;
+    function ms(x) { return x ? parseLocal(x).getTime() : null; }
+    return oldSegs.every(function (o, i) { return ms(o.start) === ms(newSegs[i].start) && ms(o.end) === ms(newSegs[i].end); });
+  }
+
   // その日の中で、指定したセッション・休憩以外がすでに占めている時間帯（分単位）の一覧を返す。
   // ドラッグでの伸縮が、他の記録・休憩の時間帯に重ならないようにするための判定に使う。
   function foreignBusyRanges(dateStr, excludeSessionId, excludeBreakId) {
@@ -4944,6 +5004,9 @@
     var end = combineDateTime(endDate, endTime);
     if (!start || !end) { statusEl.textContent = "開始日時・終了日時をすべて入力してください。"; statusEl.className = "data-io-status error"; return; }
     if (parseLocal(end) <= parseLocal(start)) { statusEl.textContent = "終了時刻は開始時刻より後にしてください。"; statusEl.className = "data-io-status error"; return; }
+
+    var manualConflict = findTimeConflict([{ start: start, end: end }], null, null);
+    if (manualConflict) { statusEl.textContent = timeConflictMessage(manualConflict); statusEl.className = "data-io-status error"; return; }
 
     state.sessions.push({ id: generateId(), project: project, memo: memo, number: number, start: start, end: end });
     persistState();
