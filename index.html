@@ -2041,7 +2041,21 @@
   // 自由記述のメモとして、開始するセッションにだけ記録する。
   // 作業中・中断中・休憩中であっても、それらを自動で区切ってから開始する
   // （clearCurrentActivityToStartAnother。2026-09-16〜）ため、常に true を返す。
+  // 2026-10-09：「その日の最初のタスクがルーティンになっていない」とのご指摘で追加。
+  // 「今日の業務を開始しますか？」を押さずに、今日の予定の「▶ 開始」や「▶ 今すぐ開始」から
+  // 始めると、ルーティン以外が最初の記録になってしまっていた。ご要望は「その日の最初のタスクは
+  // デフォルトでルーティン」のため、今日まだ記録が1件も無い状態で別のタスクの開始を押した場合は、
+  // 押されたタスクの代わりにルーティンを開始する（押したタスクは開始せず、入力・予定もそのまま残す）。
+  // 呼び出し側が入力欄をクリアするかどうかの判断に使えるよう、直前の開始がこの代替だったかを残す。
+  var lastStartWasRoutineFallback = false;
   function startTaskNow(project, memo, number, remarks) {
+    lastStartWasRoutineFallback = false;
+    if (!todayHasAnySession() && !(project === "ルーティン" && !memo)) {
+      startDailyRoutineTask();
+      lastStartWasRoutineFallback = true;
+      window.alert("今日の最初は「ルーティン」から始めます。\n続けて「" + project + "」を始める場合は、もう一度「▶ 開始」を押してください。");
+      return true;
+    }
     // 「タスクを跨いでも集中時間として通算したい」とのご要望に対応。作業中のタスクから
     // 休憩を挟まず直接切り替える場合は、集中サイクルの起点を引き継ぐ（リセットしない）。
     var continuingFocusStreak = !!getRunningSession();
@@ -2676,10 +2690,13 @@
         var number = numberInput.value.trim();
         var remarks = remarksInput ? remarksInput.value.trim() : "";
         if (!startTaskNow(project, memo, number, remarks)) return;
-        projectInput.value = "";
-        memoInput.value = "";
-        numberInput.value = "";
-        if (remarksInput) remarksInput.value = "";
+        // 今日の最初でルーティンを代わりに開始した場合は、入力した内容を残してもう一度押せるようにする。
+        if (!lastStartWasRoutineFallback) {
+          projectInput.value = "";
+          memoInput.value = "";
+          numberInput.value = "";
+          if (remarksInput) remarksInput.value = "";
+        }
         renderAll();
       });
     }
