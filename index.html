@@ -59,16 +59,79 @@
        現状CSS上は未使用（将来グラデーション等で使う可能性を考慮し変数自体は残している）。 */
     --primary-deep:   #2a6e4c;
     --tint-sand:      #21362a;
+    /* 2026-10-10 ライト/ダーク切替対応：ダークの値は従来のまま。直書きだった色を変数化 */
+    --on-series-1:    #06251a;
+    --on-series-4:    #241900;
+    --plan-title:     #eab54a;
+    --run-bg-top:     #2b2119;
+    --break-bg-top:   #2b2417;
+    --plan-active-bg: #3a2417;
+    --break-row-bg:   #2b2417;
+    --break-stripe-a: #2b2417;
+    --break-stripe-b: #3a2f1a;
+    --break-text:     #d9a441;
+    --break-text-2:   #e3b563;
+    --break-handle:   rgba(227,181,99,0.55);
+    --gauge-track:    rgba(255,255,255,0.12);
+    --overlay-dim:    rgba(10,8,4,0.82);
+    --overlay-dim-2:  rgba(10,8,4,0.7);
+    --overlay-dim-goal: rgba(6,10,8,0.8);
+    --shadow-strong:  rgba(0,0,0,0.5);
+    --plan-card-bg:   rgba(237,161,0,0.12);
+    --plan-card-border: rgba(237,161,0,0.40);
+  }
+  /* ライトモード：html/body に .viz-light を付けて切り替える（既定はダーク） */
+  :root.viz-root.viz-light, .viz-root.viz-light {
+    color-scheme: light;
+    --surface-1:      #ffffff;
+    --page-plane:     #f1f4f2;
+    --text-primary:   #1b2420;
+    --text-secondary: #55605a;
+    --text-muted:     #76817b;
+    --gridline:       #e3e8e5;
+    --baseline:       #c8d0cb;
+    --border:         rgba(30,60,45,0.16);
+    --series-1:       #2a8c5f;
+    --series-2:       #d9531e;
+    --series-4:       #b87400;
+    --series-7:       #7e57c2;
+    --series-8:       #d63a39;
+    --success:        #2a8c5f;
+    --danger:         #d03a39;
+    --primary-deep:   #1f6e49;
+    --tint-sand:      #e2f0e8;
+    --on-series-1:    #ffffff;
+    --on-series-4:    #ffffff;
+    --plan-title:     #8a5a00;
+    --run-bg-top:     #fdeee6;
+    --break-bg-top:   #fdf3dc;
+    --plan-active-bg: #fde6d8;
+    --break-row-bg:   #fdf3dc;
+    --break-stripe-a: #fdf3dc;
+    --break-stripe-b: #f9e6b8;
+    --break-text:     #8a5a00;
+    --break-text-2:   #7a5000;
+    --break-handle:   rgba(122,80,0,0.55);
+    --gauge-track:    rgba(30,60,45,0.12);
+    --overlay-dim:    rgba(30,36,32,0.55);
+    --overlay-dim-2:  rgba(30,36,32,0.45);
+    --overlay-dim-goal: rgba(30,36,32,0.5);
+    --shadow-strong:  rgba(0,0,0,0.22);
+    --plan-card-bg:   rgba(237,161,0,0.10);
+    --plan-card-border: rgba(184,116,0,0.45);
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
   /* 2026-09-16：タイトルの帯＋タブ切り替えを画面上部に固定表示（スクロールしても常にタブへ手が届くように）。
      header.app-header の上マージンをこのラッパーの padding-top に移し、sticky時に margin と
      ビューポート上端のあいだに背景が透けて見える隙間ができないようにしている。 */
-  .app-top-fixed { position: sticky; top: 0; z-index: 50; background: var(--page-plane); padding-top: 16px; }
-  header.app-header { max-width: 920px; margin: 0 auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; position: relative; }
-  header.app-header h1 { margin: 0 0 4px; padding-right: 96px; font-size: 20px; font-weight: 800; color: #fff; }
-  header.app-header p { margin: 0; padding-right: 96px; font-size: 13px; color: rgba(255,255,255,0.85); }
+  /* 2026-10-10：タイトルの帯（ヘッダー）は固定をやめ、スクロールで流れるようにした。
+     タブだけは常に手が届くよう上部に固定する（ラッパーは display: contents にして、
+     nav.tabs を body 基準で sticky にしている）。 */
+  .app-top-fixed { display: contents; }
+  header.app-header { max-width: 920px; margin: 16px auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; position: relative; }
+  header.app-header h1 { margin: 0 0 4px; padding-right: 0; font-size: 20px; font-weight: 800; color: #fff; }
+  header.app-header p { margin: 0; padding-right: 112px; font-size: 13px; color: rgba(255,255,255,0.85); }
   /* 2026-09-23：90分の集中サイクル終了時・残り5分警告時に、PC全体に通知（OS通知）を出せる
      ようにするトグルボタン。ヘッダー右上に固定表示し、押すたびに通知の有効／無効を切り替える。
      初回はブラウザの通知許可ダイアログが出る（ユーザー操作からの呼び出しが必要なため、ここでのみ
@@ -76,7 +139,14 @@
      2026-09-23追記：オン／オフが一見して分かりにくいとのご指摘で、(1)アイコンをオフ＝🔕（ベルに
      斜線）／オン＝🔔（通常のベル）で描き分ける、(2)オフは縁取りだけの控えめな見た目、オンは
      白background＋差し色の点灯ドット付きではっきり目立つ見た目にする、の2点で違いを強めた。 */
-  .notify-toggle-btn { position: absolute; top: 16px; right: 20px; display: inline-flex; align-items: center; gap: 6px; appearance: none; border: 1px solid rgba(255,255,255,0.45); background: transparent; color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .header-tools { position: absolute; top: 16px; right: 20px; display: flex; align-items: center; gap: 8px; }
+  .notify-toggle-btn, .theme-toggle-btn { display: inline-flex; align-items: center; gap: 6px; appearance: none; border: 1px solid rgba(255,255,255,0.45); background: transparent; color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .theme-toggle-btn { appearance: none; border: 1px solid rgba(255,255,255,0.45); background: transparent; color: rgba(255,255,255,0.9); font-family: inherit; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .theme-toggle-btn:hover { background: rgba(255,255,255,0.14); }
+  .sync-badge { font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.35); color: rgba(255,255,255,0.85); white-space: nowrap; }
+  .sync-badge.sync-ok { color: #cdeccf; border-color: rgba(205,236,207,0.5); }
+  .sync-badge.sync-error { color: #ffd0cc; border-color: rgba(255,208,204,0.6); }
+  .sync-badge.sync-offline { color: #ffe7b3; border-color: rgba(255,231,179,0.55); }
   .notify-toggle-btn:hover { background: rgba(255,255,255,0.14); }
   .notify-toggle-btn.is-on { background: #fff; color: var(--series-1); border-color: #fff; font-weight: 800; }
   .notify-toggle-btn.is-on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--series-1); box-shadow: 0 0 0 2px rgba(63,174,121,0.25); }
@@ -84,33 +154,41 @@
   /* 2026-09-23：PCの通知（OS側）がオフだとデスクトップ通知に気づけないというご報告への対応。
      OSの許可設定に一切左右されない、ページ内の全画面オーバーレイ。自動中断・残り5分警告の
      どちらでも表示し、「確認しました」ボタンを押すまで消えない（見逃し防止を優先）。 */
-  .focus-cycle-overlay { position: fixed; inset: 0; background: rgba(10, 8, 4, 0.82); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .focus-cycle-overlay { position: fixed; inset: 0; background: var(--overlay-dim); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .focus-cycle-overlay[aria-hidden="true"] { display: none; }
-  .focus-cycle-overlay-card { background: var(--surface-1); border: 2px solid var(--series-4); border-radius: 18px; padding: 32px 28px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+  .focus-cycle-overlay-card { background: var(--surface-1); border: 2px solid var(--series-4); border-radius: 18px; padding: 32px 28px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 12px 40px var(--shadow-strong); }
   .focus-cycle-overlay-title { font-size: 18px; font-weight: 800; color: var(--series-4); margin: 0 0 10px; }
   .focus-cycle-overlay-body { font-size: 14px; color: var(--text-primary); line-height: 1.7; margin: 0 0 22px; }
-  .focus-cycle-overlay-btn { appearance: none; border: none; background: var(--series-4); color: #241900; font-family: inherit; font-size: 14px; font-weight: 800; padding: 12px 22px; border-radius: 10px; cursor: pointer; }
+  .focus-cycle-overlay-btn { appearance: none; border: none; background: var(--series-4); color: var(--on-series-4); font-family: inherit; font-size: 14px; font-weight: 800; padding: 12px 22px; border-radius: 10px; cursor: pointer; }
   .focus-cycle-overlay-btn:hover { opacity: 0.9; }
+  .app-dialog-overlay { position: fixed; inset: 0; background: var(--overlay-dim-2); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .app-dialog-overlay[aria-hidden="true"] { display: none; }
+  .app-dialog-card { background: var(--surface-1); border: 1px solid var(--border, rgba(255,255,255,0.18)); border-radius: 16px; padding: 24px 22px 18px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px var(--shadow-strong); }
+  .app-dialog-body { font-size: 14px; color: var(--text-primary); line-height: 1.7; margin: 0 0 18px; white-space: pre-wrap; word-break: break-word; }
+  .app-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .app-dialog-btn { appearance: none; border: none; background: var(--series-4); color: var(--on-series-4); font-family: inherit; font-size: 14px; font-weight: 800; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
+  .app-dialog-btn.secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--border, rgba(255,255,255,0.3)); font-weight: 700; }
+  .app-dialog-btn:hover { opacity: 0.9; }
   /* 2026-10-05：「毎月1日に『今月の目標は何ですか？』と記入できる専用ポップを表示して欲しい」との
      ご要望で追加した、月初の目標記入ポップアップ。集中サイクルの全画面通知（z-index:9999）より
      下に重ねる。 */
-  .goal-prompt-overlay { position: fixed; inset: 0; background: rgba(6, 10, 8, 0.8); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+  .goal-prompt-overlay { position: fixed; inset: 0; background: var(--overlay-dim-goal); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
   .goal-prompt-overlay[aria-hidden="true"] { display: none; }
-  .goal-prompt-card { background: var(--surface-1); border: 2px solid var(--series-1); border-radius: 18px; padding: 26px 24px 22px; max-width: 460px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+  .goal-prompt-card { background: var(--surface-1); border: 2px solid var(--series-1); border-radius: 18px; padding: 26px 24px 22px; max-width: 460px; width: 100%; box-shadow: 0 12px 40px var(--shadow-strong); }
   .goal-prompt-eyebrow { font-size: 12px; font-weight: 700; color: var(--series-1); margin: 0 0 4px; }
   .goal-prompt-title { font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 0 0 8px; }
   .goal-prompt-note { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 0 0 14px; }
   .goal-prompt-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .goal-prompt-form input { width: 100%; box-sizing: border-box; }
   .goal-prompt-add-btn { appearance: none; border: 1px solid var(--series-1); background: transparent; color: var(--series-1); font-family: inherit; font-size: 13px; font-weight: 800; padding: 9px 14px; border-radius: 10px; cursor: pointer; }
-  .goal-prompt-add-btn:hover { background: var(--series-1); color: #06251a; }
+  .goal-prompt-add-btn:hover { background: var(--series-1); color: var(--on-series-1); }
   .goal-prompt-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .goal-prompt-list-title { font-size: 11px; color: var(--text-muted); margin: 0 0 2px; }
   .goal-prompt-item { font-size: 13px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--page-plane); }
   .goal-prompt-footer { display: flex; justify-content: flex-end; }
-  .goal-prompt-close-btn { appearance: none; border: none; background: var(--series-1); color: #06251a; font-family: inherit; font-size: 14px; font-weight: 800; padding: 11px 22px; border-radius: 10px; cursor: pointer; }
+  .goal-prompt-close-btn { appearance: none; border: none; background: var(--series-1); color: var(--on-series-1); font-family: inherit; font-size: 14px; font-weight: 800; padding: 11px 22px; border-radius: 10px; cursor: pointer; }
   .goal-prompt-close-btn:hover { opacity: 0.9; }
-  nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav.tabs { position: sticky; top: 0; z-index: 50; max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
   nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
   nav.tabs button.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
   main { max-width: 920px; margin: 0 auto; padding: 20px; }
@@ -140,11 +218,11 @@
   .monthly-goal-drag-handle:hover span { background: var(--text-secondary); }
   .monthly-goal-drag-handle:active { cursor: grabbing; }
   .monthly-goal-row { transition: transform 0.18s ease; }
-  .monthly-goal-row.monthly-goal-dragging { position: relative; z-index: 5; opacity: 0.95; overflow: visible; background: var(--surface-1); box-shadow: 0 10px 24px rgba(0,0,0,0.5); }
+  .monthly-goal-row.monthly-goal-dragging { position: relative; z-index: 5; opacity: 0.95; overflow: visible; background: var(--surface-1); box-shadow: 0 10px 24px var(--shadow-strong); }
   .monthly-goal-carried-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--series-4); border: 1px solid var(--series-4); border-radius: 999px; padding: 0 7px; margin-left: 4px; white-space: nowrap; vertical-align: middle; }
   .monthly-goal-carried-out { display: inline-block; font-size: 10px; font-weight: 600; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 999px; padding: 0 7px; margin-left: 4px; white-space: nowrap; vertical-align: middle; }
   .monthly-goals-carry-btn { appearance: none; border: 1px solid var(--series-4); background: transparent; color: var(--series-4); font-family: inherit; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-  .monthly-goals-carry-btn:hover { background: var(--series-4); color: #241900; }
+  .monthly-goals-carry-btn:hover { background: var(--series-4); color: var(--on-series-4); }
   .monthly-goals-header-right { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .goal-prompt-carry { margin-bottom: 14px; padding: 10px 12px; border: 1px dashed var(--series-4); border-radius: 10px; }
   .goal-prompt-carry-title { font-size: 12px; font-weight: 700; color: var(--series-4); margin: 0 0 8px; }
@@ -153,7 +231,7 @@
   .goal-prompt-carry-rate { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
   .goal-prompt-carry-actions { display: flex; gap: 8px; margin-top: 8px; }
   .goal-prompt-carry-btn { appearance: none; border: 1px solid var(--series-4); background: transparent; color: var(--series-4); font-family: inherit; font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 10px; cursor: pointer; }
-  .goal-prompt-carry-btn:hover { background: var(--series-4); color: #241900; }
+  .goal-prompt-carry-btn:hover { background: var(--series-4); color: var(--on-series-4); }
   .goal-prompt-carry-btn.sub { border-color: var(--border); color: var(--text-muted); font-weight: 600; }
   .monthly-goals-total { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--page-plane); }
   .monthly-goals-total-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
@@ -161,7 +239,7 @@
   .monthly-goals-total-bar > span { display: block; height: 100%; background: var(--series-1); border-radius: 999px; }
   /* 2026-10-05：「確定ボタンも追加して」とのご要望で追加。確定すると、その月の総合達成率を
      確定結果として固定し、達成率・編集・削除・追加を受け付けない状態にする（取り消しで解除）。 */
-  .monthly-goals-confirm-btn { appearance: none; border: none; background: var(--series-1); color: #06251a; font-family: inherit; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .monthly-goals-confirm-btn { appearance: none; border: none; background: var(--series-1); color: var(--on-series-1); font-family: inherit; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
   .monthly-goals-confirm-btn:hover { opacity: 0.9; }
   /* 2026-10-05：「確定済みと確定を取り消すのボタンが目立つので調整して」とのご要望で、塗りつぶし・
      枠線をやめ、どちらも小さな控えめなテキスト表示にした（取り消しは下線付きのテキストリンク風）。 */
@@ -194,11 +272,11 @@
   .monthly-goal-rate-label { font-size: 10px; color: var(--text-muted); flex: none; white-space: nowrap; opacity: 0.8; }
   .monthly-goal-rate-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-muted); font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 999px; cursor: pointer; flex: none; white-space: nowrap; }
   .monthly-goal-rate-btn:hover:not(:disabled) { border-color: var(--series-1); color: var(--series-1); }
-  .monthly-goal-rate-btn.active, .monthly-goal-rate-btn.active:hover:not(:disabled) { background: var(--series-1); border-color: var(--series-1); color: #06251a; }
+  .monthly-goal-rate-btn.active, .monthly-goal-rate-btn.active:hover:not(:disabled) { background: var(--series-1); border-color: var(--series-1); color: var(--on-series-1); }
   .monthly-goal-checkbox { width: 18px; height: 18px; flex: none; cursor: pointer; }
   /* 2026-09-20：自由入力の「番号」欄（number-badge）とは別に、目標がいくつ登録されているか・
      何番目かをひと目で分かるよう、登録順の連番バッジを追加（今日の予定の plan-row-seq と同じ考え方）。 */
-  .monthly-goal-seq { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--series-1); color: #06251a; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+  .monthly-goal-seq { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--series-1); color: var(--on-series-1); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   .monthly-goal-row.done .monthly-goal-seq { background: var(--surface-1); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
   /* 2026-10-08：「今月の目標の内容をもっと目立たせたい。%はもっと小さくて良い」とのご要望で、目標の内容
      （プロジェクト名・業務内容）を大きく太く、達成率（%）ボタンは小さく控えめに調整。 */
@@ -232,8 +310,8 @@
   .card h2 .sub { font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
   /* 「今日の予定」カードは他のカードより目立たせるため、暖色（series-4）のタイントを敷く。
      場所を取りすぎないよう、横幅と余白は他のカードより小さくしてある。 */
-  .card.plan-card { background: rgba(237,161,0,0.12); border: 1px solid rgba(237,161,0,0.40); max-width: 880px; padding: 14px 16px; }
-  .card.plan-card h2 { color: #eab54a; margin-bottom: 8px; }
+  .card.plan-card { background: var(--plan-card-bg); border: 1px solid var(--plan-card-border); max-width: 880px; padding: 14px 16px; }
+  .card.plan-card h2 { color: var(--plan-title); margin-bottom: 8px; }
   /* 今日の予定は2カラムレイアウトの左カラム（本来の全幅の半分ほど）に入るため、
      一覧を1列にして窮屈にならないようにする（左カラムの外に単独で置かれていた頃は
      3列グリッドだったが、幅が半分になった今の位置ではスマホ表示と同様に1列が収まりが良い）。 */
@@ -283,8 +361,8 @@
   /* status card / timer */
   .status-card { position: relative; text-align: center; padding: 20px 18px; min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border: 2px solid var(--text-secondary); }
   .status-card.running, .status-card.on-break { justify-content: center; border-width: 2px; border-style: solid; }
-  .status-card.running { border-color: var(--project-color-text, var(--series-2)); background: linear-gradient(180deg, #2b2119, var(--surface-1)); }
-  .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, #2b2417, var(--surface-1)); }
+  .status-card.running { border-color: var(--project-color-text, var(--series-2)); background: linear-gradient(180deg, var(--run-bg-top), var(--surface-1)); }
+  .status-card.on-break { border-color: var(--series-4); background: linear-gradient(180deg, var(--break-bg-top), var(--surface-1)); }
   /* 2026-09-18：作業中（running）に、遊び心のある浮遊モーションを入れる。
      2026-09-21：中断中・休憩中（on-break）にも、作業中とは違うモーションを追加。
      「動いている」作業中＝上下に浮遊、「止まっている」中断中＝ゆっくり呼吸するように
@@ -336,7 +414,7 @@
      2026-09-18：外にはみ出さない内側リング（B案）に変更。プロジェクトカラーの枠線と混ざって
      見えにくくならないよう、ゲージ自体はプロジェクトカラーに依存しない固定のアンバー色＋発光で目立たせる。 */
   .status-gauge-frame { position: absolute; pointer-events: none; overflow: visible; }
-  .status-gauge-frame-track { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 4; }
+  .status-gauge-frame-track { fill: none; stroke: var(--gauge-track); stroke-width: 4; }
   .status-gauge-frame-fill { fill: none; stroke: var(--series-4); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--series-4)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
@@ -425,7 +503,7 @@
      --series-2自体（作業中の状態色）は他の画面と共通のまま変更していない。
      バッジは当初右上に配置していたが、「左上にしたい」というご要望で左上に変更した（2026-09-12）。
      2026-09-14：ダークグリーン配色への全体変更に合わせて、枠・バッジ・背景の色を暗い背景用に調整した。 */
-  .plan-row.plan-row-active { background: #3a2417; border: 2px solid #d9702f; }
+  .plan-row.plan-row-active { background: var(--plan-active-bg); border: 2px solid #d9702f; }
   .plan-row-active-badge { position: absolute; top: -9px; left: 10px; display: inline-block; font-size: 10px; font-weight: 800; color: #fff; background: #d9702f; border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); }
   /* 2026-09-18：連番はそのまま残し、実施中の再生アイコンは行の右側の余白（右上）に表示する形に変更
      （左の連番バッジと数字を奪い合わないように）。 */
@@ -442,13 +520,13 @@
      （FLIPアニメーション。JS側で「移動前の位置に一旦ずらして配置 → transformを0に戻す」ことで
      アニメーションさせている。ドラッグ中の行だけ opacity/box-shadow で浮いた見た目にする）。 */
   .plan-row { transition: transform 0.18s ease; }
-  .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 10px 24px rgba(0,0,0,0.5); }
+  .plan-row.plan-row-dragging { position: relative; z-index: 5; opacity: 0.92; box-shadow: 0 10px 24px var(--shadow-strong); }
   /* 「今日の予定」に登録した順番を示す連番（自由入力の「番号」欄とは別物）。混同しないよう、
      四角いバッジ（number-badge）とは違う丸い形にしている。
      2026-09-15：「番号を目立たせて欲しい」とのご要望で、地味なグレーの縁取りだけの丸から、
      今日の予定カードのアクセント色（暖色のアンバー）で塗りつぶした丸バッジに変更し、
      サイズ・文字も少し大きくした（完了済みは今まで通り目立たせず、グレーのまま）。 */
-  .plan-row-seq { flex-shrink: 0; width: 26px; height: 26px; margin-top: 0; border-radius: 50%; background: var(--series-4); border: none; color: #241900; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+  .plan-row-seq { flex-shrink: 0; width: 26px; height: 26px; margin-top: 0; border-radius: 50%; background: var(--series-4); border: none; color: var(--on-series-4); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   .plan-row.done .plan-row-seq { background: var(--page-plane); border: 1px solid var(--border); color: var(--text-muted); box-shadow: none; }
   .plan-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 64px; justify-content: center; }
   .plan-row-field + .plan-row-field { margin-top: 5px; }
@@ -623,11 +701,11 @@
   .hist-edit-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
   .hist-edit-field input, .hist-edit-field select { width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-primary); }
   .hist-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .seg-break-row { background: #2b2417; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
-  .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: #d9a441; margin-bottom: 6px; }
+  .seg-break-row { background: var(--break-row-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .seg-break-heading { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--break-text); margin-bottom: 6px; }
   .e-break-remove { appearance: none; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
   .e-break-remove:hover { background: var(--page-plane); }
-  .e-add-break { appearance: none; border: none; background: transparent; color: #d9a441; font-size: 12px; font-weight: 600; padding: 6px 4px; cursor: pointer; }
+  .e-add-break { appearance: none; border: none; background: transparent; color: var(--break-text); font-size: 12px; font-weight: 600; padding: 6px 4px; cursor: pointer; }
   .e-add-break:hover { text-decoration: underline; }
 
   /* schedule tab: month calendar + day timeline */
@@ -656,7 +734,7 @@
   .day-hour-label { position: absolute; left: 6px; top: -8px; font-size: 10px; color: var(--text-muted); background: var(--surface-1); padding: 0 3px; }
   .day-segment-block { position: absolute; left: 54px; right: 8px; border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; text-align: center; }
   .day-segment-block.running { box-shadow: 0 0 0 2px var(--danger); }
-  .day-break-block { background: repeating-linear-gradient(45deg, #2b2417, #2b2417 6px, #3a2f1a 6px, #3a2f1a 12px); border: 1px dashed var(--series-4); color: #e3b563; }
+  .day-break-block { background: repeating-linear-gradient(45deg, var(--break-stripe-a), var(--break-stripe-a) 6px, var(--break-stripe-b) 6px, var(--break-stripe-b) 12px); border: 1px dashed var(--series-4); color: var(--break-text-2); }
   .day-break-block .day-segment-name { font-weight: 700; }
   .day-break-block.running { box-shadow: 0 0 0 2px var(--series-4); }
   .day-segment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; flex: 0 1 auto; }
@@ -665,7 +743,7 @@
   .day-now-line::before { content: ""; position: absolute; left: 50px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
   .resize-handle { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; z-index: 3; touch-action: none; }
   .resize-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 26px; height: 3px; margin-left: -13px; margin-top: -1.5px; border-radius: 2px; background: rgba(255,255,255,0.85); opacity: 0; transition: opacity 0.12s; }
-  .day-break-block .resize-handle::after { background: rgba(227,181,99,0.55); }
+  .day-break-block .resize-handle::after { background: var(--break-handle); }
   /* 2026-10-05：短い休憩（10分前後＝高さ12px程度）は、上下のつまみ（高さ9px）が重なって本体の
      クリックできる場所が無くなり、休憩の操作メニュー（削除など）が開けなかったため、
      低い図形ではつまみを細く・外側にずらして、中央をクリックできるようにする。 */
@@ -709,8 +787,10 @@
   @media (max-width: 600px) {
     main { padding: 14px 12px; }
     header.app-header { padding: 16px 14px 12px; }
-    header.app-header h1, header.app-header p { padding-right: 78px; }
-    .notify-toggle-btn { top: 14px; right: 14px; font-size: 10px; padding: 4px 9px; }
+    header.app-header h1, header.app-header p { padding-right: 0; }
+    header.app-header { display: flex; flex-direction: column; }
+    .header-tools { position: static; order: 2; flex-wrap: wrap; margin-top: 8px; gap: 6px; }
+    .notify-toggle-btn, .theme-toggle-btn { font-size: 10px; padding: 4px 9px; }
     .card { padding: 14px; }
     #planListWrap, .plan-done-grid { grid-template-columns: 1fr; }
     .filter-item { min-width: 0; flex: 1 1 140px; }
@@ -718,6 +798,13 @@
     .hist-edit-field { flex: 1 1 100%; }
     .timer-display { font-size: 34px; }
     .status-card { min-height: 250px; }
+    /* 2026-10-10：スマホ幅では右上に固定していた集中サイクルのバッジ／変更欄が、中央の
+       「現在の状況」見出しに重なってしまうため、カード上部の通常の流れ（見出しの上）に並べる。 */
+    .focus-cycle-badge { position: static; order: -2; margin: 0 0 6px; }
+    .focus-cycle-override-field { position: static; order: -1; max-width: none; margin: 0 0 12px; text-align: center; }
+    .focus-cycle-override-field .field-label { text-align: center; }
+    .focus-cycle-override-row { justify-content: center; }
+    .focus-cycle-override-note { text-align: center; }
     .cal-day { min-height: 44px; font-size: 11px; }
     .day-segment-block { left: 44px; }
     /* 2026-09-23：画面幅が狭いと、右上の集中サイクル系バッジ2つ分の横幅が中央の「作業中」バッジ等と
@@ -725,8 +812,7 @@
        2026-09-25：バッジのラベル文字は元のサイズに戻したので専用の縮小は不要になったが、数字
        （.focus-cycle-badge-num）だけは常に大きいままのため、この幅でだけ少し控えめにする。 */
     .focus-cycle-badge-num { font-size: 14px; }
-    .focus-cycle-override-field { max-width: 132px; }
-    .focus-cycle-override-field .field-label { font-size: 9.5px; white-space: normal; }
+    .focus-cycle-override-field .field-label { font-size: 10px; white-space: normal; }
   }
   /* 名称の一括編集（名称管理タブ） */
   .name-list { display: flex; flex-direction: column; gap: 6px; }
@@ -774,9 +860,12 @@
 
 <div class="app-top-fixed">
 <header class="app-header">
-  <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔕 通知オフ</button>
+  <div class="header-tools">
+    <span class="sync-badge" id="syncBadge" style="display:none;" role="status"></span>
+    <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="ライト／ダーク切り替え">☀ ライト</button>
+    <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔕 通知オフ</button>
+  </div>
   <h1>⏱️ Taskmark</h1>
-  <p>「開始」「休憩」ボタンを押すだけで作業時間を記録します。プロジェクト名・業務内容も一緒に記録できます。</p>
 </header>
 
 <nav class="tabs">
@@ -1011,9 +1100,9 @@
 
   <section id="data" class="panel">
     <div class="card">
-      <h2>データの読み込み・書き出し<span class="sub">このブラウザだけに保存されます（サーバーには送信されません）</span></h2>
+      <h2>データの読み込み・書き出し<span class="sub" id="dataCardSub">このブラウザだけに保存されます（サーバーには送信されません）</span></h2>
       <p id="dataStatusLine" class="generated-note" style="margin-bottom:10px;"></p>
-      <p class="generated-note" style="margin-bottom:10px;">複数の端末（PC・スマホなど）で使う場合、それぞれの端末はブラウザ内にしかデータを持ちません。他の端末の記録も1つにまとめたいときは、各端末で「書き出す」→まとめたい端末で「追加で取り込む」を行ってください。同じ記録は自動的に重複を避けて取り込まれます。<strong>作業を開始した端末と終了させる端末は必ず同じものを使ってください</strong>（別端末では「作業中」の状態が共有されません）。</p>
+      <p class="generated-note" id="dataMultiDeviceNote" style="margin-bottom:10px;">複数の端末（PC・スマホなど）で使う場合、それぞれの端末はブラウザ内にしかデータを持ちません。他の端末の記録も1つにまとめたいときは、各端末で「書き出す」→まとめたい端末で「追加で取り込む」を行ってください。同じ記録は自動的に重複を避けて取り込まれます。<strong>作業を開始した端末と終了させる端末は必ず同じものを使ってください</strong>（別端末では「作業中」の状態が共有されません）。</p>
       <div class="data-io-row">
         <div class="data-io-col">
           <label class="field-label">読み込む（ファイルを選択、またはJSONを貼り付け）</label>
@@ -1023,7 +1112,7 @@
             <label><input type="radio" name="importMode" value="merge" checked> 追加で取り込む（マージ・おすすめ）</label>
             <label><input type="radio" name="importMode" value="replace"> 置き換える（今のデータは消えます）</label>
           </div>
-          <button type="button" id="dataImportBtn" class="data-io-btn">このブラウザに読み込む</button>
+          <button type="button" id="dataImportBtn" class="data-io-btn">読み込む</button>
         </div>
         <div class="data-io-col">
           <label class="field-label">書き出す（バックアップ・他の端末への引き継ぎ用）</label>
@@ -1047,6 +1136,18 @@
     <p class="focus-cycle-overlay-title" id="focusCycleOverlayTitle"></p>
     <p class="focus-cycle-overlay-body" id="focusCycleOverlayBody"></p>
     <button type="button" class="focus-cycle-overlay-btn" id="focusCycleOverlayCloseBtn">確認しました</button>
+  </div>
+</div>
+
+<!-- 2026-10-09：アーティファクト版ではブラウザ標準のalert/confirmが表示されないため、
+     全ての確認・お知らせをこのページ内モーダルで出す（通常のHTML版でも同じ動作）。 -->
+<div class="app-dialog-overlay" id="appDialogOverlay" role="alertdialog" aria-modal="true" aria-hidden="true">
+  <div class="app-dialog-card">
+    <p class="app-dialog-body" id="appDialogBody"></p>
+    <div class="app-dialog-actions">
+      <button type="button" class="app-dialog-btn secondary" id="appDialogCancelBtn">キャンセル</button>
+      <button type="button" class="app-dialog-btn" id="appDialogOkBtn">OK</button>
+    </div>
   </div>
 </div>
 
@@ -1077,6 +1178,31 @@
 
   var EMBEDDED_STATE = {"sessions": []};
   var STORAGE_KEY = "worktimeTrackerData_v1";
+  // 2026-10-10：ライト／ダーク切り替え。既定はダーク（従来の見た目）。選択は端末ごとに
+  // localStorage へ保存する（同期対象外）。html と body の両方に .viz-light を付け外しする。
+  var THEME_KEY = "worktimeTrackerTheme_v1";
+  function isLightTheme() { return document.documentElement.classList.contains("viz-light"); }
+  function chartTextColor() { return isLightTheme() ? "#55605a" : "#a9b0ad"; }
+  function chartStrongTextColor() { return isLightTheme() ? "#1b2420" : "#eef1ee"; }
+  function chartGridColor() { return isLightTheme() ? "#e3e8e5" : "#2a2f37"; }
+  function loadSavedTheme() {
+    var v = "dark";
+    try { v = localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch (e) {}
+    return v;
+  }
+  function applyTheme(mode) {
+    var light = mode === "light";
+    document.documentElement.classList.toggle("viz-light", light);
+    if (document.body) document.body.classList.toggle("viz-light", light);
+    var btn = document.getElementById("themeToggleBtn");
+    if (btn) btn.textContent = light ? "🌙 ダーク" : "☀ ライト";
+  }
+  function toggleTheme() {
+    var next = isLightTheme() ? "dark" : "light";
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    applyTheme(next);
+    renderAll();
+  }
   var usingLocalData = false;
   var tickInterval = null;
   var historyEditingId = null;
@@ -1176,6 +1302,26 @@
   // 一時的な目印（state.focusStreakStartIsoの値をそのまま控えておき、値が変わったら＝新しい
   // サイクルが始まったら、また1回だけ通知できるようにする。保存はしない）。
   var focusCycleLowNotifiedStreakStart = null;
+  // 2026-10-09：ページ内ダイアログ（alert/confirmの代替）。confirmは同期で値を返せないため、
+  // 「OKを押したら実行する処理」をコールバックで渡す形にしている。
+  var appDialogOnOk = null;
+  function appDialogClose() {
+    var ov = document.getElementById("appDialogOverlay");
+    if (ov) ov.setAttribute("aria-hidden", "true");
+    appDialogOnOk = null;
+  }
+  function appDialogOpen(msg, onOk) {
+    var ov = document.getElementById("appDialogOverlay");
+    if (!ov) { return; }
+    document.getElementById("appDialogBody").textContent = String(msg);
+    document.getElementById("appDialogCancelBtn").style.display = onOk ? "" : "none";
+    document.getElementById("appDialogOkBtn").textContent = onOk ? "実行する" : "OK";
+    appDialogOnOk = onOk || null;
+    ov.setAttribute("aria-hidden", "false");
+    document.getElementById("appDialogOkBtn").focus();
+  }
+  function appAlert(msg) { appDialogOpen(msg, null); }
+  function appConfirm(msg, onYes) { appDialogOpen(msg, onYes); }
   function notificationsSupported() {
     return typeof Notification !== "undefined";
   }
@@ -1249,6 +1395,7 @@
   function persistState() {
     invalidateBusinessOrderCache();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); usingLocalData = true; } catch (e) {}
+    syncMarkDirty();
   }
 
   // 以前のデータ（中断・再開を1つの記録の中の複数区間として持つもの）を、区間ごとの別々の記録に直す。
@@ -1258,7 +1405,16 @@
   function updateDataStatusLine() {
     var el = document.getElementById("dataStatusLine");
     if (!el) return;
-    if (state.sessions.length === 0) {
+    var syncNote = "";
+    if (syncEnabled) {
+      if (syncStatus === "ok") syncNote = "　☁ このアカウントに同期済みです（同じアカウントで開いたPC・スマホに自動で反映されます）。";
+      else if (syncStatus === "saving") syncNote = "　☁ アカウントへ同期中です…";
+      else if (syncStatus === "connecting") syncNote = "　☁ アカウントに接続中です…";
+      else if (syncStatus === "offline" || syncStatus === "error") syncNote = "　☁ " + (syncStatusDetail || "同期できていません。") + "";
+    }
+    if (syncEnabled) {
+      el.textContent = (state.sessions.length === 0 ? "記録がまだありません。ダッシュボードの「開始」ボタンから記録を始めてください。" : "記録 " + state.sessions.length + " 件を表示中。") + syncNote;
+    } else if (state.sessions.length === 0) {
       el.textContent = "記録がまだありません。ダッシュボードの「開始」ボタンから記録を始めてください。";
     } else if (usingLocalData) {
       el.textContent = "このブラウザに保存されたデータを表示中（記録 " + state.sessions.length + " 件）。";
@@ -1588,7 +1744,7 @@
   function createTask(project, memo, number) {
     var num = (state.nextTaskNumber || 0) + 1;
     state.nextTaskNumber = num;
-    var task = { id: "T" + ("00" + num).slice(-3), project: project, memo: memo || "", number: number || "" };
+    var task = { id: "T" + (num < 1000 ? ("00" + num).slice(-3) : String(num)), project: project, memo: memo || "", number: number || "" };
     getTasks().push(task);
     return task;
   }
@@ -1831,7 +1987,7 @@
     var project = projectInput ? projectInput.value.trim() : "";
     var memo = memoInput ? memoInput.value.trim() : "";
     var number = numberInput ? numberInput.value.trim() : "";
-    if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
+    if (!project) { appAlert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
     getMonthlyGoals().push({ id: generateId(), month: currentMonthKey(), project: project, memo: memo, number: number, done: false, rate: 0, createdAt: nowLocalIso() });
     persistState();
     renderMonthlyGoalsCard();
@@ -1847,7 +2003,7 @@
     var project = projectInput ? projectInput.value.trim() : "";
     var memo = memoInput ? memoInput.value.trim() : "";
     var number = numberInput ? numberInput.value.trim() : "";
-    if (!project) { alert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
+    if (!project) { appAlert("目標にするプロジェクト名・タスク名を入力してください。"); return; }
     goal.project = project;
     goal.memo = memo;
     goal.number = number;
@@ -2053,7 +2209,7 @@
     if (!todayHasAnySession() && !(project === "ルーティン" && !memo)) {
       startDailyRoutineTask();
       lastStartWasRoutineFallback = true;
-      window.alert("今日の最初は「ルーティン」から始めます。\n続けて「" + project + "」を始める場合は、もう一度「▶ 開始」を押してください。");
+      appAlert("今日の最初は「ルーティン」から始めます。\n続けて「" + project + "」を始める場合は、もう一度「▶ 開始」を押してください。");
       return true;
     }
     // 「タスクを跨いでも集中時間として通算したい」とのご要望に対応。作業中のタスクから
@@ -2233,7 +2389,7 @@
         return;
       }
       if (Notification.permission === "denied") {
-        window.alert("ブラウザ側で通知がブロックされています。ブラウザの設定からこのページの通知を許可してから、もう一度お試しください。");
+        appAlert("ブラウザ側で通知がブロックされています。ブラウザの設定からこのページの通知を許可してから、もう一度お試しください。");
         return;
       }
       Notification.requestPermission().then(function (permission) {
@@ -2384,7 +2540,7 @@
         var input = document.getElementById("focusCycleOverrideInput");
         var minutes = parseInt(input.value, 10);
         if (!minutes || minutes <= 0) {
-          window.alert("1以上の数値（分）を入力してください。");
+          appAlert("1以上の数値（分）を入力してください。");
           return;
         }
         state.focusCycleOverrideSec = minutes * 60;
@@ -2657,7 +2813,7 @@
     addBtn.addEventListener("click", function () {
       var project = projectInput.value.trim();
       if (!project) {
-        window.alert("プロジェクト名を入力してください。");
+        appAlert("プロジェクト名を入力してください。");
         projectInput.focus();
         return;
       }
@@ -2682,7 +2838,7 @@
         // ご指摘を受け、このボタンはゲートを経由せず常にその場で開始する。
         var project = projectInput.value.trim();
         if (!project) {
-          window.alert("プロジェクト名を入力してください。");
+          appAlert("プロジェクト名を入力してください。");
           projectInput.focus();
           return;
         }
@@ -2845,7 +3001,7 @@
         var formEl = btn.closest(".plan-edit-form");
         var projectVal = formEl.querySelector(".plan-edit-project-input").value.trim();
         if (!projectVal) {
-          window.alert("プロジェクト名を入力してください。");
+          appAlert("プロジェクト名を入力してください。");
           return;
         }
         plan.project = projectVal;
@@ -3194,7 +3350,7 @@
     var target = state.sessions.find(function (s) { return s.id === id; });
     if (!target) return;
     var label = projectLabel(target) + "（" + formatDateHeading(target.start.slice(0, 10)) + " " + sessionDetailText(target) + "）";
-    if (!window.confirm(label + " を削除しますか？この操作は元に戻せません。")) return;
+    appConfirm(label + " を削除しますか？この操作は元に戻せません。", function () {
     if (state.onBreakSessionId === id) state.onBreakSessionId = null;
     if (state.focusCycleAutoPausedSessionId === id) state.focusCycleAutoPausedSessionId = null;
     if (state.focusCycleOverageSessionId === id) { state.focusCycleOverageSessionId = null; state.focusCycleOverageSec = 0; }
@@ -3210,6 +3366,7 @@
     }
     persistState();
     renderAll();
+    });
   }
 
   // 2026-09-25：ダッシュボードの「最近の記録」・スケジュール表から履歴タブの編集フォームへ
@@ -3532,21 +3689,21 @@
       if (!gb) { generalBreakEditingId = null; renderHistoryList(); return; }
 
       var gbStart = combineDateTime(gbEditRow.querySelector(".e-gb-start-date").value, gbEditRow.querySelector(".e-gb-start-time").value);
-      if (!gbStart) { window.alert("休憩開始の日時を入力してください。"); return; }
+      if (!gbStart) { appAlert("休憩開始の日時を入力してください。"); return; }
 
       var gbOngoingChecked = gbEditRow.querySelector(".e-gb-ongoing").checked;
       var gbEnd = gbOngoingChecked ? null : combineDateTime(gbEditRow.querySelector(".e-gb-end-date").value, gbEditRow.querySelector(".e-gb-end-time").value);
       if (!gbOngoingChecked) {
-        if (!gbEnd) { window.alert("休憩終了の日時を入力してください。「まだ休憩中」にチェックすると終了時刻なしで保存できます。"); return; }
-        if (parseLocal(gbEnd) <= parseLocal(gbStart)) { window.alert("休憩終了は、休憩開始より後にしてください。"); return; }
+        if (!gbEnd) { appAlert("休憩終了の日時を入力してください。「まだ休憩中」にチェックすると終了時刻なしで保存できます。"); return; }
+        if (parseLocal(gbEnd) <= parseLocal(gbStart)) { appAlert("休憩終了は、休憩開始より後にしてください。"); return; }
       } else {
         var otherActiveBreak = getGeneralBreaks().some(function (x) { return x.id !== gbId && !x.end; });
-        if (otherActiveBreak) { window.alert("すでに進行中の一般休憩が他にあります。先にそちらを終了してください。"); return; }
+        if (otherActiveBreak) { appAlert("すでに進行中の一般休憩が他にあります。先にそちらを終了してください。"); return; }
       }
 
       if (!sameTimeRanges([{ start: gb.start, end: gb.end }], [{ start: gbStart, end: gbEnd }])) {
         var gbConflict = findTimeConflict([{ start: gbStart, end: gbEnd }], null, gbId);
-        if (gbConflict) { window.alert(timeConflictMessage(gbConflict)); return; }
+        if (gbConflict) { appAlert(timeConflictMessage(gbConflict)); return; }
       }
 
       gb.start = gbStart;
@@ -3563,11 +3720,12 @@
       var gbToDelete = getGeneralBreaks().find(function (x) { return x.id === gbDelId; });
       if (!gbToDelete) return;
       var gbLabel = "☕ 休憩（" + formatDateHeading(gbToDelete.start.slice(0, 10)) + " " + formatTimeShort(gbToDelete.start) + "〜" + (gbToDelete.end ? formatTimeShort(gbToDelete.end) : "") + "）";
-      if (!window.confirm(gbLabel + " を削除しますか？この操作は元に戻せません。")) return;
-      state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== gbDelId; });
-      if (generalBreakEditingId === gbDelId) generalBreakEditingId = null;
-      persistState();
-      renderAll();
+      appConfirm(gbLabel + " を削除しますか？この操作は元に戻せません。", function () {
+        state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== gbDelId; });
+        if (generalBreakEditingId === gbDelId) generalBreakEditingId = null;
+        persistState();
+        renderAll();
+      });
       return;
     }
 
@@ -3587,7 +3745,7 @@
       var addRow = addBreakBtn.closest(".hist-entry-edit");
       var draftForAdd = readDraftSegmentsFromDom(addRow);
       var lastForAdd = draftForAdd[draftForAdd.length - 1];
-      if (!lastForAdd.end) { window.alert("作業中のままでは休憩を追加できません。先に終了時刻を設定してください。"); return; }
+      if (!lastForAdd.end) { appAlert("作業中のままでは休憩を追加できません。先に終了時刻を設定してください。"); return; }
       draftForAdd.push({ start: lastForAdd.end, end: lastForAdd.end });
       historyEditDraftSegments = draftForAdd;
       renderHistoryList();
@@ -3619,32 +3777,32 @@
       var number = numberEl ? numberEl.value.trim() : (session.number || "");
       var newSegs = readDraftSegmentsFromDom(editRow);
 
-      if (!newSegs[0].start) { window.alert("開始日・開始時刻を入力してください。"); return; }
+      if (!newSegs[0].start) { appAlert("開始日・開始時刻を入力してください。"); return; }
 
       for (var i = 0; i < newSegs.length; i++) {
         var seg = newSegs[i];
         var isLastSeg = i === newSegs.length - 1;
         if (isLastSeg && !seg.end) {
           var otherRunning = state.sessions.some(function (s) { return s.id !== id && !s.end; });
-          if (otherRunning) { window.alert("すでに作業中の記録が他にあります。先にそちらを終了してください。"); return; }
+          if (otherRunning) { appAlert("すでに作業中の記録が他にあります。先にそちらを終了してください。"); return; }
         } else if (!seg.end) {
-          window.alert("休憩" + (i + 1) + "の開始日時（区間の終了）を入力してください。");
+          appAlert("休憩" + (i + 1) + "の開始日時（区間の終了）を入力してください。");
           return;
         } else if (parseLocal(seg.end) <= parseLocal(seg.start)) {
-          window.alert((isLastSeg ? "終了時刻" : "区間" + (i + 1) + "の終了時刻（休憩の開始）") + "は、開始時刻より後にしてください。");
+          appAlert((isLastSeg ? "終了時刻" : "区間" + (i + 1) + "の終了時刻（休憩の開始）") + "は、開始時刻より後にしてください。");
           return;
         }
         if (i > 0) {
           var prevEnd = newSegs[i - 1].end;
-          if (!prevEnd) { window.alert("休憩" + i + "の終了日時（作業再開時刻）を入力してください。"); return; }
-          if (parseLocal(seg.start) < parseLocal(prevEnd)) { window.alert("休憩" + i + "の終了時刻は、休憩の開始より後にしてください。"); return; }
+          if (!prevEnd) { appAlert("休憩" + i + "の終了日時（作業再開時刻）を入力してください。"); return; }
+          if (parseLocal(seg.start) < parseLocal(prevEnd)) { appAlert("休憩" + i + "の終了時刻は、休憩の開始より後にしてください。"); return; }
         }
       }
 
       // 作業の各区間（休憩を挟んでいれば複数）が、他の記録・休憩と重ならないか確認する。
       if (!sameTimeRanges(getSegments(session), newSegs)) {
         var editConflict = findTimeConflict(newSegs, id, null);
-        if (editConflict) { window.alert(timeConflictMessage(editConflict)); return; }
+        if (editConflict) { appAlert(timeConflictMessage(editConflict)); return; }
       }
 
       session.project = project;
@@ -3828,7 +3986,7 @@
     var oldVal = row.getAttribute("data-value");
     var input = row.querySelector(".name-edit-input");
     var newVal = input.value.trim();
-    if (!newVal) { window.alert("空にはできません。空にしたい場合は、履歴の編集から記録ごとに変更してください。"); return; }
+    if (!newVal) { appAlert("空にはできません。空にしたい場合は、履歴の編集から記録ごとに変更してください。"); return; }
     if (newVal === oldVal) { namesEditingKind = null; namesEditingValue = null; renderNamesTab(); return; }
     var label = NAME_KIND_LABELS[kind] || kind;
     // 変更後の値が、すでに別の記録で使われている既存の値と重複する場合は、単なる文字列の
@@ -3843,7 +4001,7 @@
     } else {
       confirmMsg = '「' + oldVal + '」を「' + newVal + '」に一括で置き換えます。\n' + label + 'が「' + oldVal + '」になっているすべての記録・タスク・予定が対象です。\nこの操作は取り消せません。よろしいですか？';
     }
-    if (!window.confirm(confirmMsg)) return;
+    appConfirm(confirmMsg, function () {
     renameFieldValueEverywhere(kind, oldVal, newVal);
     if (kind === "project") {
       // プロジェクト名を変更・統合した場合、手動で指定した色もそのプロジェクト名に付いてくるように
@@ -3861,6 +4019,7 @@
     namesEditingKind = null;
     namesEditingValue = null;
     renderAll();
+    });
   }
   function saveProjectColor(value, hex) {
     var overrides = getProjectColorOverrides();
@@ -4071,6 +4230,11 @@
   // その項目の「色」としての同一性・見分けやすさは維持される）。
   function readableTextColor(hex, minL) {
     var hsl = hexToHsl(hex);
+    // ライトモード（白背景）では逆に「明るすぎる色を濃くする」（明度の上限を設ける）
+    if (isLightTheme()) {
+      var lLight = hsl.l > 0.40 ? 0.40 : hsl.l;
+      return hslToHex(hsl.h, hsl.s, lLight);
+    }
     var l = hsl.l < minL ? minL : hsl.l;
     return hslToHex(hsl.h, hsl.s, l);
   }
@@ -4385,22 +4549,28 @@
         scrollToAndHighlightHistoryEdit();
       });
       menuEl.querySelector(".sched-break-delete-btn").addEventListener("click", function () {
+        function finishBreakDelete() {
+          scheduleBlockMenuState = null;
+          persistState();
+          renderAll();
+        }
         if (bm.breakId) {
           // 休憩の記録そのものを削除する。その時間は空白になる（前後の作業はそのまま）。
-          if (!window.confirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になります。この操作は元に戻せません。")) return;
-          state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== bm.breakId; });
-          if (generalBreakEditingId === bm.breakId) generalBreakEditingId = null;
+          appConfirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になります。この操作は元に戻せません。", function () {
+            state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== bm.breakId; });
+            if (generalBreakEditingId === bm.breakId) generalBreakEditingId = null;
+            finishBreakDelete();
+          });
         } else {
           // 1つの記録の中の中断区間（以前の形式のデータ）は、その場所で記録を前後2つに分ける。
           // 休憩の時間は作業時間に含めず、空白のままにする。
           var bsession = state.sessions.find(function (s) { return s.id === bm.sessionId; });
           if (!bsession) { scheduleBlockMenuState = null; renderScheduleDayView(true); return; }
-          if (!window.confirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になり、前後の作業は別々の記録に分かれます。この操作は元に戻せません。")) return;
-          splitSessionSegments(bsession, bm.segIndex, false);
+          appConfirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になり、前後の作業は別々の記録に分かれます。この操作は元に戻せません。", function () {
+            splitSessionSegments(bsession, bm.segIndex, false);
+            finishBreakDelete();
+          });
         }
-        scheduleBlockMenuState = null;
-        persistState();
-        renderAll();
       });
       menuEl.querySelector(".sched-block-menu-close-btn").addEventListener("click", function () {
         scheduleBlockMenuState = null;
@@ -4428,6 +4598,14 @@
           state.focusCycleOverageSessionId = null;
           state.focusCycleOverageSec = 0;
           persistState();
+          renderAll();
+          return;
+        }
+
+        // 2026-10-09：その日の最初の開始はルーティンにする（startTaskNowと同じ扱い）。
+        if (!todayHasAnySession() && !(session.project === "ルーティン" && !(session.memo || ""))) {
+          startDailyRoutineTask();
+          appAlert("今日の最初は「ルーティン」から始めます。\n続けて「" + session.project + "」を始める場合は、もう一度「▶ 今から再開」を押してください。");
           renderAll();
           return;
         }
@@ -5163,8 +5341,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.y + " 時間"; } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 10 }, maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } }
+          x: { grid: { display: false }, ticks: { color: chartTextColor(), font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+          y: { beginAtZero: true, ticks: { color: chartTextColor(), font: { size: 11 } }, grid: { color: chartGridColor() } }
         }
       }
     });
@@ -5193,8 +5371,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (item) { return item.parsed.y + " 時間"; } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 11 } } },
-          y: { beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } }
+          x: { grid: { display: false }, ticks: { color: chartTextColor(), font: { size: 11 } } },
+          y: { beginAtZero: true, ticks: { color: chartTextColor(), font: { size: 11 } }, grid: { color: chartGridColor() } }
         }
       }
     });
@@ -5307,8 +5485,8 @@
           }
         },
         scales: {
-          x: { stacked: true, beginAtZero: true, ticks: { color: "#a9b0ad", font: { size: 11 } }, grid: { color: "#2a2f37" } },
-          y: { stacked: true, grid: { display: false }, ticks: { color: "#eef1ee", font: { size: 12 } } }
+          x: { stacked: true, beginAtZero: true, ticks: { color: chartTextColor(), font: { size: 11 } }, grid: { color: chartGridColor() } },
+          y: { stacked: true, grid: { display: false }, ticks: { color: chartStrongTextColor(), font: { size: 12 } } }
         }
       }
     });
@@ -5398,8 +5576,8 @@
             }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 10 }, maxRotation: 0, autoSkip: true } },
-            y: { beginAtZero: true, max: 100, ticks: { color: "#a9b0ad", font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: "#2a2f37" } }
+            x: { grid: { display: false }, ticks: { color: chartTextColor(), font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, max: 100, ticks: { color: chartTextColor(), font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: chartGridColor() } }
           }
         }
       });
@@ -5462,8 +5640,8 @@
             } } }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { color: "#a9b0ad", font: { size: 11 }, maxRotation: 0, autoSkip: true } },
-            y: { beginAtZero: true, max: 100, ticks: { color: "#a9b0ad", font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: "#2a2f37" } }
+            x: { grid: { display: false }, ticks: { color: chartTextColor(), font: { size: 11 }, maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, max: 100, ticks: { color: chartTextColor(), font: { size: 11 }, callback: function (v) { return v + "%"; } }, grid: { color: chartGridColor() } }
           }
         }
       });
@@ -5558,6 +5736,21 @@
       parsed.sessions.forEach(function (s) {
         if (s && s.id && !existingIds[s.id]) { state.sessions.push(s); existingIds[s.id] = true; added++; }
       });
+      // 2026-10-09：作業記録だけでなく、タスク・休憩・予定・今月の目標・プロジェクト色も同じidで重複しないように取り込む
+      ["tasks", "generalBreaks", "plans", "monthlyGoals"].forEach(function (f) {
+        var have = {};
+        (state[f] || []).forEach(function (it) { if (it && it.id) have[it.id] = true; });
+        (parsed[f] || []).forEach(function (it) {
+          if (it && it.id && !have[it.id]) { (state[f] = state[f] || []).push(it); have[it.id] = true; }
+        });
+      });
+      ["projectColorOverrides", "monthlyGoalConfirmations"].forEach(function (f) {
+        if (parsed[f] && typeof parsed[f] === "object") {
+          var merged = Object.assign({}, parsed[f], state[f] || {});
+          state[f] = merged;
+        }
+      });
+      if ((parsed.nextTaskNumber || 0) > (state.nextTaskNumber || 0)) state.nextTaskNumber = parsed.nextTaskNumber;
       // 取り込んだデータに「作業中」の記録が複数できてしまう場合があるため、
       // 一番新しく開始したものだけを作業中として残し、他は矛盾解消のためそのままにする（手動編集で調整可能）。
     }
@@ -5566,7 +5759,7 @@
     document.getElementById("dataImportArea").value = "";
     document.getElementById("dataImportFile").value = "";
     renderAll();
-    statusEl.textContent = "読み込みました（記録 " + state.sessions.length + " 件・このブラウザに保存済み）。";
+    statusEl.textContent = "読み込みました（記録 " + state.sessions.length + " 件" + (syncEnabled ? "・アカウントへの同期を開始します" : "・このブラウザに保存済み") + "）。";
     statusEl.className = "data-io-status success";
   }
 
@@ -5591,13 +5784,25 @@
     reader.readAsText(file);
   });
 
-  document.getElementById("dataExportBtn").addEventListener("click", function () {
-    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  // 2026-10-09：アーティファクト版ではリンクによる自動ダウンロードが使えないため、
+  // downloads capability（保存確認つき）があればそちらで保存する。
+  function offerDownload(filename, text, mime) {
+    if (syncDownloads) {
+      syncDownloads.save({ filename: filename, data: text }).catch(function (e) {
+        if (e && e.code === "declined") return;
+        appAlert("ファイルを保存できませんでした（" + ((e && e.code) || "error") + "）。");
+      });
+      return;
+    }
+    var blob = new Blob([text], { type: mime });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
-    a.href = url; a.download = "worktime-data.json";
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+  document.getElementById("dataExportBtn").addEventListener("click", function () {
+    offerDownload("worktime-data.json", JSON.stringify(state, null, 2), "application/json");
   });
 
   document.getElementById("csvExportBtn").addEventListener("click", function () {
@@ -5618,13 +5823,369 @@
     var csv = "﻿" + rows.map(function (r) {
       return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(",");
     }).join("\r\n");
-    var blob = new Blob([csv], { type: "text/csv" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = "worktime-data.csv";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    offerDownload("worktime-data.csv", csv, "text/csv");
   });
+
+  // ======================================================================
+  // 2026-10-09：アカウント同期（アーティファクト版のみ）。
+  // claude.ai のアカウントごとの非公開データ領域（db capability）に、記録を「期間ごとの小さな
+  // ドキュメント」に分けて保存し、同じアカウントで開いたPC・スマホ間で自動的に揃える。
+  // 通常のHTML版（window.claudeが無い環境）では何もせず、従来どおりブラウザ内保存のみ。
+  //  - 保存先: data/users/<自分のID>/tm-*（自分だけが読み書きできる）
+  //  - 記録（作業・休憩・予定）は10日ごと、タスクは500件ごと、その他の設定は1つの「core」に分割
+  //  - 各ドキュメントは {v, ts, by, body(JSON文字列)}。変更があったドキュメントだけを書き込む
+  //  - 通知のON/OFF（notifyEnabled）は端末ごとの設定なので同期しない
+  // ======================================================================
+  var SYNC_META_KEY = "worktimeTrackerSyncMeta_v1";
+    var SYNC_CORE_FIELDS = ["nextTaskNumber", "goalPromptMonth", "onBreakSessionId", "focusStreakStartIso", "focusCycleOverrideSec", "focusCycleOverageSec", "currentBreakTip", "focusCycleOverageSessionId", "focusCycleAutoPausedSessionId", "monthlyGoals", "monthlyGoalConfirmations", "projectColorOverrides"];
+  function syncDecadeKey(dateStr) {
+    var ds = String(dateStr || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return "misc";
+    var day = parseInt(ds.slice(8), 10);
+    return ds.slice(0, 7) + "-" + (day <= 10 ? "a" : day <= 20 ? "b" : "c");
+  }
+  function syncTaskNum(it) {
+    var n = parseInt(String(it && it.id || "").slice(1), 10);
+    return isFinite(n) ? n : -1;
+  }
+  var SYNC_ARRAYS = [
+    { field: "sessions", prefix: "s", keyOf: function (it) { return syncDecadeKey(it.start); }, sortKey: function (it) { return String(it.start || ""); } },
+    { field: "generalBreaks", prefix: "b", keyOf: function (it) { return syncDecadeKey(it.start); }, sortKey: function (it) { return String(it.start || ""); } },
+    { field: "plans", prefix: "p", keyOf: function (it) { return syncDecadeKey(it.date); }, sortKey: function (it) { return String(it.date || "") + String(1e15 + (it.createdAtMs || 0)); } },
+    { field: "tasks", prefix: "t", keyOf: function (it) { var n = syncTaskNum(it); return n < 0 ? "misc" : ("00" + Math.floor(n / 500)).slice(-3); }, sortKey: function (it) { return String(1e9 + syncTaskNum(it)); } }
+  ];
+  var syncDeviceId = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); // ページを開くたびに別の値（同じブラウザの複数タブも区別するため）
+  var syncEnabled = false;      // 同期の準備ができた（db・user が使える）
+  var syncReady = false;        // 最初の確定スナップショットを突き合わせ終えた
+  var syncStopped = false;      // 回復できないエラー（容量超過・権限なし等）で停止中
+  var syncStatus = "off";       // off | connecting | saving | ok | offline | error
+  var syncStatusDetail = "";
+  var syncColl = null;
+  var syncSynced = {};          // ドキュメントID → 最後に同期できた内容のハッシュ
+  var syncRemoteHash = {};      // ドキュメントID → 最後に見たサーバー側内容のハッシュ
+  var syncOversize = {};
+  var syncUid = null;
+  var syncFlushTimer = null;
+  var syncFlushing = false;
+  var syncPendingRemote = null;
+  var syncApplyTimer = null;
+  var syncDownloads = null;
+
+  function syncHash(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; }
+    return str.length + ":" + h;
+  }
+  function syncSplit(st) {
+    var parts = {};
+    var core = {};
+    SYNC_CORE_FIELDS.forEach(function (f) { if (st[f] !== undefined) core[f] = st[f]; });
+    if (Object.keys(core).length) parts["tm-core"] = JSON.stringify(core);
+    SYNC_ARRAYS.forEach(function (spec) {
+      var groups = {};
+      (st[spec.field] || []).forEach(function (it) {
+        if (!it) return;
+        var k = spec.keyOf(it);
+        (groups[k] = groups[k] || []).push(it);
+      });
+      Object.keys(groups).forEach(function (k) {
+        parts["tm-" + spec.prefix + "-" + k] = JSON.stringify(syncSortItems(groups[k], spec));
+      });
+    });
+    return parts;
+  }
+  function syncSortItems(items, spec) {
+    return items.slice().sort(function (a, b) {
+      var ka = spec.sortKey(a), kb = spec.sortKey(b);
+      if (ka !== kb) return ka < kb ? -1 : 1;
+      var ia = String(a.id || ""), ib = String(b.id || "");
+      return ia < ib ? -1 : ia > ib ? 1 : 0;
+    });
+  }
+  function syncJoin(parts, base) {
+    var ns = {};
+    var skip = {};
+    SYNC_CORE_FIELDS.forEach(function (f) { skip[f] = true; });
+    SYNC_ARRAYS.forEach(function (spec) { skip[spec.field] = true; });
+    Object.keys(base || {}).forEach(function (k) { if (!skip[k]) ns[k] = base[k]; });
+    if (parts["tm-core"]) {
+      try { var core = JSON.parse(parts["tm-core"]); Object.keys(core).forEach(function (k) { ns[k] = core[k]; }); } catch (e) {}
+    }
+    SYNC_ARRAYS.forEach(function (spec) {
+      var arr = [];
+      Object.keys(parts).forEach(function (docId) {
+        if (docId.indexOf("tm-" + spec.prefix + "-") !== 0) return;
+        try { var items = JSON.parse(parts[docId]); if (Array.isArray(items)) arr = arr.concat(items); } catch (e) {}
+      });
+      ns[spec.field] = syncSortItems(arr, spec);
+    });
+    return ns;
+  }
+  // 両方に変更があった場合の統合。配列はidごとに和集合（同じidはサーバー側を優先）、
+  // 設定のオブジェクトは項目ごとに統合、数値のカウンタは大きい方を採用する。
+  function syncUnion(localBody, remoteBody, docId) {
+    var L, R;
+    try { L = JSON.parse(localBody); R = JSON.parse(remoteBody); } catch (e) { return remoteBody; }
+    function unionArr(a, b) {
+      var out = [], seen = {};
+      (b || []).concat(a || []).forEach(function (it) {
+        var id = it && it.id;
+        if (id !== undefined && id !== null) { if (seen[id]) return; seen[id] = true; }
+        out.push(it);
+      });
+      return out;
+    }
+    if (Array.isArray(L) && Array.isArray(R)) {
+      var spec = null;
+      SYNC_ARRAYS.forEach(function (s) { if (docId.indexOf("tm-" + s.prefix + "-") === 0) spec = s; });
+      var u = unionArr(L, R);
+      return JSON.stringify(spec ? syncSortItems(u, spec) : u);
+    }
+    var out = {};
+    Object.keys(L).concat(Object.keys(R)).forEach(function (k) {
+      var lv = L[k], rv = R[k];
+      if (Array.isArray(lv) && Array.isArray(rv)) out[k] = unionArr(lv, rv);
+      else if (k === "nextTaskNumber") out[k] = Math.max(lv || 0, rv || 0);
+      else if (lv && rv && typeof lv === "object" && typeof rv === "object" && !Array.isArray(lv)) out[k] = Object.assign({}, lv, rv);
+      else out[k] = rv !== undefined ? rv : lv;
+    });
+    return JSON.stringify(out);
+  }
+
+  function syncSetStatus(s, detail) {
+    syncStatus = s;
+    syncStatusDetail = detail || "";
+    var el = document.getElementById("syncBadge");
+    if (el) {
+      var labels = { off: "", connecting: "☁ 接続中…", saving: "☁ 同期中…", ok: "☁ 同期済み", offline: "☁ オフライン", error: "☁ 同期エラー" };
+      el.textContent = labels[s] || "";
+      el.style.display = labels[s] ? "" : "none";
+      el.className = "sync-badge sync-" + s;
+      el.title = syncStatusDetail || "";
+    }
+    updateDataStatusLine();
+  }
+  function syncLoadMeta(uid) {
+    syncSynced = {};
+    try {
+      var raw = localStorage.getItem(SYNC_META_KEY);
+      if (raw) { var m = JSON.parse(raw); if (m && m.uid === uid && m.synced) syncSynced = m.synced; }
+    } catch (e) {}
+  }
+  function syncSaveMeta() {
+    try { localStorage.setItem(SYNC_META_KEY, JSON.stringify({ uid: syncUid, synced: syncSynced })); } catch (e) {}
+  }
+  function syncSaveLocal() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); usingLocalData = true; } catch (e) {}
+  }
+  function syncIsDirty() {
+    var parts = syncSplit(state);
+    var dirty = false;
+    Object.keys(parts).forEach(function (k) { if (!syncOversize[k] && syncSynced[k] !== syncHash(parts[k])) dirty = true; });
+    Object.keys(syncSynced).forEach(function (k) { if (parts[k] === undefined) dirty = true; });
+    return dirty;
+  }
+  function syncMarkDirty() {
+    if (syncEnabled && syncReady && !syncStopped) syncScheduleFlush(1500);
+  }
+  function syncScheduleFlush(ms) {
+    if (!syncEnabled || !syncReady || syncStopped || syncFlushTimer) return;
+    syncFlushTimer = setTimeout(syncFlush, ms || 1500);
+  }
+  function syncHandleWriteError(e) {
+    var code = e && e.code;
+    if (code === "quota_exceeded") { syncStopped = true; syncSetStatus("error", "保存容量の上限に達しました。古いデータを整理してください。"); return; }
+    if (code === "invalid_argument" || code === "revoked" || code === "not_granted" || code === "capability_disabled" || code === "capability_removed") {
+      syncStopped = true; syncSetStatus("error", "この端末ではアカウントへの保存ができません（" + code + "）。この端末のブラウザ内にのみ保存されます。"); return;
+    }
+    syncSetStatus("offline", "通信できないため、あとで再試行します。");
+    setTimeout(function () { syncScheduleFlush(100); }, 15000);
+  }
+  function syncFlush() {
+    syncFlushTimer = null;
+    if (!syncEnabled || !syncReady || syncStopped) return Promise.resolve();
+    if (syncFlushing) { syncScheduleFlush(1500); return Promise.resolve(); }
+    syncFlushing = true;
+    var parts = syncSplit(state);
+    var jobs = [];
+    Object.keys(parts).forEach(function (k) {
+      var h = syncHash(parts[k]);
+      if (syncSynced[k] === h) return;
+      if (parts[k].length > 240000) { syncOversize[k] = true; syncSetStatus("error", "1つの期間のデータが大きすぎて同期できません（" + k + "）。"); return; }
+      delete syncOversize[k];
+      jobs.push({ k: k, h: h, body: parts[k] });
+    });
+    Object.keys(syncSynced).forEach(function (k) { if (parts[k] === undefined) jobs.push({ k: k, del: true }); });
+    if (!jobs.length) { syncFlushing = false; if (syncStatus === "saving") syncSetStatus("ok"); return Promise.resolve(); }
+    syncSetStatus("saving");
+    var chain = Promise.resolve();
+    jobs.forEach(function (j) {
+      chain = chain.then(function () {
+        if (j.del) {
+          return syncColl.doc(j.k).delete().then(function () { delete syncSynced[j.k]; delete syncRemoteHash[j.k]; });
+        }
+        return syncColl.doc(j.k).set({ v: 1, ts: Date.now(), by: syncDeviceId, body: j.body }).then(function () {
+          syncSynced[j.k] = j.h; syncRemoteHash[j.k] = j.h;
+        });
+      });
+    });
+    return chain.then(function () {
+      syncSaveMeta();
+      if (syncStatus !== "error") syncSetStatus("ok");
+    }).catch(function (e) {
+      syncSaveMeta();
+      syncHandleWriteError(e);
+    }).then(function () {
+      syncFlushing = false;
+      if (!syncStopped && syncIsDirty()) syncScheduleFlush(1500);
+    });
+  }
+
+  function syncIsTmDoc(id) { return typeof id === "string" && id.indexOf("tm-") === 0; }
+  function syncOnSnapshot(snap) {
+    var fromCache = !!(snap.metadata && snap.metadata.fromCache);
+    if (!syncReady) {
+      if (fromCache) return;
+      var remote = {};
+      snap.docs.forEach(function (d) {
+        if (!syncIsTmDoc(d.id)) return;
+        var dt = d.data();
+        if (dt && typeof dt.body === "string") remote[d.id] = dt.body;
+      });
+      syncInitialReconcile(remote);
+      return;
+    }
+    var upd = {}, any = false;
+    snap.docChanges().forEach(function (ch) {
+      var id = ch.doc.id;
+      if (!syncIsTmDoc(id)) return;
+      if (ch.type === "removed") { upd[id] = null; any = true; return; }
+      var dt = ch.doc.data();
+      if (!dt || typeof dt.body !== "string") return;
+      if (dt.by === syncDeviceId) return; // 自分の書き込みの反映は無視
+      upd[id] = dt.body; any = true;
+    });
+    if (any) syncQueueRemote(upd);
+  }
+  function syncOnError(e) {
+    var code = e && e.code;
+    if (code === "revoked" || code === "invalid_argument" || code === "resource_exhausted") {
+      syncStopped = true; syncReady = false;
+      syncSetStatus("error", "アカウントとの同期が停止しました（" + code + "）。ページを開き直してください。この端末のブラウザ内には保存されています。");
+    } else {
+      syncSetStatus("offline", "同期サーバーに接続できません。");
+    }
+  }
+  function syncInitialReconcile(remote) {
+    var local = syncSplit(state);
+    var firstEver = Object.keys(syncSynced).length === 0;
+    var chosen = {};
+    var keys = {};
+    [local, remote, syncSynced].forEach(function (o) { Object.keys(o).forEach(function (k) { keys[k] = true; }); });
+    Object.keys(keys).forEach(function (k) {
+      var L = local[k], R = remote[k], S = syncSynced[k];
+      var hL = L !== undefined ? syncHash(L) : null, hR = R !== undefined ? syncHash(R) : null;
+      if (R !== undefined) syncRemoteHash[k] = hR;
+      if (hL === hR) { if (L !== undefined) { chosen[k] = L; syncSynced[k] = hL; } else { delete syncSynced[k]; } return; }
+      if (L === undefined) {
+        // サーバーだけにある。自分で消していた（未反映）なら削除を優先、そうでなければ取り込む
+        if (S !== undefined && hR === S) { return; }
+        chosen[k] = R; syncSynced[k] = hR; return;
+      }
+      if (R === undefined) {
+        // この端末だけにある。他端末で消されていてこの端末側が未変更なら削除を採用、そうでなければ残して書き込む
+        if (S !== undefined && hL === S) { delete syncSynced[k]; return; }
+        chosen[k] = L; return;
+      }
+      if (firstEver) { chosen[k] = syncUnion(L, R, k); return; }
+      if (hL === S) { chosen[k] = R; syncSynced[k] = hR; return; }
+      if (hR === S) { chosen[k] = L; return; }
+      chosen[k] = syncUnion(L, R, k);
+    });
+    // 削除が決まったキー（chosenに無いもの）のsyncedは、サーバーに残っていれば消す（deleteジョブになる）
+    state = syncJoin(chosen, state);
+    syncReady = true;
+    syncSaveLocal();
+    syncSaveMeta();
+    renderAll();
+    syncSetStatus("ok");
+    if (syncIsDirty()) syncScheduleFlush(300);
+  }
+  function syncQueueRemote(upd) {
+    syncPendingRemote = syncPendingRemote || {};
+    Object.keys(upd).forEach(function (k) { syncPendingRemote[k] = upd[k]; });
+    syncTryApplyRemote();
+  }
+  function syncUserIsBusy() {
+    var a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+    if (historyEditingId || generalBreakEditingId || planEditingId || namesEditingKind || monthlyGoalEditingId || colorPickingValue) return true;
+    var ov = document.getElementById("appDialogOverlay");
+    if (ov && ov.getAttribute("aria-hidden") === "false") return true;
+    return false;
+  }
+  function syncTryApplyRemote() {
+    if (!syncPendingRemote) return;
+    if (syncApplyTimer) return;
+    if (syncUserIsBusy()) {
+      syncApplyTimer = setTimeout(function () { syncApplyTimer = null; syncTryApplyRemote(); }, 2500);
+      return;
+    }
+    var upd = syncPendingRemote;
+    syncPendingRemote = null;
+    var local = syncSplit(state);
+    var parts = {};
+    Object.keys(local).forEach(function (k) { parts[k] = local[k]; });
+    var changed = false;
+    Object.keys(upd).forEach(function (k) {
+      var R = upd[k];
+      var hR = R === null ? null : syncHash(R);
+      if (hR !== null && (hR === syncRemoteHash[k] || hR === syncSynced[k])) return;
+      syncRemoteHash[k] = hR;
+      var L = local[k], S = syncSynced[k];
+      var hL = L !== undefined ? syncHash(L) : null;
+      if (R === null) {
+        if (L === undefined) { delete syncSynced[k]; return; }
+        if (hL === S) { delete parts[k]; delete syncSynced[k]; changed = true; }
+        return;
+      }
+      if (hL === hR) { syncSynced[k] = hR; return; }
+      if (L === undefined || hL === S) { parts[k] = R; syncSynced[k] = hR; changed = true; return; }
+      parts[k] = syncUnion(L, R, k); changed = true;
+    });
+    if (changed) {
+      state = syncJoin(parts, state);
+      syncSaveLocal();
+      syncSaveMeta();
+      renderAll();
+      if (syncIsDirty()) syncScheduleFlush(1500);
+    }
+  }
+  function syncInit() {
+    if (!(window.claude && typeof window.claude.use === "function")) return;
+    syncSetStatus("connecting");
+    Promise.all([window.claude.use("db"), window.claude.use("user"), window.claude.use("downloads")]).then(function (r) {
+      syncDownloads = r[2] || null;
+      var dbNs = r[0], userNs = r[1];
+      if (!dbNs || !userNs) { syncSetStatus("off"); return null; }
+      return userNs.id().then(function (uid) {
+        if (!uid) { syncSetStatus("off"); return; }
+        syncUid = uid;
+        syncLoadMeta(uid);
+        syncColl = dbNs.collection("data/users/" + uid);
+        syncEnabled = true;
+        var sub = document.getElementById("dataCardSub");
+        if (sub) sub.textContent = "このアカウント専用の保存領域に自動で同期されます（他の人には見えません）";
+        var note = document.getElementById("dataMultiDeviceNote");
+        if (note) note.textContent = "同じclaude.aiアカウントでこのページを開いたPC・スマホには、記録が自動で反映されます（数秒〜30秒程度）。以前のTaskmark（ファイル版）のデータを引き継ぐ場合は、そちらの「データ管理」でJSONを書き出し、ここで「追加で取り込む」または「置き換える」を行ってください。通知のON/OFFは端末ごとの設定です。";
+        syncColl.onSnapshot(syncOnSnapshot, syncOnError);
+        setTimeout(function () { if (!syncReady && !syncStopped && syncStatus === "connecting") syncSetStatus("offline", "サーバーからの応答待ちです。この端末のデータで動作しています。"); }, 12000);
+      });
+    }).catch(function () { syncSetStatus("off"); });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden" && syncEnabled && syncReady && !syncStopped) { if (syncFlushTimer) { clearTimeout(syncFlushTimer); syncFlushTimer = null; } syncFlush(); }
+    });
+  }
 
   // ---- init ----
   function renderAll() {
@@ -5661,6 +6222,12 @@
 
   // 2026-09-23：全画面オーバーレイの「確認しました」ボタン。静的なDOM要素（renderAll等で
   // 作り直されない）なので、他の一回だけの配線と同じくここで一度だけbindする。
+  document.getElementById("appDialogOkBtn").addEventListener("click", function () {
+    var fn = appDialogOnOk;
+    appDialogClose();
+    if (fn) fn();
+  });
+  document.getElementById("appDialogCancelBtn").addEventListener("click", appDialogClose);
   document.getElementById("focusCycleOverlayCloseBtn").addEventListener("click", function () {
     document.getElementById("focusCycleOverlay").setAttribute("aria-hidden", "true");
   });
@@ -5770,12 +6337,15 @@
   if (tickInterval) clearInterval(tickInterval);
   tickInterval = setInterval(tick, 1000);
 
+  applyTheme(loadSavedTheme());
+  document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
   wirePlanAddFormOnce();
   wireNamesTabOnce();
   wireMonthlyGoalsCardOnce();
   wireGoalPromptOnce();
   renderAll();
   maybeShowGoalPrompt();
+  syncInit();
 })();
 </script>
 </body>
