@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taskmark｜作業時間記録ツール</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234a3aa7'/%3E%3Crect x='14' y='15' width='36' height='9' rx='3' fill='%23ffffff'/%3E%3Crect x='27.5' y='15' width='9' height='34' rx='3' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2214%22%20fill=%22%232a8c5f%22/%3E%3Crect%20x=%2212%22%20y=%2213%22%20width=%2232%22%20height=%2210%22%20rx=%225%22%20fill=%22%23fff%22/%3E%3Crect%20x=%2220%22%20y=%2227%22%20width=%2232%22%20height=%2210%22%20rx=%225%22%20fill=%22%23fff%22%20fill-opacity=%22.75%22/%3E%3Crect%20x=%2212%22%20y=%2241%22%20width=%2222%22%20height=%2210%22%20rx=%225%22%20fill=%22%23fff%22/%3E%3Ccircle%20cx=%2246%22%20cy=%2246%22%20r=%226%22%20fill=%22%23f4c542%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -129,6 +129,12 @@
      タブだけは常に手が届くよう上部に固定する（ラッパーは display: contents にして、
      nav.tabs を body 基準で sticky にしている）。 */
   .app-top-fixed { display: contents; }
+  /* 絵文字をやめ、単色の線アイコン（インラインSVG）に統一 */
+  .ic { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .app-logo { width: 26px; height: 26px; flex: none; }
+  header.app-header h1 { display: flex; align-items: center; gap: 10px; }
+  .status-icon-circle .ic { width: 18px; height: 18px; }
+  .action-card-icon .ic { width: 24px; height: 24px; }
   /* 2026-10-10：タブ＋「現在の状況」ミニバーをまとめて上部に固定する。ミニバーは作業中・中断中・
      休憩中のときだけ表示し、どのタブを見ていても今の状況（プロジェクト・経過・集中サイクル残り）が分かる。 */
   .sticky-bar { position: sticky; top: 0; z-index: 50; background: var(--page-plane); }
@@ -163,7 +169,6 @@
   .sync-badge.sync-offline { color: #ffe7b3; border-color: rgba(255,231,179,0.55); }
   .notify-toggle-btn:hover { background: rgba(255,255,255,0.14); }
   .notify-toggle-btn.is-on { background: #fff; color: var(--series-1); border-color: #fff; font-weight: 800; }
-  .notify-toggle-btn.is-on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--series-1); box-shadow: 0 0 0 2px rgba(63,174,121,0.25); }
   .notify-toggle-btn:disabled { opacity: 0.55; cursor: default; }
   /* 2026-09-23：PCの通知（OS側）がオフだとデスクトップ通知に気づけないというご報告への対応。
      OSの許可設定に一切左右されない、ページ内の全画面オーバーレイ。自動中断・残り5分警告の
@@ -872,16 +877,16 @@
   }
 </style>
 </head>
-<body class="viz-root">
+<body class="viz-root viz-light">
 
 <div class="app-top-fixed">
 <header class="app-header">
   <div class="header-tools">
     <span class="sync-badge" id="syncBadge" style="display:none;" role="status"></span>
-    <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="ライト／ダーク切り替え">☀ ライト</button>
-    <button type="button" class="notify-toggle-btn" id="notifyToggleBtn">🔕 通知オフ</button>
+    <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="ライト／ダーク切り替え"></button>
+    <button type="button" class="notify-toggle-btn" id="notifyToggleBtn"></button>
   </div>
-  <h1>⏱️ Taskmark</h1>
+  <h1><svg class="app-logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="10" width="34" height="12" rx="6" fill="#fff"/><rect x="20" y="26" width="34" height="12" rx="6" fill="#fff" fill-opacity=".75"/><rect x="8" y="42" width="24" height="12" rx="6" fill="#fff"/><circle cx="47" cy="48" r="7" fill="#f4c542"/></svg>Taskmark</h1>
 </header>
 
 <div class="sticky-bar">
@@ -1199,14 +1204,24 @@
   var STORAGE_KEY = "worktimeTrackerData_v1";
   // 2026-10-10：ライト／ダーク切り替え。既定はダーク（従来の見た目）。選択は端末ごとに
   // localStorage へ保存する（同期対象外）。html と body の両方に .viz-light を付け外しする。
+  var IC_PATHS = {
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
+    bellOff: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/><path d="M3 3l18 18"/>',
+    coffee: '<path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M6 2v2M10 2v2M14 2v2"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>'
+  };
+  function icon(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (IC_PATHS[name] || "") + "</svg>"; }
   var THEME_KEY = "worktimeTrackerTheme_v1";
   function isLightTheme() { return document.documentElement.classList.contains("viz-light"); }
   function chartTextColor() { return isLightTheme() ? "#55605a" : "#a9b0ad"; }
   function chartStrongTextColor() { return isLightTheme() ? "#1b2420" : "#eef1ee"; }
   function chartGridColor() { return isLightTheme() ? "#e3e8e5" : "#2a2f37"; }
   function loadSavedTheme() {
-    var v = "dark";
-    try { v = localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch (e) {}
+    // 2026-10-10：既定はライト。ダークを選んだ端末だけ "dark" が保存される。
+    var v = "light";
+    try { v = localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"; } catch (e) {}
     return v;
   }
   function applyTheme(mode) {
@@ -1214,7 +1229,7 @@
     document.documentElement.classList.toggle("viz-light", light);
     if (document.body) document.body.classList.toggle("viz-light", light);
     var btn = document.getElementById("themeToggleBtn");
-    if (btn) btn.textContent = light ? "🌙 ダーク" : "☀ ライト";
+    if (btn) btn.innerHTML = light ? icon("moon") + " ダーク" : icon("sun") + " ライト";
   }
   function toggleTheme() {
     var next = isLightTheme() ? "dark" : "light";
@@ -1292,7 +1307,7 @@
     }
     var tip = state.currentBreakTip;
     return '<div class="break-tip-box">' +
-      '<div class="break-tip-head">💡 休憩のヒント<span class="break-tip-time">' + escapeHtml(tip.time) + '</span></div>' +
+      '<div class="break-tip-head">休憩のヒント<span class="break-tip-time">' + escapeHtml(tip.time) + '</span></div>' +
       '<div class="break-tip-cat">' + escapeHtml(tip.cat) + '</div>' +
       '<div class="break-tip-text">' + escapeHtml(tip.text) + '</div>' +
       '</div>';
@@ -1362,7 +1377,7 @@
     var btn = document.getElementById("notifyToggleBtn");
     if (!btn) return;
     if (!notificationsSupported()) {
-      btn.textContent = "🔕 通知非対応";
+      btn.innerHTML = icon("bellOff") + " 通知非対応";
       btn.disabled = true;
       btn.classList.remove("is-on");
       return;
@@ -1370,7 +1385,7 @@
     btn.disabled = false;
     var on = !!state.notifyEnabled && Notification.permission === "granted";
     // オフ＝🔕（ベルに斜線）／オン＝🔔（通常のベル）でアイコン自体も描き分ける。
-    btn.textContent = on ? "🔔 通知オン" : "🔕 通知オフ";
+    btn.innerHTML = on ? icon("bell") + " 通知オン" : icon("bellOff") + " 通知オフ";
     btn.classList.toggle("is-on", on);
   }
 
@@ -1426,10 +1441,10 @@
     if (!el) return;
     var syncNote = "";
     if (syncEnabled) {
-      if (syncStatus === "ok") syncNote = "　☁ このアカウントに同期済みです（同じアカウントで開いたPC・スマホに自動で反映されます）。";
-      else if (syncStatus === "saving") syncNote = "　☁ アカウントへ同期中です…";
-      else if (syncStatus === "connecting") syncNote = "　☁ アカウントに接続中です…";
-      else if (syncStatus === "offline" || syncStatus === "error") syncNote = "　☁ " + (syncStatusDetail || "同期できていません。") + "";
+      if (syncStatus === "ok") syncNote = "　このアカウントに同期済みです（同じアカウントで開いたPC・スマホに自動で反映されます）。";
+      else if (syncStatus === "saving") syncNote = "　アカウントへ同期中です…";
+      else if (syncStatus === "connecting") syncNote = "　アカウントに接続中です…";
+      else if (syncStatus === "offline" || syncStatus === "error") syncNote = "　" + (syncStatusDetail || "同期できていません。") + "";
     }
     if (syncEnabled) {
       el.textContent = (state.sessions.length === 0 ? "記録がまだありません。ダッシュボードの「開始」ボタンから記録を始めてください。" : "記録 " + state.sessions.length + " 件を表示中。") + syncNote;
@@ -2648,7 +2663,7 @@
         focusCycleNoteHtml(onBreak) +
         breakTipHtml() +
         '<button type="button" class="big-btn start focus-count-btn" id="resumeBreakBtn">● 集中カウントを開始</button>' +
-        '<button type="button" class="big-btn secondary" id="breakStartBtn">☕ 休憩を開始</button>';
+        '<button type="button" class="big-btn secondary" id="breakStartBtn">'+icon("coffee")+' 休憩を開始</button>';
       // 2026-10-07：中断後の現在の状況は「集中カウントを開始」「休憩を開始」の2択にした。
       // 「集中カウントを開始」＝この作業をその場で再開して集中カウントを新しく始める（ゲート不要の1クリック）。
       // 「休憩を開始」＝タスクに紐づかない休憩（業務全体の休憩）へ移行。休憩は中断した時刻から
@@ -2681,8 +2696,8 @@
       card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
-        '<div class="status-icon-circle on-break">☕</div>' +
-        '<span class="status-badge on-break">☕ <span class="badge-typing">休憩中</span></span>' +
+        '<div class="status-icon-circle on-break">' + icon("coffee") + '</div>' +
+        '<span class="status-badge on-break">' + icon("coffee") + ' <span class="badge-typing">休憩中</span></span>' +
         '<div class="timer-project">業務全体の休憩中</div>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
@@ -2703,7 +2718,7 @@
       card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
-        '<div class="status-icon-circle idle">☀</div>' +
+        '<div class="status-icon-circle idle">' + icon("sun") + '</div>' +
         '<p class="day-start-question">今日の業務を開始しますか？</p>' +
         (focusCountArmed ? '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' : focusGateButtonHtml("big-btn")) +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「ルーティン」で開始します。</p>';
@@ -2720,11 +2735,11 @@
 
       card.innerHTML =
         '<h2>現在の状況</h2>' +
-        '<div class="status-icon-circle idle">⏸</div>' +
+        '<div class="status-icon-circle idle">' + icon("pause") + '</div>' +
         '<span class="status-badge idle">停止中</span>' +
         '<p class="generated-note" style="text-align:center; margin: 10px 0;">下の「タスクを登録」から、プロジェクト名などを入力してすぐに開始できます。</p>' +
         '<div class="action-card-row">' +
-        '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">☕</span><span class="action-card-label">休憩を開始</span></button>' +
+        '<button type="button" class="action-card break" id="generalBreakBtn"><span class="action-card-icon">' + icon("coffee") + '</span><span class="action-card-label">休憩を開始</span></button>' +
         '</div>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">休憩＝タスクを選ばずに業務全体を一時中断（作業時間としては記録されません）。</p>';
 
@@ -3544,7 +3559,7 @@
       var bEnd = splitIsoSeconds(segs[i + 1].start || segs[i].end || segs[i].start);
       html += '<span class="datetime-arrow">→</span>' +
         '<div class="datetime-pair break seg-break-row" data-break-index="' + i + '">' +
-        '<div class="datetime-pair-label">☕ 休憩' + (i + 1) + '<button type="button" class="e-break-remove" data-break-index="' + i + '">削除</button></div>' +
+        '<div class="datetime-pair-label">' + icon("coffee") + ' 休憩' + (i + 1) + '<button type="button" class="e-break-remove" data-break-index="' + i + '">削除</button></div>' +
         '<div class="datetime-pair-sublabel">休憩開始</div>' +
         '<div class="datetime-pair-inputs"><input type="date" class="e-break-start-date" value="' + bStart.date + '"><input type="time" step="1" class="e-break-start-time" value="' + bStart.time + '"></div>' +
         '<div class="datetime-pair-sublabel">休憩終了</div>' +
@@ -3668,7 +3683,7 @@
           } else {
             html += '<div class="hist-entry hist-break-entry' + (gbOngoing ? ' is-running' : '') + '">' +
               '<div class="hist-entry-main">' +
-              '<div class="hist-entry-name"><span class="project-dot" style="background:var(--series-4)"></span>☕ 休憩' + (gbOngoing ? '<span class="running-tag">休憩中</span>' : '') + '</div>' +
+              '<div class="hist-entry-name"><span class="project-dot" style="background:var(--series-4)"></span>' + icon("coffee") + ' 休憩' + (gbOngoing ? '<span class="running-tag">休憩中</span>' : '') + '</div>' +
               '<div class="hist-entry-detail">' + escapeHtml(formatTimeShort(b.start)) + '〜' + (b.end ? escapeHtml(formatTimeShort(b.end)) : '') + '</div>' +
               '</div>' +
               '<div class="hist-row-actions"><button type="button" class="hist-break-edit-btn" data-id="' + escapeHtml(b.id) + '">編集</button>' +
@@ -3788,7 +3803,7 @@
       var gbDelId = gbDeleteBtn.getAttribute("data-id");
       var gbToDelete = getGeneralBreaks().find(function (x) { return x.id === gbDelId; });
       if (!gbToDelete) return;
-      var gbLabel = "☕ 休憩（" + formatDateHeading(gbToDelete.start.slice(0, 10)) + " " + formatTimeShort(gbToDelete.start) + "〜" + (gbToDelete.end ? formatTimeShort(gbToDelete.end) : "") + "）";
+      var gbLabel = "休憩（" + formatDateHeading(gbToDelete.start.slice(0, 10)) + " " + formatTimeShort(gbToDelete.start) + "〜" + (gbToDelete.end ? formatTimeShort(gbToDelete.end) : "") + "）";
       appConfirm(gbLabel + " を削除しますか？この操作は元に戻せません。", function () {
         state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== gbDelId; });
         if (generalBreakEditingId === gbDelId) generalBreakEditingId = null;
@@ -4543,7 +4558,7 @@
         var breakMovable = (b.kind === "general-break") && !b.ongoing;
         html += '<div' + breakAttrs + ' class="day-segment-block day-break-block' + (b.height < 28 ? ' day-block-short' : '') + (b.height < 16 ? ' day-block-tiny' : '') + (b.ongoing ? ' running' : '') + (breakMovable ? ' day-segment-movable' : '') + '" title="' + escapeHtml('☕ 休憩 ' + formatTimeShort(b.startIso) + '〜' + (b.endIso ? formatTimeShort(b.endIso) : '')) + '" style="top:' + b.top + 'px; height:' + b.height + 'px;">' +
           resizeHandlesHtml(true, !b.ongoing) +
-          '<div class="day-segment-name">☕ 休憩</div>' +
+          '<div class="day-segment-name">' + icon("coffee") + ' 休憩</div>' +
           '<div class="day-segment-time">' + escapeHtml(formatTimeShort(b.startIso)) + '〜' + (b.endIso ? escapeHtml(formatTimeShort(b.endIso)) : '') + '</div>' +
           '</div>';
       }
@@ -4559,7 +4574,7 @@
     // タスクではなくセッション自体から表示する（再開時にタスクを特定／新規作成する処理と合わせるため）。
     if (scheduleBlockMenuState && scheduleBlockMenuState.kind === "break") {
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
-        '<div class="schedule-block-menu-info"><strong>☕ 休憩</strong>　' + escapeHtml(scheduleBlockMenuState.label || "") + '</div>' +
+        '<div class="schedule-block-menu-info"><strong>' + icon("coffee") + ' 休憩</strong>　' + escapeHtml(scheduleBlockMenuState.label || "") + '</div>' +
         '<div class="schedule-block-menu-actions">' +
         '<button type="button" class="sched-block-edit-btn sched-break-edit-btn">編集</button>' +
         '<button type="button" class="sched-block-delete-btn sched-break-delete-btn">削除</button>' +
@@ -4625,7 +4640,7 @@
         }
         if (bm.breakId) {
           // 休憩の記録そのものを削除する。その時間は空白になる（前後の作業はそのまま）。
-          appConfirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になります。この操作は元に戻せません。", function () {
+          appConfirm("休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になります。この操作は元に戻せません。", function () {
             state.generalBreaks = getGeneralBreaks().filter(function (x) { return x.id !== bm.breakId; });
             if (generalBreakEditingId === bm.breakId) generalBreakEditingId = null;
             finishBreakDelete();
@@ -4635,7 +4650,7 @@
           // 休憩の時間は作業時間に含めず、空白のままにする。
           var bsession = state.sessions.find(function (s) { return s.id === bm.sessionId; });
           if (!bsession) { scheduleBlockMenuState = null; renderScheduleDayView(true); return; }
-          appConfirm("☕ 休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になり、前後の作業は別々の記録に分かれます。この操作は元に戻せません。", function () {
+          appConfirm("休憩（" + (bm.label || "") + "）を削除しますか？その時間は空白になり、前後の作業は別々の記録に分かれます。この操作は元に戻せません。", function () {
             splitSessionSegments(bsession, bm.segIndex, false);
             finishBreakDelete();
           });
@@ -6026,7 +6041,7 @@
     syncStatusDetail = detail || "";
     var el = document.getElementById("syncBadge");
     if (el) {
-      var labels = { off: "", connecting: "☁ 接続中…", saving: "☁ 同期中…", ok: "☁ 同期済み", offline: "☁ オフライン", error: "☁ 同期エラー" };
+      var labels = { off: "", connecting: "接続中…", saving: "同期中…", ok: "同期済み", offline: "オフライン", error: "同期エラー" };
       el.textContent = labels[s] || "";
       el.style.display = labels[s] ? "" : "none";
       el.className = "sync-badge sync-" + s;
@@ -6137,6 +6152,7 @@
     if (any) syncQueueRemote(upd);
   }
   function syncOnError(e) {
+    releaseGoalPromptGate();
     var code = e && e.code;
     if (code === "revoked" || code === "invalid_argument" || code === "resource_exhausted") {
       syncStopped = true; syncReady = false;
@@ -6177,6 +6193,8 @@
     syncSaveLocal();
     syncSaveMeta();
     renderAll();
+    closeGoalPromptIfSatisfied();
+    releaseGoalPromptGate();
     syncSetStatus("ok");
     if (syncIsDirty()) syncScheduleFlush(300);
   }
@@ -6227,6 +6245,7 @@
       syncSaveLocal();
       syncSaveMeta();
       renderAll();
+      closeGoalPromptIfSatisfied();
       if (syncIsDirty()) syncScheduleFlush(1500);
     }
   }
@@ -6236,9 +6255,9 @@
     Promise.all([window.claude.use("db"), window.claude.use("user"), window.claude.use("downloads")]).then(function (r) {
       syncDownloads = r[2] || null;
       var dbNs = r[0], userNs = r[1];
-      if (!dbNs || !userNs) { syncSetStatus("off"); return null; }
+      if (!dbNs || !userNs) { syncSetStatus("off"); releaseGoalPromptGate(); return null; }
       return userNs.id().then(function (uid) {
-        if (!uid) { syncSetStatus("off"); return; }
+        if (!uid) { syncSetStatus("off"); releaseGoalPromptGate(); return; }
         syncUid = uid;
         syncLoadMeta(uid);
         syncColl = dbNs.collection("data/users/" + uid);
@@ -6250,7 +6269,7 @@
         syncColl.onSnapshot(syncOnSnapshot, syncOnError);
         setTimeout(function () { if (!syncReady && !syncStopped && syncStatus === "connecting") syncSetStatus("offline", "サーバーからの応答待ちです。この端末のデータで動作しています。"); }, 12000);
       });
-    }).catch(function () { syncSetStatus("off"); });
+    }).catch(function () { syncSetStatus("off"); releaseGoalPromptGate(); });
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "hidden" && syncEnabled && syncReady && !syncStopped) { if (syncFlushTimer) { clearTimeout(syncFlushTimer); syncFlushTimer = null; } syncFlush(); }
     });
@@ -6309,6 +6328,24 @@
   // ポップを出しておらず、かつ今月の目標がまだ1件も無い」ときの最初の表示（＝通常は1日）で出す。
   // 閉じたら state.goalPromptMonth に今月を記録し、同じ月には二度と自動では出さない。
   var lastGoalPromptCheckDate = "";
+  // 2026-10-10：アーティファクト版では、同期（アカウントに保存した今月の目標）が届く前に
+  // 「今月の目標は何ですか？」を出してしまい、すでに目標を入れていても毎回聞かれていた。
+  // 同期が使える環境では、最初の同期の突き合わせが終わるまで（最長10秒）判定を待つ。
+  var goalPromptWaitingForSync = false;
+  function releaseGoalPromptGate() {
+    if (!goalPromptWaitingForSync) return;
+    goalPromptWaitingForSync = false;
+    maybeShowGoalPrompt();
+  }
+  // 同期で今月の目標（または記入済みの記録）が届いたら、すでに開いているポップアップは閉じる
+  function closeGoalPromptIfSatisfied() {
+    var overlay = document.getElementById("goalPromptOverlay");
+    if (!overlay || overlay.getAttribute("aria-hidden") === "true") return;
+    var key = currentMonthKey();
+    if (state.goalPromptMonth === key || getMonthlyGoals().some(function (g) { return g.month === key; })) {
+      overlay.setAttribute("aria-hidden", "true");
+    }
+  }
   function goalPromptListHtml() {
     var goals = getMonthlyGoals().filter(function (g) { return g.month === currentMonthKey(); });
     if (!goals.length) return "";
@@ -6378,6 +6415,7 @@
     document.getElementById("goalPromptOverlay").setAttribute("aria-hidden", "true");
   }
   function maybeShowGoalPrompt() {
+    if (goalPromptWaitingForSync) return;
     var today = todayDateInputValue();
     if (lastGoalPromptCheckDate === today) return;
     lastGoalPromptCheckDate = today;
@@ -6414,6 +6452,10 @@
   wireMonthlyGoalsCardOnce();
   wireGoalPromptOnce();
   renderAll();
+  if (window.claude && typeof window.claude.use === "function") {
+    goalPromptWaitingForSync = true;
+    setTimeout(releaseGoalPromptGate, 10000);
+  }
   maybeShowGoalPrompt();
   syncInit();
 })();
