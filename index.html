@@ -129,6 +129,20 @@
      タブだけは常に手が届くよう上部に固定する（ラッパーは display: contents にして、
      nav.tabs を body 基準で sticky にしている）。 */
   .app-top-fixed { display: contents; }
+  /* 2026-10-10：タブ＋「現在の状況」ミニバーをまとめて上部に固定する。ミニバーは作業中・中断中・
+     休憩中のときだけ表示し、どのタブを見ていても今の状況（プロジェクト・経過・集中サイクル残り）が分かる。 */
+  .sticky-bar { position: sticky; top: 0; z-index: 50; background: var(--page-plane); }
+  .mini-status { max-width: 920px; margin: 0 auto; padding: 7px 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); background: var(--run-bg-top); min-width: 0; }
+  .mini-status[hidden] { display: none; }
+  .mini-status.on-break { background: var(--break-bg-top); }
+  .mini-status.idle-break { background: var(--break-bg-top); }
+  .mini-status-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--mini-color, var(--series-2)); }
+  .mini-status.on-break .mini-status-dot { background: var(--series-4); }
+  .mini-status-state { flex: none; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
+  .mini-status-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-weight: 700; }
+  .mini-status-time { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+  .mini-status-cycle { flex: none; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--series-7); border: 1px solid var(--series-7); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .mini-status-cycle.is-low { color: var(--series-8); border-color: var(--series-8); }
   header.app-header { max-width: 920px; margin: 16px auto 12px; padding: 24px 20px 20px; background: var(--series-1); border-radius: 16px; position: relative; }
   header.app-header h1 { margin: 0 0 4px; padding-right: 0; font-size: 20px; font-weight: 800; color: #fff; }
   header.app-header p { margin: 0; padding-right: 112px; font-size: 13px; color: rgba(255,255,255,0.85); }
@@ -188,7 +202,7 @@
   .goal-prompt-footer { display: flex; justify-content: flex-end; }
   .goal-prompt-close-btn { appearance: none; border: none; background: var(--series-1); color: var(--on-series-1); font-family: inherit; font-size: 14px; font-weight: 800; padding: 11px 22px; border-radius: 10px; cursor: pointer; }
   .goal-prompt-close-btn:hover { opacity: 0.9; }
-  nav.tabs { position: sticky; top: 0; z-index: 50; max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav.tabs { max-width: 920px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 20px; background: var(--page-plane); border-bottom: 1px solid var(--border); overflow-x: auto; }
   nav.tabs button { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 999px; white-space: nowrap; }
   nav.tabs button.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
   main { max-width: 920px; margin: 0 auto; padding: 20px; }
@@ -798,6 +812,8 @@
     .hist-edit-field { flex: 1 1 100%; }
     .timer-display { font-size: 34px; }
     .status-card { min-height: 250px; }
+    .mini-status { padding: 6px 12px; gap: 8px; font-size: 12px; }
+    .mini-status-cycle { padding: 1px 7px; }
     /* 2026-10-10：スマホ幅では右上に固定していた集中サイクルのバッジ／変更欄が、中央の
        「現在の状況」見出しに重なってしまうため、カード上部の通常の流れ（見出しの上）に並べる。 */
     .focus-cycle-badge { position: static; order: -2; margin: 0 0 6px; }
@@ -868,6 +884,8 @@
   <h1>⏱️ Taskmark</h1>
 </header>
 
+<div class="sticky-bar">
+<div class="mini-status" id="miniStatus" hidden role="button" tabindex="0" aria-label="現在の状況（タップでダッシュボードへ）"></div>
 <nav class="tabs">
   <button data-tab="dashboard" class="active">ダッシュボード</button>
   <button data-tab="history">履歴</button>
@@ -875,6 +893,7 @@
   <button data-tab="names">名称管理</button>
   <button data-tab="data">データ管理</button>
 </nav>
+</div>
 </div>
 
 <main>
@@ -2373,6 +2392,23 @@
     });
   });
 
+  // ミニバーを押すと、ダッシュボードの「現在の状況」へ移動する
+  (function () {
+    var mini = document.getElementById("miniStatus");
+    if (!mini) return;
+    function goStatus() {
+      var dashBtn = document.querySelector('nav.tabs button[data-tab="dashboard"]');
+      if (dashBtn && !dashBtn.classList.contains("active")) dashBtn.click();
+      var card = document.getElementById("statusCard");
+      if (card) {
+        var barH = (document.querySelector(".sticky-bar") || {}).offsetHeight || 0;
+        window.scrollTo({ top: card.getBoundingClientRect().top + window.pageYOffset - barH - 8, behavior: "smooth" });
+      }
+    }
+    mini.addEventListener("click", goStatus);
+    mini.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goStatus(); } });
+  })();
+
   // ---- 通知トグル（ヘッダー右上）----
   // 2026-09-23追加。初回クリック時にブラウザの通知許可を求める（ユーザー操作の直後でないと
   // 許可ダイアログが出せないブラウザがあるため、必ずこのクリックハンドラの中で呼ぶ）。
@@ -2473,6 +2509,38 @@
   }
 
   // ---- status card (start / stop) ----
+  // 2026-10-10：上部に固定するミニバー。作業中／中断中／休憩中のときだけ表示する（毎秒tickからも更新）。
+  function renderMiniStatus() {
+    var el = document.getElementById("miniStatus");
+    if (!el) return;
+    var running = getRunningSession();
+    var onBreak = running ? null : getOnBreakSession();
+    var gBreak = (running || onBreak) ? null : getActiveGeneralBreak();
+    var html = "";
+    var cls = "mini-status";
+    if (running) {
+      el.style.setProperty("--mini-color", colorForProjectAndMemo(projectLabel(running), running.memo));
+      var label = projectLabel(running) + (running.memo ? "・" + running.memo : "");
+      var cycle = "";
+      if (state.focusStreakStartIso) {
+        var rem = focusCycleRemainingSec();
+        cycle = '<span class="mini-status-cycle' + (rem <= 300 ? " is-low" : "") + '">残り ' + formatMMSS(rem < 0 ? 0 : rem) + "</span>";
+      }
+      html = '<span class="mini-status-dot"></span><span class="mini-status-state">作業中</span><span class="mini-status-name">' + escapeHtml(label) + '</span><span class="mini-status-time">' + formatHMS(durationSecOf(running)) + "</span>" + cycle;
+    } else if (onBreak) {
+      cls += " on-break";
+      var label2 = projectLabel(onBreak) + (onBreak.memo ? "・" + onBreak.memo : "");
+      html = '<span class="mini-status-dot"></span><span class="mini-status-state">中断中</span><span class="mini-status-name">' + escapeHtml(label2) + '</span><span class="mini-status-time">' + formatHMS(elapsedSinceSec(onBreak.end)) + "</span>";
+    } else if (gBreak) {
+      cls += " on-break";
+      html = '<span class="mini-status-dot"></span><span class="mini-status-state">休憩中</span><span class="mini-status-name"></span><span class="mini-status-time">' + formatHMS(elapsedSinceSec(gBreak.start)) + "</span>";
+    }
+    if (!html) { el.hidden = true; el.innerHTML = ""; return; }
+    el.className = cls;
+    el.hidden = false;
+    el.innerHTML = html;
+  }
+
   function renderStatusCard() {
     var card = document.getElementById("statusCard");
     var running = getRunningSession();
@@ -3226,6 +3294,7 @@
         }
       }
     }
+    renderMiniStatus();
     updateScheduleLiveGauge();
   }
 
@@ -6192,6 +6261,7 @@
     populateProjectDatalist();
     renderMonthlyGoalsCard();
     renderStatusCard();
+    renderMiniStatus();
     renderPlanCard();
     syncQuickStartGate();
     syncNotifyToggleBtn();
