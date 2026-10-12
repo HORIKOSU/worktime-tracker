@@ -817,6 +817,18 @@
     .hist-edit-field { flex: 1 1 100%; }
     .timer-display { font-size: 34px; }
     .status-card { min-height: 250px; }
+    /* 2026-10-12：スマホでは「今日の予定」の編集／開始／削除ボタンが小さくて押しにくかったため、
+       タップしやすい大きさ（高さ40px以上）にする。開始ボタンは幅も広げて主役にする。 */
+    .plan-row-actions { gap: 8px; width: 100%; }
+    .plan-row-actions .plan-edit-btn, .plan-row-actions .plan-delete-btn { flex: 1 1 0; min-height: 40px; padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+    .plan-row-actions .plan-start-btn { order: -1; flex: 1 1 100%; min-height: 44px; padding: 10px 14px; font-size: 14px; border-radius: 8px; }
+    .plan-row-checkbox { width: 24px; height: 24px; }
+    /* 同じくスマホで小さかったボタン類（月の目標の前後／カレンダーの前後・今日／日表示・月表示／履歴・名称の編集・削除／絞り込みチップ）も押しやすい高さにする */
+    .monthly-goals-nav-btn { min-width: 36px; min-height: 36px; }
+    .cal-nav-btn, .cal-today-btn { min-height: 38px; min-width: 38px; }
+    .mode-toggle-btn { min-height: 36px; }
+    .hist-edit-btn, .hist-delete-btn, .name-edit-btn { min-height: 36px; min-width: 52px; font-size: 13px; }
+    .suggest-chip { min-height: 34px; }
     .mini-status { padding: 6px 12px; gap: 8px; font-size: 12px; }
     .mini-status-cycle { padding: 1px 7px; }
     /* 2026-10-10：スマホ幅では右上に固定していた集中サイクルのバッジ／変更欄が、中央の
