@@ -951,7 +951,7 @@
   .goal-view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--page-plane); }
   .goal-view-btn { border: none; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 11px; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
   .goal-view-btn.active { background: var(--series-1); color: #fff; }
-  .monthly-goals-list.goal-single { display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 6px 2px 10px; margin-bottom: 4px; outline: none; }
+  .monthly-goals-list.goal-single { position: relative; display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 6px 2px 10px; margin-bottom: 4px; outline: none; }
   .monthly-goals-list.goal-single::-webkit-scrollbar { display: none; }
   .monthly-goals-list.goal-single > .goal-card, .monthly-goals-list.goal-single > .monthly-goal-row-edit { flex: 0 0 min(100%, 520px); min-width: 0; scroll-snap-align: center; scroll-snap-stop: always; }
   .monthly-goals-list.goal-single > .goal-card { padding: 20px 18px; gap: 18px; opacity: 0.45; transform: scale(0.96); transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.2s ease, background 0.3s ease; }
@@ -970,7 +970,28 @@
   .goal-dots { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 60%; }
   .goal-dot { width: 22px; height: 22px; padding: 0; border: none; background: transparent; cursor: pointer; position: relative; }
   .goal-dot::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 999px; background: var(--border-strong, var(--border)); transform: translate(-50%, -50%); transition: width 0.25s ease, background 0.25s ease; }
-  .goal-dot.active::after { width: 20px; background: var(--series-1); }
+  .goal-carousel-nav { --p: 1; }
+  /* 現在のドットが「次へ」までの残り時間のゲージを兼ねる */
+  .goal-dot { width: 28px; }
+  .goal-dot.active::after { width: 24px; background: var(--border); }
+  .goal-dot.active::before { content: ""; position: absolute; left: 2px; top: 50%; width: 24px; height: 8px; border-radius: 999px; background: var(--series-1); transform: translateY(-50%) scaleX(var(--p)); transform-origin: left center; z-index: 1; }
+  .goal-auto-btn { color: var(--text-secondary); }
+  .goal-auto-btn.on { color: var(--series-1); border-color: var(--series-1); }
+  .goal-auto-btn .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .goal-auto-btn:not(.on) .ic { fill: currentColor; }
+  .goal-card.goal-pop .monthly-goal-text { animation: goalTextIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  .goal-card.goal-pop .monthly-goal-seq { animation: goalSeqIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+  .goal-card.goal-pop .goal-ring { animation: goalRingIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s backwards; }
+  .goal-card.goal-pop .monthly-goal-rate-btn { animation: goalBtnIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  .goal-card.goal-pop .monthly-goal-rate-btn:nth-child(1) { animation-delay: 0.10s; }
+  .goal-card.goal-pop .monthly-goal-rate-btn:nth-child(2) { animation-delay: 0.15s; }
+  .goal-card.goal-pop .monthly-goal-rate-btn:nth-child(3) { animation-delay: 0.20s; }
+  .goal-card.goal-pop .monthly-goal-rate-btn:nth-child(4) { animation-delay: 0.25s; }
+  .goal-card.goal-pop .monthly-goal-rate-btn:nth-child(5) { animation-delay: 0.30s; }
+  @keyframes goalTextIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+  @keyframes goalSeqIn { from { opacity: 0; transform: scale(0.3) rotate(-40deg); } to { opacity: 1; transform: none; } }
+  @keyframes goalRingIn { from { opacity: 0; transform: scale(0.6) rotate(-90deg); } to { opacity: 1; transform: none; } }
+  @keyframes goalBtnIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .goal-counter { font-size: 12px; font-weight: 700; color: var(--text-secondary); min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
   @media (max-width: 600px) {
     .monthly-goals-list.goal-single > .goal-card, .monthly-goals-list.goal-single > .monthly-goal-row-edit { flex-basis: 100%; }
@@ -979,6 +1000,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .monthly-goals-list.goal-single > .goal-card, .goal-dot::after { transition: none !important; }
+    .goal-card.goal-pop, .goal-card.goal-pop * { animation: none !important; }
   }
 </style>
 </head>
@@ -1315,7 +1337,8 @@
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
     bellOff: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/><path d="M3 3l18 18"/>',
     coffee: '<path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M6 2v2M10 2v2M14 2v2"/>',
-    pause: '<path d="M8 5v14M16 5v14"/>'
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    play: '<path d="M7 4.5l12 7.5-12 7.5z"/>'
   };
   function icon(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (IC_PATHS[name] || "") + "</svg>"; }
   var THEME_KEY = "worktimeTrackerTheme_v1";
@@ -2060,7 +2083,8 @@
       (isSingle && goals.length > 1
         ? '<div class="goal-carousel-nav" id="goalCarouselNav"><button type="button" class="goal-nav-btn" data-goal-slide="prev" aria-label="前の目標">‹</button><div class="goal-dots">' +
           goals.map(function (g, i) { return '<button type="button" class="goal-dot" data-goal-dot="' + i + '" aria-label="' + (i + 1) + '枚目"></button>'; }).join("") +
-          '</div><span class="goal-counter" id="goalCounter"></span><button type="button" class="goal-nav-btn" data-goal-slide="next" aria-label="次の目標">›</button></div>'
+          '</div><span class="goal-counter" id="goalCounter"></span><button type="button" class="goal-nav-btn" data-goal-slide="next" aria-label="次の目標">›</button>' +
+          (goalReducedMotion() ? '' : '<button type="button" class="goal-nav-btn goal-auto-btn' + (goalAutoOn ? ' on' : '') + '" data-goal-auto="toggle" aria-pressed="' + (goalAutoOn ? 'true' : 'false') + '" aria-label="自動で切り替え" title="' + (goalAutoOn ? '自動切り替え中（クリックで停止）' : '自動切り替えは停止中（クリックで再開）') + '">' + icon(goalAutoOn ? 'pause' : 'play') + '</button>') + '</div>'
         : '') +
       (isCurrentMonth && !isLocked
         ? '<div class="monthly-goal-add-row">' +
@@ -2096,6 +2120,13 @@
   }
   function goalCarouselUpdateUi(track, idx, total) {
     for (var i = 0; i < track.children.length; i++) track.children[i].classList.toggle("is-active", i === idx);
+    var activeCard = track.children[idx];
+    var activeId = activeCard ? activeCard.getAttribute("data-goal-id") : null;
+    if (activeId !== goalShownId) {
+      goalShownId = activeId;
+      goalAuto.elapsed = 0;
+      if (activeCard && !goalReducedMotion()) goalCarouselPop(activeCard);
+    }
     var dots = document.querySelectorAll("#goalCarouselNav .goal-dot");
     dots.forEach(function (d, i) { d.classList.toggle("active", i === idx); });
     var counter = document.getElementById("goalCounter");
@@ -2117,20 +2148,109 @@
     goalCarouselIdx = idx; goalCarouselId = goals[idx].id;
     goalCarouselUpdateUi(track, idx, goals.length);
     goalCarouselScrollTo(track, idx, false);
+    var settleUntil = Date.now() + 350; // 描画直後の位置合わせ（スナップ）中の揺れで、選択中のカードを上書きしない
     var raf = 0;
     track.addEventListener("scroll", function () {
       if (raf) return;
       raf = requestAnimationFrame(function () {
         raf = 0;
+        // 再描画で差し替わった古いトラック（scrollLeft=0）の遅れた通知で、現在位置を上書きしない
+        if (!track.isConnected || track !== goalCarouselTrack()) return;
+        if (Date.now() < settleUntil) return;
         var c = goalCarouselNearest(track);
         if (c !== goalCarouselIdx && goals[c]) { goalCarouselIdx = c; goalCarouselId = goals[c].id; goalCarouselUpdateUi(track, c, goals.length); }
       });
     }, { passive: true });
+    track.addEventListener("touchstart", function () { goalAuto.touching = true; }, { passive: true });
+    var releaseTouch = function () { goalAuto.touching = false; goalAuto.elapsed = 0; };
+    track.addEventListener("touchend", releaseTouch, { passive: true });
+    track.addEventListener("touchcancel", releaseTouch, { passive: true });
+    goalAutoStart();
     track.addEventListener("keydown", function (e) {
       if (e.target !== track) return;
       if (e.key === "ArrowRight") { e.preventDefault(); goalCarouselGo(goalCarouselIdx + 1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); goalCarouselGo(goalCarouselIdx - 1); }
     });
+  }
+  // 切り替わったカードの動き：文字・円グラフ・ボタンが順にふわっと入り、円グラフは0%から描き直す
+  function goalCarouselPop(card) {
+    card.classList.remove("goal-pop");
+    void card.offsetWidth;
+    card.classList.add("goal-pop");
+    setTimeout(function () { card.classList.remove("goal-pop"); }, 900);
+    var ring = card.querySelector(".goal-ring");
+    if (!ring) return;
+    var to = parseInt(ring.getAttribute("data-to"), 10) || 0;
+    var fill = ring.querySelector(".goal-ring-fill"), num = ring.querySelector(".goal-ring-num");
+    if (!fill || !num || to === 0) return;
+    fill.style.transition = "none";
+    fill.setAttribute("stroke-dashoffset", "100");
+    num.textContent = "0%";
+    void fill.getBoundingClientRect();
+    fill.style.transition = "";
+    setTimeout(function () {
+      if (!ring.isConnected) return;
+      fill.setAttribute("stroke-dashoffset", String(100 - to));
+      goalCountUp(num, 0, to, 700);
+    }, 120);
+  }
+  // ---- 自動切り替え（一定時間ごとに次の目標へ）----
+  // 次の間は止める：マウスが乗っている／タッチ中／入力欄や編集中／タブが見えていない／別のタブ表示中。
+  // 手動で切り替えたら、そこからまた数え直す。最後の次は1枚目へフェードで戻る。
+  function goalAutoActive() {
+    var track = goalCarouselTrack();
+    return !!(track && track.classList.contains("goal-single") && track.children.length > 1 && goalAutoOn && !goalReducedMotion());
+  }
+  function goalAutoSetProgress(p) {
+    var nav = document.getElementById("goalCarouselNav");
+    if (nav) nav.style.setProperty("--p", String(Math.max(0, Math.min(1, p))));
+  }
+  function goalAutoPaused(track) {
+    if (document.hidden || track.offsetParent === null) return true;
+    if (goalAuto.touching || monthlyGoalEditingId) return true;
+    var canHover = false;
+    try { canHover = window.matchMedia("(hover: hover)").matches; } catch (e) {}
+    if (canHover) {
+      var nav = document.getElementById("goalCarouselNav");
+      if (track.matches(":hover") || (nav && nav.matches(":hover"))) return true;
+    }
+    var ae = document.activeElement;
+    if (ae && ae.matches && ae.matches("#monthlyGoalsCard input, #monthlyGoalsCard textarea")) return true;
+    return false;
+  }
+  function goalAutoStart() {
+    if (goalAuto.raf) { cancelAnimationFrame(goalAuto.raf); goalAuto.raf = 0; }
+    goalAuto.last = 0;
+    if (!goalAutoActive()) { goalAutoSetProgress(1); return; }
+    goalAutoSetProgress(goalAuto.elapsed / GOAL_AUTO_MS);
+    function tick(ts) {
+      goalAuto.raf = 0;
+      var track = goalCarouselTrack();
+      if (!track || !track.isConnected || !goalAutoActive()) return;
+      var dt = goalAuto.last ? ts - goalAuto.last : 0;
+      goalAuto.last = ts;
+      if (dt > 250) dt = 0;
+      if (!goalAutoPaused(track)) goalAuto.elapsed += dt;
+      goalAutoSetProgress(goalAuto.elapsed / GOAL_AUTO_MS);
+      if (goalAuto.elapsed >= GOAL_AUTO_MS) {
+        goalAuto.elapsed = 0;
+        goalAutoAdvance(track);
+      }
+      goalAuto.raf = requestAnimationFrame(tick);
+    }
+    goalAuto.raf = requestAnimationFrame(tick);
+  }
+  function goalAutoAdvance(track) {
+    var n = track.children.length;
+    if (goalCarouselIdx + 1 < n) { goalCarouselGo(goalCarouselIdx + 1); return; }
+    // 最後 → 1枚目：全部を横切らず、フェードして戻る
+    if (!track.animate) { goalCarouselScrollTo(track, 0, true); return; }
+    var out = track.animate([{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(-28px)" }], { duration: 220, easing: "ease-in", fill: "forwards" });
+    out.onfinish = function () {
+      goalCarouselScrollTo(track, 0, false);
+      out.cancel();
+      track.animate([{ opacity: 0, transform: "translateX(28px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+    };
   }
   function goalCarouselGo(i) {
     var track = goalCarouselTrack();
@@ -2144,7 +2264,11 @@
   // 選択は端末ごとに保存（同期しない）。既定は1枚ずつ。
   var GOAL_VIEW_KEY = "worktimeTrackerGoalView_v1";
   var goalViewMode = (function () { try { return localStorage.getItem(GOAL_VIEW_KEY) === "list" ? "list" : "single"; } catch (e) { return "single"; } })();
-  var goalCarouselId = null, goalCarouselIdx = 0, goalJumpToLast = false;
+  var goalCarouselId = null, goalCarouselIdx = 0, goalJumpToLast = false, goalShownId = null;
+  // 2026-10-13：1枚ずつ表示は、一定時間（6秒）ごとに自動で次へ。端末ごとに停止／再開でき、設定は保存する。
+  var GOAL_AUTO_KEY = "worktimeTrackerGoalAuto_v1", GOAL_AUTO_MS = 6000;
+  var goalAutoOn = (function () { try { return localStorage.getItem(GOAL_AUTO_KEY) !== "off"; } catch (e) { return true; } })();
+  var goalAuto = { elapsed: 0, last: 0, raf: 0, touching: false };
   function goalReducedMotion() {
     try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
   }
@@ -2297,7 +2421,7 @@
         else if (dir === "next") monthlyGoalViewMonth = shiftMonthKey(base, 1);
         else monthlyGoalViewMonth = null;
         monthlyGoalEditingId = null;
-        goalCarouselId = null; goalCarouselIdx = 0;
+        goalCarouselId = null; goalCarouselIdx = 0; goalShownId = null; goalAuto.elapsed = 0;
         renderMonthlyGoalsCard();
         return;
       }
@@ -2331,6 +2455,14 @@
       if (slideBtn) { goalCarouselGo(goalCarouselIdx + (slideBtn.getAttribute("data-goal-slide") === "next" ? 1 : -1)); return; }
       var dotBtn = evt.target.closest ? evt.target.closest("[data-goal-dot]") : null;
       if (dotBtn) { goalCarouselGo(parseInt(dotBtn.getAttribute("data-goal-dot"), 10) || 0); return; }
+      var autoBtn = evt.target.closest ? evt.target.closest("[data-goal-auto]") : null;
+      if (autoBtn) {
+        goalAutoOn = !goalAutoOn;
+        try { localStorage.setItem(GOAL_AUTO_KEY, goalAutoOn ? "on" : "off"); } catch (e) {}
+        goalAuto.elapsed = 0;
+        renderMonthlyGoalsCard();
+        return;
+      }
       var viewBtn = evt.target.closest ? evt.target.closest("[data-goal-view]") : null;
       if (viewBtn) {
         goalViewMode = viewBtn.getAttribute("data-goal-view") === "list" ? "list" : "single";
