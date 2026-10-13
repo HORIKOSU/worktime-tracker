@@ -908,8 +908,8 @@
   .goal-card .monthly-goal-drag-handle { flex: none; width: 14px; }
   .goal-ring { position: relative; flex: none; width: 60px; height: 60px; display: grid; place-items: center; }
   .goal-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .goal-ring-track { fill: none; stroke: var(--gridline); stroke-width: 5; }
-  .goal-ring-fill { fill: none; stroke: var(--series-1); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+  .goal-ring-track { fill: none; stroke: color-mix(in srgb, var(--text-primary) 16%, transparent); stroke-width: 6; }
+  .goal-ring-fill { fill: none; stroke: var(--series-1); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
   .goal-ring-num { position: relative; font-size: 12px; letter-spacing: -0.02em; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .goal-card.is-full .goal-ring-num { color: var(--series-1); }
   .goal-card-bottom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -951,9 +951,9 @@
   .goal-view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--page-plane); }
   .goal-view-btn { border: none; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 11px; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
   .goal-view-btn.active { background: var(--series-1); color: #fff; }
-  .monthly-goals-list.goal-single { position: relative; display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 6px 2px 10px; margin-bottom: 4px; outline: none; }
+  .monthly-goals-list.goal-single { position: relative; display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 4px 0 10px; margin-bottom: 4px; outline: none; }
   .monthly-goals-list.goal-single::-webkit-scrollbar { display: none; }
-  .monthly-goals-list.goal-single > .goal-card, .monthly-goals-list.goal-single > .monthly-goal-row-edit { flex: 0 0 min(100%, 520px); min-width: 0; scroll-snap-align: center; scroll-snap-stop: always; }
+  .monthly-goals-list.goal-single > .goal-card, .monthly-goals-list.goal-single > .monthly-goal-row-edit { flex: 0 0 100%; min-width: 0; scroll-snap-align: center; scroll-snap-stop: always; }
   .monthly-goals-list.goal-single > .goal-card { padding: 20px 18px; gap: 18px; opacity: 0.45; transform: scale(0.96); transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.2s ease, background 0.3s ease; }
   .monthly-goals-list.goal-single > .goal-card.is-active { opacity: 1; transform: none; }
   .monthly-goals-list.goal-single > .goal-card.done.is-active { opacity: 0.6; }
@@ -967,14 +967,18 @@
   .goal-nav-btn:hover:not(:disabled) { border-color: var(--series-1); }
   .goal-nav-btn:active:not(:disabled) { transform: scale(0.9); }
   .goal-nav-btn:disabled { opacity: 0.3; cursor: default; }
-  .goal-dots { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 60%; }
-  .goal-dot { width: 22px; height: 22px; padding: 0; border: none; background: transparent; cursor: pointer; position: relative; }
-  .goal-dot::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 999px; background: var(--border-strong, var(--border)); transform: translate(-50%, -50%); transition: width 0.25s ease, background 0.25s ease; }
+  /* 目標ごとの区切りバー（ストーリー風）。表示中の区間が「次へ」までの残り時間で左から塗られ、見終わった区間は塗りつぶし */
   .goal-carousel-nav { --p: 1; }
-  /* 現在のドットが「次へ」までの残り時間のゲージを兼ねる */
-  .goal-dot { width: 28px; }
-  .goal-dot.active::after { width: 24px; background: var(--border); }
-  .goal-dot.active::before { content: ""; position: absolute; left: 2px; top: 50%; width: 24px; height: 8px; border-radius: 999px; background: var(--series-1); transform: translateY(-50%) scaleX(var(--p)); transform-origin: left center; z-index: 1; }
+  .goal-dots { flex: 1 1 0; min-width: 0; max-width: 320px; display: flex; align-items: center; gap: 5px; }
+  .goal-dot { flex: 1 1 0; min-width: 6px; height: 26px; padding: 0; border: none; background: transparent; cursor: pointer; position: relative; }
+  .goal-dot::after, .goal-dot::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 7px; margin-top: -3.5px; border-radius: 999px; }
+  .goal-dot::after { background: color-mix(in srgb, var(--text-primary) 20%, transparent); }
+  .goal-dot::before { z-index: 1; background: var(--series-1); transform: scaleX(0); transform-origin: left center; }
+  .goal-dot.past::before { transform: scaleX(1); opacity: 0.55; }
+  .goal-dot.active::before { transform: scaleX(var(--p)); opacity: 1; }
+  .goal-dot.active::after { height: 9px; margin-top: -4.5px; }
+  .goal-dot.active::before { height: 9px; margin-top: -4.5px; }
+  .goal-dot:hover::after { background: color-mix(in srgb, var(--text-primary) 32%, transparent); }
   .goal-auto-btn { color: var(--text-secondary); }
   .goal-auto-btn.on { color: var(--series-1); border-color: var(--series-1); }
   .goal-auto-btn .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -999,8 +1003,28 @@
     .goal-view-btn { padding: 6px 12px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .monthly-goals-list.goal-single > .goal-card, .goal-dot::after { transition: none !important; }
+    .monthly-goals-list.goal-single > .goal-card { transition: none !important; }
     .goal-card.goal-pop, .goal-card.goal-pop * { animation: none !important; }
+  }
+  /* ---- 目標の中身（案件名・業務内容）を目立たせる ---- */
+  .goal-card .monthly-goal-text { font-size: 20px; font-weight: 800; line-height: 1.3; letter-spacing: 0.01em; color: var(--text-primary); }
+  .goal-card .monthly-goal-text .monthly-goal-memo { font-size: 15px; font-weight: 700; margin-top: 5px; color: var(--text-primary); opacity: 0.8; line-height: 1.4; }
+  .goal-card .monthly-goal-seq { width: 32px; height: 32px; font-size: 15px; }
+  .goal-card .number-badge { font-size: 11px; padding: 2px 7px; vertical-align: 3px; }
+  .monthly-goals-list.goal-single > .goal-card { padding: 24px 22px 20px; background: linear-gradient(135deg, color-mix(in srgb, var(--series-1) 9%, var(--page-plane)), var(--page-plane) 65%); }
+  .monthly-goals-list.goal-single > .goal-card.done { background: var(--page-plane); }
+  .monthly-goals-list.goal-single .goal-card .monthly-goal-text { font-size: 28px; line-height: 1.25; }
+  .monthly-goals-list.goal-single .goal-card .monthly-goal-text .monthly-goal-memo { font-size: 17px; margin-top: 8px; }
+  .monthly-goals-list.goal-single .goal-card .monthly-goal-seq { width: 38px; height: 38px; font-size: 18px; }
+  .monthly-goals-list.goal-single .goal-ring { width: 84px; height: 84px; }
+  .monthly-goals-list.goal-single .goal-ring-num { font-size: 15px; }
+  @media (max-width: 600px) {
+    .goal-card .monthly-goal-text { font-size: 18px; }
+    .monthly-goals-list.goal-single .goal-card .monthly-goal-text { font-size: 23px; }
+    .monthly-goals-list.goal-single .goal-card .monthly-goal-text .monthly-goal-memo { font-size: 15px; }
+    .monthly-goals-list.goal-single > .goal-card { padding: 20px 16px 16px; }
+    .monthly-goals-list.goal-single .goal-card .monthly-goal-seq { width: 34px; height: 34px; font-size: 16px; }
+    .monthly-goals-list.goal-single .goal-ring { width: 72px; height: 72px; }
   }
 </style>
 </head>
@@ -2128,7 +2152,7 @@
       if (activeCard && !goalReducedMotion()) goalCarouselPop(activeCard);
     }
     var dots = document.querySelectorAll("#goalCarouselNav .goal-dot");
-    dots.forEach(function (d, i) { d.classList.toggle("active", i === idx); });
+    dots.forEach(function (d, i) { d.classList.toggle("active", i === idx); d.classList.toggle("past", i < idx); });
     var counter = document.getElementById("goalCounter");
     if (counter) counter.textContent = (idx + 1) + " / " + total;
     var prev = document.querySelector('#goalCarouselNav [data-goal-slide="prev"]'), next = document.querySelector('#goalCarouselNav [data-goal-slide="next"]');
