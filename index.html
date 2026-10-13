@@ -123,6 +123,8 @@
     --plan-card-border: rgba(184,116,0,0.45);
   }
   * { box-sizing: border-box; }
+  /* 2026-10-13：ダブルタップでの拡大を無効化（ピンチ操作・スクロールは従来どおり）。個別に touch-action を指定している要素（ドラッグハンドル等）は、そちらが優先される */
+  html, body, * { touch-action: manipulation; }
   body { margin: 0; font-family: 'M PLUS Rounded 1c', system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
   /* 2026-09-16：タイトルの帯＋タブ切り替えを画面上部に固定表示（スクロールしても常にタブへ手が届くように）。
      header.app-header の上マージンをこのラッパーの padding-top に移し、sticky時に margin と
