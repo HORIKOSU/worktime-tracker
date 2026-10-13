@@ -1081,11 +1081,11 @@
   .status-card .fcb-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .status-card .fcb-label { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; color: var(--series-7); }
   .status-card .focus-cycle-badge-num { margin-left: 0; font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--series-7); font-variant-numeric: tabular-nums; }
-  .fcb-bar { height: 16px; border-radius: 999px; background: color-mix(in srgb, var(--series-7) 18%, transparent); overflow: hidden; }
-  .fcb-barrow { display: flex; align-items: center; gap: 10px; }
-  .fcb-barrow .fcb-bar { flex: 1 1 auto; min-width: 0; }
-  .status-card .fcb-pct { flex: none; min-width: 5em; text-align: right; font-size: 14px; font-weight: 800; color: var(--series-7); font-variant-numeric: tabular-nums; }
-  .status-card .focus-cycle-badge.is-low .fcb-pct { color: var(--series-8); }
+  .fcb-bar { position: relative; height: 26px; border-radius: 999px; background: color-mix(in srgb, var(--series-7) 18%, transparent); overflow: hidden; }
+  .status-card .fcb-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; background: linear-gradient(to right, #fff var(--p, 0%), var(--series-7) var(--p, 0%)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+  .status-card .focus-cycle-badge.is-low .fcb-pct { background-image: linear-gradient(to right, #fff var(--p, 0%), var(--series-8) var(--p, 0%)); }
+  :root:not(.viz-light) .status-card .fcb-pct { background-image: linear-gradient(to right, #1b1530 var(--p, 0%), var(--series-7) var(--p, 0%)); }
+  :root:not(.viz-light) .status-card .focus-cycle-badge.is-low .fcb-pct { background-image: linear-gradient(to right, #2a1010 var(--p, 0%), var(--series-8) var(--p, 0%)); }
   .fcb-bar i { display: block; height: 100%; border-radius: inherit; background: var(--series-7); transition: width 1s linear; }
   .status-card .focus-cycle-badge.is-low { background: color-mix(in srgb, var(--series-8) 8%, transparent); border-color: color-mix(in srgb, var(--series-8) 35%, transparent); }
   .status-card .focus-cycle-badge.is-low .fcb-label, .status-card .focus-cycle-badge.is-low .focus-cycle-badge-num { color: var(--series-8); }
@@ -3107,7 +3107,7 @@
         '<span class="status-badge running"><i class="sb-dot"></i>作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">今回</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
-        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-barrow"><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i></div><span class="fcb-pct" id="focusCycleBarPct">' + '経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span></div></div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i><span class="fcb-pct" id="focusCycleBarPct" style="--p:' + focusCycleBarPct(focusCycleRemainingSec()) + '%">経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span></div></div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
@@ -3796,7 +3796,7 @@
         var focusBarFillEl = document.getElementById("focusCycleBarFill");
         if (focusBarFillEl) focusBarFillEl.style.width = focusCycleBarPct(focusRemainingSec) + "%";
         var focusBarPctEl = document.getElementById("focusCycleBarPct");
-        if (focusBarPctEl) focusBarPctEl.textContent = "経過 " + Math.round(focusCycleBarPct(focusRemainingSec)) + "%";
+        if (focusBarPctEl) { focusBarPctEl.textContent = "経過 " + Math.round(focusCycleBarPct(focusRemainingSec)) + "%"; focusBarPctEl.style.setProperty("--p", focusCycleBarPct(focusRemainingSec) + "%"); }
       }
       renderStatRow();
       // 枠の秒数カウントゲージ（目盛りドット型）：1分（60秒）で一周し、次の分でまたゼロから
