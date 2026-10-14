@@ -1115,6 +1115,58 @@
   .status-card.day-start-card { background: color-mix(in srgb, var(--series-1) 5%, var(--surface-1)); }
   .status-card .day-start-question { font-size: 20px; font-weight: 800; margin: 2px 0 14px; }
   .status-card .break-elapsed-badge { top: 16px; right: 16px; }
+
+  /* 2026-10-14：休憩中（業務全体の休憩）の文言を目立たせる。「休憩中」を大きな見出しに（タイピング演出は従来どおり）。経過時間は小さめ */
+  #dashboard .status-card.break-general .status-badge.on-break { font-size: 30px; font-weight: 800; letter-spacing: 0.08em; padding: 10px 30px; margin-bottom: 12px; gap: 12px; background: linear-gradient(135deg, var(--series-4), color-mix(in srgb, var(--series-4) 70%, #c2410c)); color: #fff; box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 40%, transparent); }
+  .status-card.break-general .status-badge.on-break .ic { width: 38px; height: 38px; stroke-width: 2.2; }
+  #dashboard .status-card.break-general .break-elapsed-badge { position: static; order: -4; align-self: center; margin: 0 0 12px; font-size: 12px; font-weight: 700; padding: 3px 12px; letter-spacing: 0; color: color-mix(in srgb, var(--series-4) 78%, var(--text-primary)); border-width: 1px; }
+  #dashboard .status-card.break-general .timer-memo { font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+  /* 2026-10-14：タイピング演出をやめ、湯気が立ちのぼる＋バッジがふわっと光る動きに変更（休憩中バッジ） */
+  .status-card.break-general .status-badge.on-break { animation: brkGlow 2.8s ease-in-out infinite, brkFloat 3.6s ease-in-out infinite; }
+  #dashboard .status-card.break-general button.big-btn { animation: brkFloat 3.6s ease-in-out infinite; animation-delay: -1.2s; }
+  @keyframes brkFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  .status-card.break-general .status-badge.on-break .ic { overflow: visible; animation: brkCupBob 2.8s ease-in-out infinite; }
+  .status-card.break-general .status-badge.on-break .ic path:nth-of-type(3) { transform-box: fill-box; transform-origin: 50% 100%; stroke-dasharray: 2.2 1.8; animation: brkSteam 2.2s ease-in-out infinite; }
+  @keyframes brkSteam { 0% { opacity: 0; transform: translateY(5px) scaleY(0.5); stroke-dashoffset: 0; } 30% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px) scaleY(1.3); stroke-dashoffset: -8; } }
+  @keyframes brkCupBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
+  @keyframes brkGlow { 0%, 100% { box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 35%, transparent); } 50% { box-shadow: 0 8px 32px color-mix(in srgb, var(--series-4) 70%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { #dashboard .status-card.break-general button.big-btn, .status-card.break-general .status-badge.on-break, .status-card.break-general .status-badge.on-break .ic, .status-card.break-general .status-badge.on-break .ic path:nth-of-type(3) { animation: none; } }
+  @media (max-width: 600px) {
+    #dashboard .status-card.break-general .status-badge.on-break { font-size: 26px; padding: 9px 24px; }
+  }
+
+  /* 2026-10-14：「今日の業務を開始しますか？」画面だけの特別デザイン（朝日が昇るイメージ：暖色グラデ＋光の輪＋グロー付き開始ボタン） */
+  #dashboard .status-card.day-start-card { position: relative; overflow: hidden; padding: 28px 20px 26px; border-color: color-mix(in srgb, #f59e0b 45%, var(--border)); background: radial-gradient(120% 70% at 50% 0%, #fff0c9 0%, #ffe3c2 38%, color-mix(in srgb, #ffd9b0 40%, var(--surface-1)) 70%, var(--surface-1) 100%); }
+  #dashboard .status-card.day-start-card::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: -60px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,158,11,0.22), transparent); pointer-events: none; }
+  #dashboard .status-card.day-start-card > * { position: relative; z-index: 1; }
+  .day-start-card > h2 { color: #b45309; }
+  .day-start-card .ds-sun { position: relative; width: 76px; height: 76px; margin: 6px 0 22px; background: linear-gradient(145deg, #fbbf24, #ea580c); color: #fff; box-shadow: 0 6px 22px rgba(234,88,12,0.35); }
+  .status-card .day-start-card .ds-sun, .status-card.day-start-card .status-icon-circle.idle.ds-sun { width: 76px; height: 76px; background: linear-gradient(145deg, #fbbf24, #ea580c); color: #fff; }
+  .status-card.day-start-card .ds-sun .ic { width: 38px; height: 38px; stroke-width: 2; animation: dsSunSpin 24s linear infinite; }
+  .ds-sun::before, .ds-sun::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(245,158,11,0.55); animation: dsHalo 3.2s ease-out infinite; pointer-events: none; }
+  .ds-sun::after { animation-delay: 1.6s; }
+  #dashboard .status-card.day-start-card .ds-sun { margin: 6px 0 26px; }
+  .day-start-card .ds-date { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.14em; color: #b45309; font-variant-numeric: tabular-nums; }
+  .day-start-card .ds-greet { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: #92400e; }
+  #dashboard .status-card.day-start-card .day-start-question { margin: 10px 0 4px; font-size: 24px; font-weight: 800; color: #7c2d12; letter-spacing: 0.01em; }
+  .day-start-card .big-btn { margin-top: 18px; max-width: 340px; padding: 16px 22px; font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #d97706, #c2410c); color: #fff; border-radius: 999px; box-shadow: 0 8px 22px rgba(194,65,12,0.35); animation: dsBtnGlow 2.6s ease-in-out infinite; transition: transform 0.15s; }
+  #dashboard .day-start-card button.big-btn, #dashboard .day-start-card button.big-btn.focus-count-btn { border: none; background: linear-gradient(135deg, #d97706, #c2410c); color: #fff; }
+  #dashboard .day-start-card button.big-btn:hover { background: linear-gradient(135deg, #e08a0b, #d04a14); color: #fff; opacity: 1; transform: translateY(-1px); }
+  .day-start-card .big-btn:active { transform: scale(0.98); }
+  .day-start-card .generated-note { color: #9a6a3a; }
+  :root:not(.viz-light) #dashboard .status-card.day-start-card { border-color: rgba(251,191,36,0.35); background: radial-gradient(120% 80% at 50% 100%, rgba(234,88,12,0.28) 0%, rgba(120,53,15,0.18) 45%, transparent 75%), linear-gradient(180deg, #1c2640 0%, #26283f 60%, var(--surface-1) 100%); }
+  :root:not(.viz-light) .day-start-card > h2, :root:not(.viz-light) .day-start-card .ds-date { color: #fbbf24; }
+  :root:not(.viz-light) .day-start-card .ds-greet { color: #fcd9a0; }
+  :root:not(.viz-light) #dashboard .status-card.day-start-card .day-start-question { color: #fff4dc; }
+  :root:not(.viz-light) .day-start-card .generated-note { color: var(--text-muted); }
+  @keyframes dsHalo { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.75); opacity: 0; } }
+  @keyframes dsSunSpin { to { transform: rotate(360deg); } }
+  @keyframes dsBtnGlow { 0%, 100% { box-shadow: 0 8px 22px rgba(194,65,12,0.30); } 50% { box-shadow: 0 8px 30px rgba(245,158,11,0.60); } }
+  @media (prefers-reduced-motion: reduce) { .ds-sun::before, .ds-sun::after, .day-start-card .ds-sun .ic, .day-start-card .big-btn { animation: none; } }
+  @media (max-width: 600px) {
+    #dashboard .status-card.day-start-card { padding: 24px 14px 22px; }
+    #dashboard .status-card.day-start-card .day-start-question { font-size: 21px; }
+  }
   @media (max-width: 600px) {
     .status-card { padding: 18px 14px 16px; }
     .status-card .focus-cycle-badge { margin: 12px 0 0; padding: 14px 14px 16px; }
@@ -2778,6 +2830,18 @@
   }
   // 今日、記録（セッション）が1件でもあるかどうか。「今日はまだ何も始めていない」状態を
   // 判定するために使う（＝「今日の業務を開始しますか？」の表示条件）。
+  // 「今日の業務を開始しますか？」画面用：日付表示と時間帯のあいさつ（2026-10-14：この画面だけ特別デザインに）
+  function dayStartDateLabel() {
+    var d = new Date();
+    return (d.getMonth() + 1) + "月" + d.getDate() + "日（" + ["日", "月", "火", "水", "木", "金", "土"][d.getDay()] + "）";
+  }
+  function dayStartGreeting() {
+    var h = new Date().getHours();
+    if (h < 4) return "おつかれさまです";
+    if (h < 11) return "おはようございます";
+    if (h < 18) return "こんにちは";
+    return "こんばんは";
+  }
   function todayHasAnySession() {
     var today = todayDateInputValue();
     return state.sessions.some(function (s) { return s.start && s.start.slice(0, 10) === today; });
@@ -3207,17 +3271,15 @@
       });
     } else if (getActiveGeneralBreak()) {
       var activeGeneralBreak = getActiveGeneralBreak();
-      card.className = "card status-card on-break";
+      card.className = "card status-card on-break break-general";
       card.style.removeProperty("--project-color");
       card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle on-break">' + icon("coffee") + '</div>' +
-        '<span class="status-badge on-break">' + icon("coffee") + ' <span class="badge-typing">休憩中</span></span>' +
-        '<div class="timer-project">業務全体の休憩中</div>' +
+        '<span class="status-badge on-break">' + icon("coffee") + ' <span class="badge-text">休憩中</span></span>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
         '<div class="break-elapsed-badge" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
-        '<p class="generated-note" style="text-align:center; margin-top:4px;">タスクに紐づかない休憩のため、作業時間としては記録されません。</p>' +
         breakTipHtml() +
         '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
@@ -3234,7 +3296,9 @@
       card.style.removeProperty("--project-color-text");
       card.innerHTML =
         '<h2>現在の状況</h2>' +
-        '<div class="status-icon-circle idle">' + icon("sun") + '</div>' +
+        '<div class="status-icon-circle idle ds-sun">' + icon("sun") + '</div>' +
+        '<p class="ds-date">' + escapeHtml(dayStartDateLabel()) + '</p>' +
+        '<p class="ds-greet">' + escapeHtml(dayStartGreeting()) + '</p>' +
         '<p class="day-start-question">今日の業務を開始しますか？</p>' +
         (focusCountArmed ? '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' : focusGateButtonHtml("big-btn")) +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「ルーティン」で開始します。</p>';
