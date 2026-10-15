@@ -439,8 +439,10 @@
      2026-09-18：外にはみ出さない内側リング（B案）に変更。プロジェクトカラーの枠線と混ざって
      見えにくくならないよう、ゲージ自体はプロジェクトカラーに依存しない固定のアンバー色＋発光で目立たせる。 */
   .status-gauge-frame { position: absolute; pointer-events: none; overflow: visible; }
-  .status-gauge-frame-track { fill: none; stroke: var(--gauge-track); stroke-width: 4; }
-  .status-gauge-frame-fill { fill: none; stroke: var(--series-4); stroke-width: 4; stroke-linecap: round; }
+  .status-gauge-frame-track { fill: none; stroke: var(--gauge-track); stroke-width: 6; }
+  /* 2026-10-15：外周ゲージをA案（太め＋黄→オレンジのグラデ＋光＋先端の白ドット）に更新 */
+  .status-gauge-frame-fill { fill: none; stroke: url(#statusGaugeGrad); stroke: var(--series-4); stroke: url(#statusGaugeGrad); stroke-width: 6; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.7)); }
+  .status-gauge-frame-head { fill: #fff; stroke: #ea580c; stroke-width: 3; filter: drop-shadow(0 0 6px rgba(234, 88, 12, 0.75)); }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -1044,7 +1046,7 @@
   /* 現在の状況：機能はそのままに、枠・影を細く控えめに */
   #dashboard .status-card { border-width: 1px; padding: 14px 16px; margin-bottom: 14px; box-shadow: none; }
   #dashboard .status-card.running, #dashboard .status-card.on-break { border-width: 1px; }
-  #dashboard .status-gauge-frame-track, #dashboard .status-gauge-frame-fill { stroke-width: 3; }
+  #dashboard .status-gauge-frame-track, #dashboard .status-gauge-frame-fill { stroke-width: 6; }
   /* ほかのカード：見出しを小さく、枠を薄く */
   #dashboard .dashboard-top-grid .card, #dashboard > .card:not(.monthly-goals-card):not(.status-card) { padding: 14px 16px; border-radius: 14px; background: var(--surface-1); box-shadow: none; }
   #dashboard .dashboard-top-grid .card h2, #dashboard > .card:not(.monthly-goals-card):not(.status-card) h2 { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 10px; }
@@ -3050,7 +3052,7 @@
     var w = card.offsetWidth, h = card.offsetHeight;
     if (!w || !h) return;
     var outset = 0;
-    var strokeW = 4;
+    var strokeW = 6;
     var svgW = w + outset * 2;
     var svgH = h + outset * 2;
     var rectX = strokeW / 2;
@@ -3073,15 +3075,53 @@
     fillRect.dataset.perimeter = String(perimeter);
     fillRect.style.strokeDasharray = String(perimeter);
     fillRect.style.strokeDashoffset = String(perimeter);
+    renderStatusGaugeAt(statusGaugeCurrentValue());
   }
-  function updateStatusGaugeFrame(sessionElapsedSec) {
+  // 2026-10-15：「1秒ずつ進んでいるが、スムーズにしたい」とのご要望。1秒ごとの更新（tick）で受け取った
+  // 経過秒数を基準に、描画フレームごとに「基準から経ったミリ秒」を足して枠と先端ドットを連続的に動かす。
+  // 次のtickが来るまで最大1秒ぶんだけ先読みするので、後戻りはしない。
+  // 「視覚効果を減らす」設定のときは従来どおり1秒ごとに動かす。
+  var statusGaugeBaseSec = null;
+  var statusGaugeBaseStamp = 0;
+  var statusGaugeSmoothRaf = 0;
+  function statusGaugeReducedMotion() {
+    try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
+  }
+  function statusGaugeCurrentValue() {
+    if (statusGaugeBaseSec === null) return null;
+    if (statusGaugeReducedMotion()) return statusGaugeBaseSec;
+    var frac = (performance.now() - statusGaugeBaseStamp) / 1000;
+    if (frac < 0) frac = 0; else if (frac > 1) frac = 1;
+    return statusGaugeBaseSec + frac;
+  }
+  function renderStatusGaugeAt(value) {
+    if (value === null) return;
     var fillRect = document.getElementById("statusGaugeFrameFill");
     if (!fillRect) return;
     var perimeter = parseFloat(fillRect.dataset.perimeter || "0");
     if (!perimeter) return;
-    var gaugeSec = sessionElapsedSec % 60;
-    var pct = gaugeSec / 60;
+    var pct = (value % 60) / 60;
     fillRect.style.strokeDashoffset = (perimeter * (1 - pct)).toFixed(2);
+    // 先端の白いドットを、描いた分の終点に置く
+    var headEl = document.getElementById("statusGaugeFrameHead");
+    if (headEl && fillRect.getPointAtLength) {
+      var headPt = fillRect.getPointAtLength(perimeter * pct);
+      headEl.setAttribute("cx", headPt.x.toFixed(1));
+      headEl.setAttribute("cy", headPt.y.toFixed(1));
+    }
+  }
+  function updateStatusGaugeFrame(sessionElapsedSec) {
+    statusGaugeBaseSec = sessionElapsedSec;
+    statusGaugeBaseStamp = performance.now();
+    renderStatusGaugeAt(sessionElapsedSec);
+    if (!statusGaugeSmoothRaf && !statusGaugeReducedMotion()) statusGaugeSmoothRaf = requestAnimationFrame(statusGaugeSmoothLoop);
+  }
+  function statusGaugeSmoothLoop() {
+    statusGaugeSmoothRaf = 0;
+    if (statusGaugeReducedMotion()) return;
+    if (document.getElementById("statusGaugeFrameFill") && !document.hidden) renderStatusGaugeAt(statusGaugeCurrentValue());
+    // 作業中カードが無いときは止めておき、次の updateStatusGaugeFrame で再開する
+    if (document.getElementById("statusGaugeFrameFill")) statusGaugeSmoothRaf = requestAnimationFrame(statusGaugeSmoothLoop);
   }
   var statusGaugeResizeTimer = null;
   function scheduleStatusGaugeLayout() {
@@ -3167,7 +3207,7 @@
       card.style.setProperty("--project-color", runningProjectColor);
       card.style.setProperty("--project-color-text", readableTextColor(runningProjectColor, 0.68));
       card.innerHTML =
-        '<svg class="status-gauge-frame" id="statusGaugeFrame"><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect></svg>' +
+        '<svg class="status-gauge-frame" id="statusGaugeFrame"><defs><linearGradient id="statusGaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient></defs><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect><circle class="status-gauge-frame-head" id="statusGaugeFrameHead" r="7.5" cx="-20" cy="-20"></circle></svg>' +
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running"><i class="sb-dot"></i>作業中</span>' +
@@ -3802,7 +3842,12 @@
   }
 
   // ---- タイマー表示の更新 ----
+  var tickLastDate = null;
   function tick() {
+    // 開きっぱなしで日付が変わった瞬間に、前日の中断中／休憩中を解消して画面を切り替える
+    var tickToday = todayDateInputValue();
+    if (tickLastDate !== null && tickLastDate !== tickToday && rolloverStaleDayState()) { persistState(); renderAll(); }
+    tickLastDate = tickToday;
     maybeShowGoalPrompt(); // 日付が変わったとき（開きっぱなしで月をまたいだ場合を含む）だけ実際に判定する
     var running = getRunningSession();
     if (running) {
@@ -6860,7 +6905,35 @@
   }
 
   // ---- init ----
+  // 2026-10-15：「その日の最初の作業なのに、前日のタスクが『中断中』『休憩中』のまま出てしまう」とのご指摘で追加。
+  // 前日までに中断・休憩に入ったまま日をまたいだ状態は、翌日に持ち越さず解消する
+  // （＝今日まだ記録が無ければ「今日の業務を開始しますか？」の画面に戻る）。
+  // ・中断中：中断した日が今日より前なら解除（作業時間の記録そのものは消さない）
+  // ・業務全体の休憩：開始が今日より前の休憩は、日付が変わる 0:00 で終了したものとして閉じる
+  // 作業中のまま日をまたいだ場合（深夜作業など）は、そのまま続行できるよう触らない。
+  function rolloverStaleDayState() {
+    var today = todayDateInputValue();
+    var changed = false;
+    var ob = state.onBreakSessionId ? getOnBreakSession() : null;
+    if (ob && ob.end && ob.end.slice(0, 10) < today) {
+      state.onBreakSessionId = null;
+      state.focusCycleAutoPausedSessionId = null;
+      state.focusCycleOverageSessionId = null;
+      state.focusCycleOverageSec = 0;
+      state.currentBreakTip = null;
+      changed = true;
+    }
+    getGeneralBreaks().forEach(function (b) {
+      if (!b.end && b.start && b.start.slice(0, 10) < today) {
+        b.end = today + "T00:00:00";
+        state.currentBreakTip = null;
+        changed = true;
+      }
+    });
+    return changed;
+  }
   function renderAll() {
+    if (rolloverStaleDayState()) persistState();
     populateProjectDatalist();
     renderMonthlyGoalsCard();
     renderStatusCard();
