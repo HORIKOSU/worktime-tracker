@@ -442,7 +442,58 @@
   .status-gauge-frame-track { fill: none; stroke: var(--gauge-track); stroke-width: 6; }
   /* 2026-10-15：外周ゲージをA案（太め＋黄→オレンジのグラデ＋光＋先端の白ドット）に更新 */
   .status-gauge-frame-fill { fill: none; stroke: url(#statusGaugeGrad); stroke: var(--series-4); stroke: url(#statusGaugeGrad); stroke-width: 6; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.7)); }
-  .status-gauge-frame-head { fill: #fff; stroke: #ea580c; stroke-width: 3; filter: drop-shadow(0 0 6px rgba(234, 88, 12, 0.75)); }
+  .status-gauge-frame-head { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28)); }
+  /* ひよこ：体は上下にぴょこぴょこ、足は交互に前後、羽は小さくぱたぱた（視覚効果を減らす設定では静止） */
+  .sgc-inner { animation: sgcHop 0.42s ease-in-out infinite; }
+  .sgc-leg { transform-box: fill-box; transform-origin: 50% 0%; }
+  .sgc-leg-a { animation: sgcLegA 0.42s ease-in-out infinite; }
+  .sgc-leg-b { animation: sgcLegB 0.42s ease-in-out infinite; }
+  .sgc-wing2 { transform-box: fill-box; transform-origin: 50% 15%; animation: sgcWing2 .42s ease-in-out infinite; }
+  .sgc-wing2-r { animation-direction: reverse; }
+  .sgc-speed-v { animation: sgcSpeedV .42s linear infinite; }
+  .sgc-speed { animation: sgcSpeed .42s linear infinite; }
+  .sgc-wing { transform-box: fill-box; transform-origin: 80% 30%; animation: sgcWing 0.42s ease-in-out infinite; }
+  /* 2026-10-16：準備タイム（サイクル最初の5分）。赤ちゃんひよこ＋準備メッセージ */
+  .sgc-shell { display: none; }
+  .is-baby .sgc-shell { display: inline; }
+  .is-baby .sgc-inner { animation-duration: 0.75s; filter: saturate(0.8) brightness(1.08); }
+  .is-baby .sgc-leg-a, .is-baby .sgc-leg-b, .is-baby .sgc-wing, .is-baby .sgc-wing2 { animation-duration: 0.75s; }
+  .is-baby .sgc-speed, .is-baby .sgc-speed-v { display: none; }
+  .fcb-prep { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; margin-top: 12px; padding: 9px 12px; border-radius: 12px; background: #fff4df; border: 1px solid #f3c27a; color: #92400e; font-size: 12px; font-weight: 700; line-height: 1.5; }
+  .fcb-prep[hidden] { display: none; }
+  .fcb-prep-tag { padding: 1px 9px; border-radius: 999px; background: #f59e0b; color: #fff; font-weight: 800; letter-spacing: 0.06em; }
+  .fcb-prep-remain { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .fcb-prep-msg { flex-basis: 100%; text-align: center; font-weight: 600; }
+  .fcb-prep-mark { position: absolute; top: 3px; bottom: 3px; width: 2px; margin-left: -1px; border-radius: 2px; background: rgba(245,158,11,0.9); pointer-events: none; }
+  :root:not(.viz-light) .fcb-prep { color: #fcd9a0; background: rgba(245,158,11,0.16); border-color: rgba(251,191,36,0.4); }
+  /* 2026-10-16：スケジュール（カレンダー）に、作業中のまま「やった作業の記録」を追加する */
+  .sched-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 10px; }
+  .sched-add-btn { appearance: none; border: 1px solid var(--sec-blue); background: color-mix(in srgb, var(--sec-blue) 10%, transparent); color: color-mix(in srgb, var(--sec-blue) 80%, var(--text-primary)); font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+  .sched-add-btn:hover { background: var(--sec-blue); color: #fff; }
+  .sched-add-note { font-size: 11.5px; color: var(--text-muted); }
+  .sched-add-note.is-done { color: #15803d; font-weight: 700; font-size: 12.5px; }
+  .sched-add-panel { margin: 0 0 12px; padding: 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--sec-blue) 45%, var(--border)); background: color-mix(in srgb, var(--sec-blue) 6%, var(--surface-1)); display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .sched-add-panel[hidden] { display: none; }
+  .sched-add-title { font-size: 13px; font-weight: 800; color: color-mix(in srgb, var(--sec-blue) 80%, var(--text-primary)); }
+  .sched-add-panel .field-block { display: flex; flex-direction: column; min-width: 0; }
+  .sched-add-panel input[type="text"], .sched-add-panel input[type="date"], .sched-add-panel input[type="time"] { padding: 9px 10px; border-radius: 8px; width: 100%; min-width: 0; box-sizing: border-box; }
+  .sched-add-when { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sched-add-when > input[type="date"] { flex: 1 1 150px; width: auto; }
+  .sched-add-times { display: flex; align-items: center; gap: 6px; flex: 1 1 200px; min-width: 0; }
+  .sched-add-times input { flex: 1 1 0; }
+  .sched-add-arrow { color: var(--text-muted); }
+  /* 2026-10-16：「集中サイクルを今回だけ変更」は集中サイクルの枠の中に置く */
+  .status-card .focus-cycle-badge .focus-cycle-override-field { margin: 14px 0 0; padding-top: 12px; border-top: 1px dashed color-mix(in srgb, var(--series-7) 35%, transparent); }
+  .status-card .focus-cycle-badge .focus-cycle-override-field .field-label { color: var(--series-7); font-weight: 700; margin-bottom: 6px; }
+  .status-card .focus-cycle-badge.is-low .focus-cycle-override-field { border-top-color: color-mix(in srgb, var(--series-8) 35%, transparent); }
+  @keyframes sgcHop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.2px); } }
+  @keyframes sgcLegA { 0%, 100% { transform: rotate(32deg); } 50% { transform: rotate(-32deg); } }
+  @keyframes sgcLegB { 0%, 100% { transform: rotate(-32deg); } 50% { transform: rotate(32deg); } }
+  @keyframes sgcSpeed { 0%, 100% { opacity: .15; transform: translateX(1.5px); } 50% { opacity: .9; transform: translateX(-1px); } }
+  @keyframes sgcWing2 { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+  @keyframes sgcSpeedV { 0%, 100% { opacity: .15; transform: translateY(1.5px); } 50% { opacity: .9; transform: translateY(-1px); } }
+  @keyframes sgcWing { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(16deg); } }
+  @media (prefers-reduced-motion: reduce) { .sgc-inner, .sgc-leg-a, .sgc-leg-b, .sgc-wing, .sgc-speed, .sgc-wing2, .sgc-speed-v { animation: none; } .sgc-speed, .sgc-speed-v { opacity: 0; } }
   .status-icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-bottom: 8px; }
   .status-icon-circle.idle { background: var(--text-secondary); }
   .status-icon-circle.running { background: var(--project-color, var(--series-2)); }
@@ -1138,8 +1189,8 @@
   }
 
   /* 2026-10-14：「今日の業務を開始しますか？」画面だけの特別デザイン（朝日が昇るイメージ：暖色グラデ＋光の輪＋グロー付き開始ボタン） */
-  #dashboard .status-card.day-start-card { position: relative; overflow: hidden; padding: 28px 20px 26px; border-color: color-mix(in srgb, #f59e0b 45%, var(--border)); background: radial-gradient(120% 70% at 50% 0%, #fff0c9 0%, #ffe3c2 38%, color-mix(in srgb, #ffd9b0 40%, var(--surface-1)) 70%, var(--surface-1) 100%); }
-  #dashboard .status-card.day-start-card::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: -60px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,158,11,0.22), transparent); pointer-events: none; }
+  #dashboard .status-card.day-start-card { position: relative; overflow: hidden; padding: 28px 20px 26px; border-color: color-mix(in srgb, #f59e0b 45%, var(--border)); background: #ffeed2; }
+  #dashboard .status-card.day-start-card::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: -60px; height: 120px; border-radius: 50%; display: none; pointer-events: none; }
   #dashboard .status-card.day-start-card > * { position: relative; z-index: 1; }
   .day-start-card > h2 { color: #b45309; }
   .day-start-card .ds-sun { position: relative; width: 76px; height: 76px; margin: 6px 0 22px; background: linear-gradient(145deg, #fbbf24, #ea580c); color: #fff; box-shadow: 0 6px 22px rgba(234,88,12,0.35); }
@@ -1156,7 +1207,7 @@
   #dashboard .day-start-card button.big-btn:hover { background: linear-gradient(135deg, #e08a0b, #d04a14); color: #fff; opacity: 1; transform: translateY(-1px); }
   .day-start-card .big-btn:active { transform: scale(0.98); }
   .day-start-card .generated-note { color: #9a6a3a; }
-  :root:not(.viz-light) #dashboard .status-card.day-start-card { border-color: rgba(251,191,36,0.35); background: radial-gradient(120% 80% at 50% 100%, rgba(234,88,12,0.28) 0%, rgba(120,53,15,0.18) 45%, transparent 75%), linear-gradient(180deg, #1c2640 0%, #26283f 60%, var(--surface-1) 100%); }
+  :root:not(.viz-light) #dashboard .status-card.day-start-card { border-color: rgba(251,191,36,0.35); background: #252a42; }
   :root:not(.viz-light) .day-start-card > h2, :root:not(.viz-light) .day-start-card .ds-date { color: #fbbf24; }
   :root:not(.viz-light) .day-start-card .ds-greet { color: #fcd9a0; }
   :root:not(.viz-light) #dashboard .status-card.day-start-card .day-start-question { color: #fff4dc; }
@@ -1254,6 +1305,41 @@
           <div class="mode-toggle">
             <button type="button" id="scheduleMonthModeBtn" class="mode-toggle-btn">月表示</button>
             <button type="button" id="scheduleDayModeBtn" class="mode-toggle-btn active">日表示</button>
+          </div>
+        </div>
+
+        <div class="sched-add-row">
+          <button type="button" class="sched-add-btn" id="schedAddOpenBtn">＋ 記録を追加（押し忘れ）</button>
+          <span class="sched-add-note" id="schedAddNote">空いている時間をタップしても追加できます</span>
+        </div>
+        <div class="sched-add-panel" id="schedAddPanel" hidden>
+          <div class="sched-add-title">やった作業を、カレンダーに記録として追加</div>
+          <div class="field-block">
+            <label class="field-label" for="schedAddProject">プロジェクト名</label>
+            <input type="text" id="schedAddProject" list="projectList" placeholder="例、H案件" autocomplete="off">
+            <div class="quick-suggest-row" id="schedAddProjectSuggest"></div>
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="schedAddMemo">業務内容</label>
+            <input type="text" id="schedAddMemo" placeholder="例、企画" autocomplete="off">
+            <div class="quick-suggest-row" id="schedAddMemoSuggest"></div>
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="schedAddNumber">番号</label>
+            <input type="text" id="schedAddNumber" placeholder="例、1_1" autocomplete="off">
+          </div>
+          <div class="sched-add-when">
+            <input type="date" id="schedAddDate" aria-label="日付">
+            <div class="sched-add-times">
+              <input type="time" id="schedAddStart" aria-label="開始時刻">
+              <span class="sched-add-arrow">→</span>
+              <input type="time" id="schedAddEnd" aria-label="終了時刻">
+            </div>
+          </div>
+          <p class="data-io-status" id="schedAddStatus"></p>
+          <div class="plan-add-btn-row">
+            <button type="button" class="start-now-btn" id="schedAddSaveBtn">この時間で追加</button>
+            <button type="button" class="plan-add-btn" id="schedAddCancelBtn">キャンセル</button>
           </div>
         </div>
 
@@ -1565,6 +1651,7 @@
   // 90分は区間（segment）の開始からの経過時間で判定する。resumeSession() のたびに新しい区間が
   // 作られるため、休憩から再開するたびに自動的に新しい90分の枠が始まる（追加のデータ保存は不要）。
   var FOCUS_CYCLE_SEC = 90 * 60; // 1回の集中の上限（秒）＝90分
+  var FOCUS_PREP_SEC = 5 * 60; // 2026-10-16：サイクルの最初の「準備タイム」（秒）＝5分。この間は赤ちゃんひよこ
 
   // 2026-09-25：「休憩中に何をすればいいか分からない」を減らすため、休憩が始まるたびに
   // ランダムで1件、休憩の過ごし方を提案する。項目は03.memo/260925_休憩アイデアメモ.md の内容。
@@ -1706,6 +1793,7 @@
   var SCHEDULE_HIDDEN_START_MIN = 2 * 60; // 2:00
   var SCHEDULE_HIDDEN_END_MIN = 6 * 60; // 6:00
   var SCHEDULE_HIDDEN_DURATION_MIN = SCHEDULE_HIDDEN_END_MIN - SCHEDULE_HIDDEN_START_MIN;
+  var SCHEDULE_SHOW_BREAKS = false; // 日表示のカレンダーに休憩ブロックを出すか（2026-10-16：出さない）
   function scheduleDisplayMin(min) {
     var overlap = Math.min(Math.max(min - SCHEDULE_HIDDEN_START_MIN, 0), SCHEDULE_HIDDEN_DURATION_MIN);
     return min - overlap;
@@ -1729,7 +1817,36 @@
 
   var state = loadInitialState();
 
+  // 2026-10-16：作業の記録（終了時刻を伸ばした／追加した等）が、すでにある休憩の記録と重なったら、
+  // 休憩のほうを作業の外側へ縮める（完全に覆われた休憩は消す）。休憩は表示しないため、重なったまま
+  // 残さない。終わっている休憩だけが対象で、いま続いている休憩（終了なし）には触れない。
+  // 日時はすべて同じ形式（YYYY-MM-DDTHH:MM:SS）の文字列なので、そのまま文字列で比べる。
+  function trimBreaksOverlappingWork() {
+    var brs = state.generalBreaks;
+    if (!brs || !brs.length) return;
+    var segsAll = [];
+    var nowIso = nowLocalIso();
+    state.sessions.forEach(function (sess) {
+      getSegments(sess).forEach(function (g) { if (g.start) segsAll.push({ s: g.start, e: g.end || nowIso }); });
+    });
+    var changed = false, kept = [];
+    brs.forEach(function (b) {
+      if (!b.start || !b.end) { kept.push(b); return; }
+      var bs = b.start, be = b.end, removed = false;
+      segsAll.forEach(function (g) {
+        if (removed || g.e <= bs || g.s >= be) return;
+        if (g.s <= bs && g.e >= be) { removed = true; return; }
+        if (g.s <= bs) bs = g.e; else be = g.s;
+      });
+      if (removed || be <= bs) { changed = true; return; }
+      if (bs !== b.start || be !== b.end) { b.start = bs; b.end = be; changed = true; }
+      kept.push(b);
+    });
+    if (changed) state.generalBreaks = kept;
+  }
+
   function persistState() {
+    trimBreaksOverlappingWork();
     invalidateBusinessOrderCache();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); usingLocalData = true; } catch (e) {}
     syncMarkDirty();
@@ -1910,15 +2027,14 @@
   function migrateSplitSessions() {
     var changed = false;
     state.sessions.slice().forEach(function (s) {
-      if (s.segments && s.segments.length > 1 && splitSessionSegments(s, undefined, true)) changed = true;
+      if (s.segments && s.segments.length > 1 && splitSessionSegments(s, undefined, false)) changed = true;
     });
     return changed;
   }
   function resumeSession(session, memo) {
     var now = nowLocalIso();
-    if (session.end && parseLocal(now) > parseLocal(session.end)) {
-      getGeneralBreaks().push(newBreakRecord(session.end, now));
-    }
+    // 2026-10-16：「休憩を開始した時間だけを記録するようにして」とのご要望で、中断→作業再開のつなぎ目の時間は
+    // 休憩の記録として登録しない（休憩の記録は「休憩を開始」を押したときだけ作る）。
     var fresh = cloneSessionForChunk(session, [{ start: now, end: null }]);
     fresh.startMs = Date.now();
     if (memo !== undefined) fresh.memo = memo;
@@ -1971,6 +2087,27 @@
   // focusStreakStartIsoのリセットと同じタイミング）に必ずnullへ戻し、デフォルトに戻す。
   function currentFocusCycleSec() {
     return (typeof state.focusCycleOverrideSec === "number" && state.focusCycleOverrideSec > 0) ? state.focusCycleOverrideSec : FOCUS_CYCLE_SEC;
+  }
+  // 2026-10-16：集中サイクルの最初の5分は「準備タイム」（集中に入るまでの助走）。サイクルの長さが短い場合は1/3まで。
+  function focusPrepSec() {
+    return Math.min(FOCUS_PREP_SEC, Math.floor(currentFocusCycleSec() / 3));
+  }
+  function focusPrepRemainingSec() {
+    if (!state.focusStreakStartIso) return 0;
+    return Math.max(0, focusPrepSec() - focusStreakElapsedSec());
+  }
+  function focusPrepNoteHtml(remainSec) {
+    return '<span class="fcb-prep-tag">準備タイム</span><span class="fcb-prep-remain" id="focusPrepRemain">あと ' + formatMMSS(remainSec) + '</span><span class="fcb-prep-msg">深呼吸して、今日やることを整えましょう</span>';
+  }
+  // ひよこの大きさと「赤ちゃん」状態：準備タイム中は小さく（たまごの殻つき）、終わったら3秒かけて成長
+  function focusChickState() {
+    var prep = focusPrepSec();
+    if (!state.focusStreakStartIso || prep <= 0) return { s: 1, baby: false };
+    var e = (new Date() - parseLocal(state.focusStreakStartIso)) / 1000;
+    if (e < 0) e = 0;
+    if (e < prep) return { s: 0.68, baby: true };
+    if (e < prep + 3) return { s: 0.68 + 0.32 * ((e - prep) / 3), baby: false };
+    return { s: 1, baby: false };
   }
   function focusCycleRemainingSec() {
     return currentFocusCycleSec() - focusStreakElapsedSec();
@@ -3106,10 +3243,38 @@
     var headEl = document.getElementById("statusGaugeFrameHead");
     if (headEl && fillRect.getPointAtLength) {
       var headPt = fillRect.getPointAtLength(perimeter * pct);
-      headEl.setAttribute("cx", headPt.x.toFixed(1));
-      headEl.setAttribute("cy", headPt.y.toFixed(1));
+      // 2026-10-15：先端はひよこ。足が地面（ゲージの線）に付くように置き、進行方向（左右）に向きを合わせる
+      // 向きは線の接線（進む方向）から決める。横の辺：横向き（進行方向）／下に進むとき：正面（下向き）／上に進むとき：後ろ姿（上向き）
+      var tAhead = fillRect.getPointAtLength(Math.min(perimeter, perimeter * pct + 3));
+      var tBack = fillRect.getPointAtLength(Math.max(0, perimeter * pct - 3));
+      var tx = tAhead.x - tBack.x, ty = tAhead.y - tBack.y, mode = statusGaugeChickMode;
+      if (Math.abs(tx) > 0.05 || Math.abs(ty) > 0.05) {
+        if (Math.abs(tx) >= Math.abs(ty)) { mode = "side"; statusGaugeChickDir = tx > 0 ? 1 : -1; }
+        else mode = ty > 0 ? "front" : "back";
+      }
+      statusGaugeChickMode = mode;
+      var flipEl = document.getElementById("statusGaugeChickFlip");
+      var frontEl = document.getElementById("statusGaugeChickFront");
+      var backEl = document.getElementById("statusGaugeChickBack");
+      if (flipEl) {
+        flipEl.setAttribute("transform", statusGaugeChickDir > 0 ? "" : "translate(32,0) scale(-1,1)");
+        flipEl.setAttribute("display", mode === "side" ? "inline" : "none");
+      }
+      if (frontEl) frontEl.setAttribute("display", mode === "front" ? "inline" : "none");
+      if (backEl) backEl.setAttribute("display", mode === "back" ? "inline" : "none");
+      // カードの外にはみ出さないよう、ひよこ全体（約46×43px）がカード内に収まる位置に寄せる
+      var gSvg = document.getElementById("statusGaugeFrame");
+      var gW = gSvg ? parseFloat(gSvg.getAttribute("width")) || 0 : 0;
+      var gH = gSvg ? parseFloat(gSvg.getAttribute("height")) || 0 : 0;
+      var chickSt = focusChickState(), chickS = chickSt.s;
+      if (headEl.classList) headEl.classList.toggle("is-baby", chickSt.baby);
+      var chickX = headPt.x - 16 * chickS, chickY = headPt.y - 30 * chickS;
+      if (gW) chickX = Math.max(3, Math.min(gW - 32 * chickS - 3, chickX));
+      if (gH) chickY = Math.max(4, Math.min(gH - 30 * chickS - 4, chickY));
+      headEl.setAttribute("transform", "translate(" + chickX.toFixed(1) + "," + chickY.toFixed(1) + ") scale(" + chickS + ")");
     }
   }
+  var statusGaugeChickDir = 1, statusGaugeChickMode = "side";
   function updateStatusGaugeFrame(sessionElapsedSec) {
     statusGaugeBaseSec = sessionElapsedSec;
     statusGaugeBaseStamp = performance.now();
@@ -3206,24 +3371,7 @@
       var runningProjectColor = colorForProjectAndMemo(projectLabel(running), running.memo);
       card.style.setProperty("--project-color", runningProjectColor);
       card.style.setProperty("--project-color-text", readableTextColor(runningProjectColor, 0.68));
-      card.innerHTML =
-        '<svg class="status-gauge-frame" id="statusGaugeFrame"><defs><linearGradient id="statusGaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient></defs><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect><circle class="status-gauge-frame-head" id="statusGaugeFrameHead" r="7.5" cx="-20" cy="-20"></circle></svg>' +
-        '<h2>現在の状況</h2>' +
-        '<div class="status-icon-circle running">▶</div>' +
-        '<span class="status-badge running"><i class="sb-dot"></i>作業中</span>' +
-        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
-        '<div class="timer-total-line"><span class="timer-total-label">今回</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
-        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i><span class="fcb-pct" id="focusCycleBarPct" style="--p:' + focusCycleBarPct(focusCycleRemainingSec()) + '%">経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span></div></div>' +
-        '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
-        '<div class="timer-session-block">' +
-        (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
-        '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
-        '</div>' +
-        '<div class="running-memo-row"><div class="memo-lines-group">' +
-        (running.memo ? '<div class="timer-inline-line"><span class="inline-line-label">業務内容</span>：<span class="inline-line-value">' + escapeHtml(running.memo) + '</span></div>' : '') +
-        (running.number ? '<div class="timer-inline-line"><span class="inline-line-label">番号</span>：<span class="inline-line-value">' + escapeHtml(running.number) + '</span></div>' : '') +
-        (running.remarks ? '<div class="timer-inline-line"><span class="inline-line-label">備考</span>：<span class="inline-line-value">' + escapeHtml(running.remarks) + '</span></div>' : '') +
-        '</div></div>' +
+      var focusOverrideHtml =
         '<div class="focus-cycle-override-field">' +
         '<label class="field-label" for="focusCycleOverrideInput">集中サイクルを今回だけ変更</label>' +
         '<div class="focus-cycle-override-row">' +
@@ -3232,11 +3380,26 @@
         '<button type="button" id="focusCycleOverrideApplyBtn">適用</button>' +
         '</div>' +
         (typeof state.focusCycleOverrideSec === "number" && state.focusCycleOverrideSec > 0 ? '<p class="focus-cycle-override-note">今回のサイクルのみ' + Math.round(state.focusCycleOverrideSec / 60) + '分に変更中（次回はまた90分に戻ります）</p>' : '') +
+        '</div>';
+      card.innerHTML =
+        '<svg class="status-gauge-frame" id="statusGaugeFrame"><defs><linearGradient id="statusGaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient><radialGradient id="sgcBodyGrad" cx="0.38" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff6ae"/><stop offset="0.6" stop-color="#ffdc4d"/><stop offset="1" stop-color="#ffc728"/></radialGradient></defs><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect><g class="status-gauge-frame-head" id="statusGaugeFrameHead" transform="translate(-40,-40)"><g class="sgc-flip" id="statusGaugeChickFlip"><g class="sgc-inner"><g class="sgc-speed"><path d="M2.5 12h-2.6M3.2 16.5h-3.4M2.5 21h-2.2" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.6 29.6h2.6m-1.3 0h3.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.6 29.6h5.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-body"><path d="M5.2 17.5c-2.4-.4-3.6-2-3.6-3.6 1.6.2 3.6.6 4.8 2.2z" fill="#ffc21a"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.2 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.4 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><g class="sgc-wing"><ellipse cx="10.8" cy="19" rx="5" ry="3.3" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M8.6 18.4c1.4-.7 3-.7 4.4-.1" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/></g><ellipse cx="21.4" cy="13" rx="2.5" ry="2.9" fill="#2b1d12"/><circle cx="22.2" cy="11.8" r="1" fill="#fff"/><circle cx="20.6" cy="14.2" r=".5" fill="#fff"/><ellipse cx="25.2" cy="18" rx="2.6" ry="1.6" fill="#ff7d96" opacity=".6"/><path d="M27.4 14.6c2.6-.2 4.2.6 4.2 1.7 0 1.2-1.6 1.9-4.2 1.7-.8-.1-1.2-.5-1.2-1.7 0-1.1.4-1.6 1.2-1.7z" fill="#ff9d2e"/><path d="M27.2 16.3h3.8" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g><g class="sgc-front" id="statusGaugeChickFront" display="none"><g class="sgc-inner"><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><ellipse class="sgc-wing2 sgc-wing2-l" cx="3.8" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="28.2" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse cx="11.2" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="12" cy="12.8" r="1" fill="#fff"/><circle cx="10.4" cy="15.2" r=".5" fill="#fff"/><ellipse cx="20.8" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="21.6" cy="12.8" r="1" fill="#fff"/><circle cx="20" cy="15.2" r=".5" fill="#fff"/><ellipse cx="6.8" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><ellipse cx="25.2" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><path d="M13.6 17.4c1.5-.7 3.3-.7 4.8 0-.3 1.7-1.3 2.6-2.4 2.6s-2.1-.9-2.4-2.6z" fill="#ff9d2e"/><path d="M14.4 18.3h3.2" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g><g class="sgc-back" id="statusGaugeChickBack" display="none"><g class="sgc-inner"><g class="sgc-speed-v"><path d="M11 32.5v2.4M16 33v2.6M21 32.5v2.4" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><path d="M13.6 26.6c.8 1.6 1.6 2.2 2.4 2.4.8-.2 1.6-.8 2.4-2.4z" fill="#ffc21a" stroke="#f4a900" stroke-width=".6" stroke-linejoin="round"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse class="sgc-wing2 sgc-wing2-l" cx="8.4" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="23.6" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M7 15.6c1-.7 2.2-.8 3.2-.2M22 15.4c1-.6 2.2-.5 3.2.2" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g></svg>' +
+        '<h2>現在の状況</h2>' +
+        '<div class="status-icon-circle running">▶</div>' +
+        '<span class="status-badge running"><i class="sb-dot"></i>作業中</span>' +
+        '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
+        '<div class="timer-total-line"><span class="timer-total-label">今回</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i><span class="fcb-pct" id="focusCycleBarPct" style="--p:' + focusCycleBarPct(focusCycleRemainingSec()) + '%">経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span><b class="fcb-prep-mark" style="left:' + (focusPrepSec() / (currentFocusCycleSec() || 1) * 100).toFixed(2) + '%"></b></div><div class="fcb-prep" id="focusPrepNote"' + (focusPrepRemainingSec() > 0 ? '' : ' hidden') + '>' + focusPrepNoteHtml(focusPrepRemainingSec()) + '</div>' + focusOverrideHtml + '</div>' +
+        '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
+        '<div class="timer-session-block">' +
+        (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
+        '<div class="timer-memo">' + escapeHtml(segLabel) + escapeHtml(segText) + '</div>' +
         '</div>' +
+        '<div class="running-memo-row"><div class="memo-lines-group">' +
+        (running.remarks ? '<div class="timer-inline-line"><span class="inline-line-label">備考</span>：<span class="inline-line-value">' + escapeHtml(running.remarks) + '</span></div>' : '') +
+        '</div></div>' +
         '<div class="status-btn-row">' +
         '<button type="button" class="big-btn break" id="pauseBtn">■ 中断</button>' +
-        '</div>' +
-        '<p class="generated-note" style="text-align:center; margin-top:8px;">中断＝一時停止（休憩・他の作業への切り替えもこちら）。</p>';
+        '</div>';
       document.getElementById("focusCycleOverrideApplyBtn").addEventListener("click", function () {
         // 2026-09-23：集中サイクルの時間をその場だけ一時的に変更する。次の新しいサイクルからは
         // 自動的にデフォルトの90分に戻る（resumeSession/startTaskNow等でリセットされる）。
@@ -3300,7 +3463,8 @@
         renderAll();
       });
       document.getElementById("breakStartBtn").addEventListener("click", function () {
-        getGeneralBreaks().push({ id: generateId(), start: onBreak.end || nowLocalIso(), end: null });
+        // 2026-10-16：休憩の開始は「休憩を開始」を押した時刻（中断した時刻までさかのぼらない）
+        getGeneralBreaks().push({ id: generateId(), start: nowLocalIso(), end: null });
         state.onBreakSessionId = null;
         state.focusCycleAutoPausedSessionId = null;
         state.focusCycleOverageSessionId = null;
@@ -3904,6 +4068,13 @@
       if (focusBadgeEl) {
         if (focusBadgeNumEl) focusBadgeNumEl.textContent = formatMMSS(focusRemainingSec);
         focusBadgeEl.classList.toggle("is-low", focusRemainingSec <= 300);
+        var prepNoteEl = document.getElementById("focusPrepNote");
+        if (prepNoteEl) {
+          var prepRem = focusPrepRemainingSec();
+          prepNoteEl.hidden = prepRem <= 0;
+          var prepRemainEl = document.getElementById("focusPrepRemain");
+          if (prepRemainEl && prepRem > 0) prepRemainEl.textContent = "あと " + formatMMSS(prepRem);
+        }
         var focusBarFillEl = document.getElementById("focusCycleBarFill");
         if (focusBarFillEl) focusBarFillEl.style.width = focusCycleBarPct(focusRemainingSec) + "%";
         var focusBarPctEl = document.getElementById("focusCycleBarPct");
@@ -4549,7 +4720,7 @@
 
       // 2026-10-05：「区切られているごとに登録」とのご要望により、編集フォームで休憩を追加して
       // 複数の区間になった場合も、区間ごとの別々の記録に分け、休憩は休憩の記録として登録する。
-      if (session.segments && session.segments.length > 1) splitSessionSegments(session, undefined, true);
+      if (session.segments && session.segments.length > 1) splitSessionSegments(session, undefined, false);
 
       persistState();
       historyEditingId = null;
@@ -5123,6 +5294,12 @@
     });
 
     blocks.sort(function (a, b) { return a.startMin - b.startMin; });
+    // 2026-10-16：「スケジュールの中に休憩の時間は入れなくていい」とのご要望で、日表示のカレンダーには
+    // 休憩（一般休憩・タスクの中断）のブロックを出さない。休憩の記録そのものは残る（履歴タブ・時間の重なりの
+    // 検査・作業時間の計算は従来どおり）。表示を戻したい場合は SCHEDULE_SHOW_BREAKS を true にする。
+    // 2026-10-16（追記）：「休憩を開始」を押して記録した休憩（一般休憩）は枠として表示する。
+    // 中断の合間（タスクの中断）は引き続き表示しない。
+    if (!SCHEDULE_SHOW_BREAKS) blocks = blocks.filter(function (b) { return b.kind === "work" || b.kind === "general-break"; });
 
     // 縁をドラッグして伸縮している最中は、最小の高さの下限（MIN_BLOCK_HEIGHT）を外し、実際の時間の
     // 変化がそのまま高さに反映されるようにする。下限がかかったままだと、短い時間の範囲内でどれだけ
@@ -5434,7 +5611,14 @@
       if (scheduleBlockMenuState) {
         scheduleBlockMenuState = null;
         renderScheduleDayView(true);
+        return;
       }
+      // 2026-10-16：空いている時間をタップすると、その時刻から始まる「記録を追加」フォームを開く（まだ保存はしない）
+      var tlEl = document.getElementById("dayTimeline");
+      var tlRect = tlEl.getBoundingClientRect();
+      var dispMin = ((evt.clientY - tlRect.top) / HOUR_PX) * 60;
+      var realMin = dispMin < SCHEDULE_HIDDEN_START_MIN ? dispMin : dispMin + SCHEDULE_HIDDEN_DURATION_MIN;
+      openSchedAddPanel({ startMin: Math.max(0, Math.min(23 * 60 + 45, Math.floor(realMin / 15) * 15)) });
       return;
     }
     var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
@@ -5529,7 +5713,8 @@
         }
       }
     }
-    var brs = getGeneralBreaks();
+    // 2026-10-16：同上。作業の記録を追加・編集するとき（excludeBreakId なし）は、休憩との重なりでは止めない。
+    var brs = excludeBreakId ? getGeneralBreaks() : [];
     for (var k = 0; k < brs.length; k++) {
       if (brs[k].id === excludeBreakId) continue;
       if (brs[k].start && hit(brs[k].start, brs[k].end)) {
@@ -5564,11 +5749,16 @@
       var rangeEnd = minutesOfDay(lastSeg.end || nowLocalIso());
       ranges.push({ start: rangeStart, end: rangeEnd });
     });
-    getGeneralBreaks().forEach(function (b) {
-      if (b.id === excludeBreakId) return;
-      if (!isSameDate(b.start, dateStr)) return;
-      ranges.push({ start: minutesOfDay(b.start), end: minutesOfDay(b.end || nowLocalIso()) });
-    });
+    // 2026-10-16：休憩はカレンダーに表示しなくなったため、見えない休憩が作業の伸縮・移動の邪魔にならないよう、
+    // 作業のブロックを動かすとき（excludeBreakId なし）は休憩を「ふさがっている時間」に含めない。
+    // 休憩そのものを動かすとき（excludeBreakId あり）だけ、他の休憩との重なりを避ける。
+    if (excludeBreakId) {
+      getGeneralBreaks().forEach(function (b) {
+        if (b.id === excludeBreakId) return;
+        if (!isSameDate(b.start, dateStr)) return;
+        ranges.push({ start: minutesOfDay(b.start), end: minutesOfDay(b.end || nowLocalIso()) });
+      });
+    }
     return ranges;
   }
 
@@ -5928,6 +6118,114 @@
     document.getElementById("manualMemo").value = "";
     document.getElementById("manualNumber").value = "";
     renderAll();
+  });
+
+  // ---- 2026-10-16：スケジュール（カレンダー）から、作業中のまま「やった作業の記録」を追加 ----
+  function schedAddTimeStr(min) { min = Math.max(0, Math.min(24 * 60 - 1, Math.round(min))); return pad2(Math.floor(min / 60)) + ":" + pad2(min % 60); }
+  function schedAddRenderChips() {
+    var projWrap = document.getElementById("schedAddProjectSuggest");
+    var memoWrap = document.getElementById("schedAddMemoSuggest");
+    var projInput = document.getElementById("schedAddProject");
+    var memoInput = document.getElementById("schedAddMemo");
+    if (!projWrap || !projInput) return;
+    var projects = applyProjectChipPriorityOrder(distinctProjects()).slice(0, MAX_SUGGEST_CHIPS);
+    projWrap.innerHTML = projects.map(function (pr) {
+      return '<button type="button" class="suggest-chip' + (pr === projInput.value.trim() ? ' active' : '') + '" data-project="' + escapeHtml(pr) + '">' + escapeHtml(pr) + '</button>';
+    }).join("");
+    projWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () { projInput.value = chip.getAttribute("data-project"); schedAddRenderChips(); });
+    });
+    if (memoWrap) {
+      var memos = projInput.value.trim() ? distinctMemosForProject(projInput.value).slice(0, MAX_SUGGEST_CHIPS) : [];
+      memoWrap.innerHTML = memos.map(function (m) {
+        return '<button type="button" class="suggest-chip' + (memoInput && m === memoInput.value.trim() ? ' active' : '') + '" data-memo="' + escapeHtml(m) + '">' + escapeHtml(m) + '</button>';
+      }).join("");
+      memoWrap.querySelectorAll(".suggest-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () { if (memoInput) memoInput.value = chip.getAttribute("data-memo"); schedAddRenderChips(); });
+      });
+    }
+  }
+  function openSchedAddPanel(opts) {
+    var panel = document.getElementById("schedAddPanel");
+    if (!panel) return;
+    var dateStr = scheduleDayState || todayDateInputValue();
+    var sMin, eMin;
+    if (opts && typeof opts.startMin === "number") {
+      sMin = opts.startMin; eMin = Math.min(sMin + 30, 24 * 60 - 1);
+    } else if (dateStr === todayDateInputValue()) {
+      eMin = Math.floor(minutesOfDay(nowLocalIso()) / 5) * 5; sMin = Math.max(0, eMin - 30);
+    } else {
+      sMin = 9 * 60; eMin = 10 * 60;
+    }
+    if (eMin <= sMin) eMin = Math.min(sMin + 5, 24 * 60 - 1);
+    // 作業中の時間などとすでに重なる初期値なら、重なる作業のはじまりで終わるようにずらす（押し忘れの直前の時間を想定）
+    var c0 = findTimeConflict([{ start: combineDateTime(dateStr, schedAddTimeStr(sMin)), end: combineDateTime(dateStr, schedAddTimeStr(eMin)) }], null, null);
+    if (c0 && c0.start && c0.start.slice(0, 10) === dateStr) {
+      var cMin = minutesOfDay(c0.start);
+      if (cMin > 5) { eMin = cMin; sMin = Math.max(0, eMin - 30); }
+    }
+    document.getElementById("schedAddDate").value = dateStr;
+    document.getElementById("schedAddStart").value = schedAddTimeStr(sMin);
+    document.getElementById("schedAddEnd").value = schedAddTimeStr(eMin);
+    var st = document.getElementById("schedAddStatus"); st.textContent = ""; st.className = "data-io-status";
+    panel.hidden = false;
+    schedAddRenderChips();
+    try { panel.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+    var pin = document.getElementById("schedAddProject");
+    if (pin && !pin.value) { try { pin.focus({ preventScroll: true }); } catch (e) { pin.focus(); } }
+  }
+  function closeSchedAddPanel() {
+    var panel = document.getElementById("schedAddPanel");
+    if (panel) panel.hidden = true;
+  }
+  var schedAddNoteTimer = null;
+  document.getElementById("schedAddOpenBtn").addEventListener("click", function () {
+    var panel = document.getElementById("schedAddPanel");
+    if (!panel.hidden) { closeSchedAddPanel(); return; }
+    openSchedAddPanel(null);
+  });
+  document.getElementById("schedAddCancelBtn").addEventListener("click", closeSchedAddPanel);
+  ["schedAddProject", "schedAddMemo", "schedAddNumber", "schedAddDate", "schedAddStart", "schedAddEnd"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      var st = document.getElementById("schedAddStatus");
+      if (st.textContent) { st.textContent = ""; st.className = "data-io-status"; }
+    });
+  });
+  document.getElementById("schedAddProject").addEventListener("input", schedAddRenderChips);
+  document.getElementById("schedAddMemo").addEventListener("input", schedAddRenderChips);
+  document.getElementById("schedAddSaveBtn").addEventListener("click", function () {
+    var statusEl = document.getElementById("schedAddStatus");
+    function fail(msg) { statusEl.textContent = msg; statusEl.className = "data-io-status error"; }
+    var project = document.getElementById("schedAddProject").value.trim();
+    var memo = document.getElementById("schedAddMemo").value.trim();
+    var number = document.getElementById("schedAddNumber").value.trim();
+    var dateStr = document.getElementById("schedAddDate").value;
+    var start = combineDateTime(dateStr, document.getElementById("schedAddStart").value);
+    var end = combineDateTime(dateStr, document.getElementById("schedAddEnd").value);
+    if (!project) { fail("プロジェクト名を入力してください。"); return; }
+    if (!start || !end) { fail("日付と開始・終了の時刻を入力してください。"); return; }
+    if (parseLocal(end) <= parseLocal(start)) { fail("終了時刻は開始時刻より後にしてください。"); return; }
+    if (parseLocal(start) > new Date()) { fail("まだ来ていない時刻の記録は追加できません（今日の予定は「タスクを登録」へ）。"); return; }
+    var conflict = findTimeConflict([{ start: start, end: end }], null, null);
+    if (conflict) { fail(timeConflictMessage(conflict)); return; }
+    state.sessions.push({ id: generateId(), project: project, memo: memo, number: number, start: start, end: end });
+    persistState();
+    var secs = Math.round((parseLocal(end) - parseLocal(start)) / 1000);
+    document.getElementById("schedAddMemo").value = "";
+    document.getElementById("schedAddNumber").value = "";
+    closeSchedAddPanel();
+    scheduleDayState = dateStr;
+    renderAll();
+    var noteEl = document.getElementById("schedAddNote");
+    if (noteEl) {
+      noteEl.textContent = "「" + project + "」" + formatHM(secs) + "をカレンダーに追加しました";
+      noteEl.classList.add("is-done");
+      if (schedAddNoteTimer) clearTimeout(schedAddNoteTimer);
+      schedAddNoteTimer = setTimeout(function () {
+        noteEl.textContent = "空いている時間をタップしても追加できます";
+        noteEl.classList.remove("is-done");
+      }, 6000);
+    }
   });
 
   document.getElementById("manualStartDate").addEventListener("change", function () {
