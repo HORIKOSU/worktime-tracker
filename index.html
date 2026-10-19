@@ -122,6 +122,14 @@
     --plan-card-bg:   rgba(237,161,0,0.10);
     --plan-card-border: rgba(184,116,0,0.45);
   }
+  /* 2026-10-17：「休憩を開始」を押している間は画面全体の色を変える。背景（--page-plane）・カードの地（--surface-1）・ヘッダーを
+     ミントグリーン系に差し替える（作業中の色・チャートの色は変えない）。JS が renderAll() で html に .is-resting を付け外しする。 */
+  .viz-root.is-resting { --page-plane: #0f2f2b; --surface-1: #15403a; --border: rgba(120,220,200,0.28); --series-4: #34d3b4; }
+  .viz-root.viz-light.is-resting { --page-plane: #cdeee4; --surface-1: #e9faf4; --border: rgba(20,110,90,0.30); --series-4: #1f8a7a; }
+  .is-resting header.app-header { background: #1f8a7a; transition: background-color .6s ease; }
+  :root:not(.viz-light) .is-resting header.app-header, .viz-root.is-resting:not(.viz-light) header.app-header { background: #176a5d; }
+  .is-resting #dashboard .status-card.break-general .status-badge.on-break { background: linear-gradient(135deg, var(--series-4), color-mix(in srgb, var(--series-4) 70%, #0e7490)); box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 40%, transparent); }
+  body { transition: background-color .6s ease; }
   * { box-sizing: border-box; }
   /* 2026-10-13：ダブルタップでの拡大を無効化（ピンチ操作・スクロールは従来どおり）。個別に touch-action を指定している要素（ドラッグハンドル等）は、そちらが優先される */
   html, body, * { touch-action: manipulation; }
@@ -370,6 +378,11 @@
   tr.proj-memo-row .memo-name { color: var(--text-secondary); }
   /* 2026-09-30：業務内容の行をさらにトグルして開く、番号ごとの内訳（3階層目）。 */
   tr.proj-number-row td { padding-left: 44px; color: var(--text-muted); font-size: 12px; background: var(--page-plane); }
+  /* 2026-10-18：「総時間比」列（総作業時間に対する割合）。階層行のインデントが数値列に掛からないようにする */
+  table.proj-breakdown-table td.num { padding-left: 10px; white-space: nowrap; }
+  table.proj-breakdown-table tr.proj-total-row td { font-weight: 700; border-top: 2px solid var(--border); background: var(--surface-1); }
+  table.proj-breakdown-table td.pct-cell { color: var(--text-secondary); }
+  table.proj-breakdown-table th.num { text-align: right; white-space: nowrap; }
   .empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px; }
   .hist-quick-filter-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-1); border: 1px solid var(--series-1); color: var(--series-1); border-radius: 999px; padding: 5px 8px 5px 14px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; }
   .hist-quick-filter-badge .hqf-clear { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: none; background: transparent; color: inherit; font-size: 12px; cursor: pointer; line-height: 1; padding: 0; }
@@ -454,6 +467,34 @@
   .sgc-speed { animation: sgcSpeed .42s linear infinite; }
   .sgc-wing { transform-box: fill-box; transform-origin: 80% 30%; animation: sgcWing 0.42s ease-in-out infinite; }
   /* 2026-10-16：準備タイム（サイクル最初の5分）。赤ちゃんひよこ＋準備メッセージ */
+  /* 2026-10-17：集中サイクル残り5分以内は、ひよこの闘争心に火がつく（ハチマキ・つり上がった眉・炎・速足）。
+     残り1分以内はさらに全開（炎が大きく、走りがさらに速く、赤いオーラ）。 */
+  .sgc-fierce-only, .sgc-flames { display: none; }
+  .is-fierce .sgc-fierce-only, .is-fierce .sgc-flames { display: inline; }
+  .sgc-flames { transform-box: fill-box; transform-origin: 50% 100%; }
+  .sgc-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: sgcFlame .34s ease-in-out infinite alternate; }
+  .sgc-flame:nth-child(2n) { animation-delay: -.12s; }
+  .sgc-flame:nth-child(3n) { animation-delay: -.2s; animation-duration: .28s; }
+  .sgc-tail { transform-box: fill-box; transform-origin: 0% 50%; animation: sgcTail .26s ease-in-out infinite alternate; }
+  .sgc-tail-c { transform-origin: 50% 0%; }
+  .status-gauge-frame-head.is-fierce { filter: drop-shadow(0 0 4px rgba(255, 90, 20, 0.9)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28)); }
+  .is-fierce .sgc-inner { animation-duration: .3s; }
+  .is-fierce .sgc-leg-a, .is-fierce .sgc-leg-b, .is-fierce .sgc-wing, .is-fierce .sgc-wing2 { animation-duration: .3s; }
+  .status-gauge-frame-head.is-furious { filter: drop-shadow(0 0 6px rgba(255, 60, 0, 1)) drop-shadow(0 0 12px rgba(255, 120, 0, 0.7)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28)); }
+  .is-furious .sgc-inner { animation-duration: .21s; filter: saturate(1.3) hue-rotate(-10deg); }
+  .is-furious .sgc-leg-a, .is-furious .sgc-leg-b, .is-furious .sgc-wing, .is-furious .sgc-wing2 { animation-duration: .21s; }
+  .is-furious .sgc-flames { transform: scale(1.3); }
+  .is-furious .sgc-flame { animation-duration: .2s; }
+  .fcb-fight { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; margin-top: 12px; padding: 9px 12px; border-radius: 12px; background: #ffe9e0; border: 1px solid #f2a68a; color: #9a2a0e; font-size: 12px; font-weight: 700; line-height: 1.5; }
+  .fcb-fight[hidden] { display: none; }
+  .fcb-fight-tag { padding: 1px 9px; border-radius: 999px; background: #e8431c; color: #fff; font-weight: 800; letter-spacing: 0.06em; }
+  .fcb-fight-msg { flex-basis: 100%; text-align: center; font-weight: 600; }
+  .fcb-fight[data-lv="2"] { background: #ffd9cc; border-color: #e8431c; animation: fcbFightPulse .8s ease-in-out infinite alternate; }
+  @keyframes fcbFightPulse { from { box-shadow: 0 0 0 0 rgba(232, 67, 28, 0); } to { box-shadow: 0 0 10px 1px rgba(232, 67, 28, 0.45); } }
+  :root:not(.viz-light) .fcb-fight, .viz-root:not(.viz-light) .fcb-fight { color: #fecdbd; background: rgba(239, 68, 68, 0.16); border-color: rgba(248, 113, 113, 0.45); }
+  @keyframes sgcFlame { 0% { transform: scale(.85, .78); } 100% { transform: scale(1.1, 1.22); } }
+  @keyframes sgcTail { 0% { transform: rotate(-12deg); } 100% { transform: rotate(14deg); } }
+  @media (prefers-reduced-motion: reduce) { .sgc-flame, .sgc-tail, .fcb-fight[data-lv="2"] { animation: none; } }
   .sgc-shell { display: none; }
   .is-baby .sgc-shell { display: inline; }
   .is-baby .sgc-inner { animation-duration: 0.75s; filter: saturate(0.8) brightness(1.08); }
@@ -614,6 +655,10 @@
   .plan-row-title-line { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
   .plan-row-title-line .plan-row-field + .plan-row-field { margin-top: 0; }
   .plan-row-sep { color: var(--text-muted); font-weight: 400; margin-right: 2px; }
+  /* 2026-10-17：長い番号が折り返しても「＞」が単独で1行にならないよう、「＞」とバッジを横並びにする */
+  .plan-row-field-num { display: flex; align-items: flex-start; gap: 2px; }
+  .plan-row-field-num .plan-row-sep { flex: none; margin-right: 0; line-height: 1.5; }
+  .plan-row-field-num .number-badge { flex: 0 1 auto; min-width: 0; }
   /* 番号バッジは他の画面（現在の状況・履歴・最近の記録など）では青色のままだが、
      「今日の予定」のパンくず表示ではプロジェクト名・業務内容と同じ黒文字系の見た目に揃える。 */
   .plan-row:not(.done) .plan-row-title-line .number-badge { color: var(--text-primary); border-color: var(--border); }
@@ -668,6 +713,11 @@
   .timer-inline-line .inline-line-value { flex: 0 1 auto; min-width: 0; text-align: left; word-break: break-word; }
   .task-id-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; vertical-align: middle; }
   .number-badge { display: inline-block; max-width: 100%; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--series-1); background: var(--surface-1); border: 1px solid var(--series-1); border-radius: 5px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+  /* 2026-10-17：番号が長いときに横にはみ出さないよう、作業中／中断中カードと「今日の予定」では番号バッジを折り返して全文を見せる
+     （それ以外の一覧では従来どおり末尾を「…」で省略）。flex の子が縮められるよう min-width:0 も付ける。 */
+  .timer-project, .plan-row, .plan-row-title-line, .plan-row-field, .monthly-goal-row > * { min-width: 0; max-width: 100%; }
+  .timer-project { overflow-wrap: anywhere; }
+  .timer-project .number-badge, .plan-row .number-badge, .monthly-goal-row .number-badge, .goal-prompt-item .number-badge { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; word-break: break-all; line-height: 1.35; text-align: left; vertical-align: middle; }
   /* 2026-09-23：集中サイクルの時間（デフォルト90分）を、その場だけ一時的に変更できる項目。
      次の新しいサイクルからは自動的にデフォルトへ戻るため、常設の設定というより「一時的な
      調整用の小さな入力欄」という見た目にしている。
@@ -1173,6 +1223,12 @@
   #dashboard .status-card.break-general .status-badge.on-break { font-size: 30px; font-weight: 800; letter-spacing: 0.08em; padding: 10px 30px; margin-bottom: 12px; gap: 12px; background: linear-gradient(135deg, var(--series-4), color-mix(in srgb, var(--series-4) 70%, #c2410c)); color: #fff; box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 40%, transparent); }
   .status-card.break-general .status-badge.on-break .ic { width: 38px; height: 38px; stroke-width: 2.2; }
   #dashboard .status-card.break-general .break-elapsed-badge { position: static; order: -4; align-self: center; margin: 0 0 12px; font-size: 12px; font-weight: 700; padding: 3px 12px; letter-spacing: 0; color: color-mix(in srgb, var(--series-4) 78%, var(--text-primary)); border-width: 1px; }
+  /* 2026-10-17：休憩中は経過時間を大きく目立たせる（「休憩してから」は小さな見出し、時間は大きな数字） */
+  #dashboard .status-card.break-general .break-elapsed-badge { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 2px 0 14px; padding: 8px 30px 10px; border-width: 2px; border-radius: 22px; background: var(--surface-1); color: color-mix(in srgb, var(--series-4) 85%, var(--text-primary)); }
+  .brk-el-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+  .brk-el-time { font-size: 52px; font-weight: 800; line-height: 1.12; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .mini-status-time.is-break-time { font-size: 17px; color: color-mix(in srgb, var(--series-4) 85%, var(--text-primary)); }
+  @media (max-width: 480px) { .brk-el-time { font-size: 44px; } #dashboard .status-card.break-general .break-elapsed-badge { padding: 6px 22px 8px; } }
   #dashboard .status-card.break-general .timer-memo { font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
   /* 2026-10-14：タイピング演出をやめ、湯気が立ちのぼる＋バッジがふわっと光る動きに変更（休憩中バッジ） */
   .status-card.break-general .status-badge.on-break { animation: brkGlow 2.8s ease-in-out infinite, brkFloat 3.6s ease-in-out infinite; }
@@ -1465,7 +1521,7 @@
     <div class="card">
       <h2>プロジェクト別の内訳<span class="sub" id="projectChartSub">全期間の合計作業時間</span></h2>
       <div class="chart-wrap" id="projectChartWrap"><canvas id="projectChart"></canvas></div>
-      <details class="table-toggle"><summary>表で見る</summary><div id="projectTableWrap"></div></details>
+      <details class="table-toggle" open><summary>表で見る</summary><div id="projectTableWrap"></div></details>
     </div>
 
     <!-- 2026-09-29：「今日の予定に対して毎日の完了した達成率を記録して欲しい」とのご要望で追加。
@@ -2108,6 +2164,19 @@
     if (e < prep) return { s: 0.68, baby: true };
     if (e < prep + 3) return { s: 0.68 + 0.32 * ((e - prep) / 3), baby: false };
     return { s: 1, baby: false };
+  }
+  // 集中サイクル残り5分以内＝1（闘争心に火がつく）、残り1分以内＝2（全開）。準備タイム中・サイクル外は0。
+  function focusFightLevel() {
+    if (!state.focusStreakStartIso || focusPrepRemainingSec() > 0) return 0;
+    var r = focusCycleRemainingSec();
+    if (r > 300 || r <= 0) return 0;
+    return r <= 60 ? 2 : 1;
+  }
+  function focusFightMsg(lv) {
+    return lv === 2 ? "あと1分！ひよこ全開、一気に走り切ろう" : "ひよこの闘争心に火がつきました。あと少し、いこう";
+  }
+  function focusFightNoteHtml(lv) {
+    return '<span class="fcb-fight-tag">ラストスパート</span><span class="fcb-fight-msg" id="focusFightMsg">' + focusFightMsg(lv) + '</span>';
   }
   function focusCycleRemainingSec() {
     return currentFocusCycleSec() - focusStreakElapsedSec();
@@ -3268,6 +3337,8 @@
       var gH = gSvg ? parseFloat(gSvg.getAttribute("height")) || 0 : 0;
       var chickSt = focusChickState(), chickS = chickSt.s;
       if (headEl.classList) headEl.classList.toggle("is-baby", chickSt.baby);
+      var fightLv = chickSt.baby ? 0 : focusFightLevel();
+      if (headEl.classList) { headEl.classList.toggle("is-fierce", fightLv > 0); headEl.classList.toggle("is-furious", fightLv === 2); }
       var chickX = headPt.x - 16 * chickS, chickY = headPt.y - 30 * chickS;
       if (gW) chickX = Math.max(3, Math.min(gW - 32 * chickS - 3, chickX));
       if (gH) chickY = Math.max(4, Math.min(gH - 30 * chickS - 4, chickY));
@@ -3333,7 +3404,7 @@
       html = '<span class="mini-status-dot"></span><span class="mini-status-state">中断中</span><span class="mini-status-name">' + escapeHtml(label2) + '</span><span class="mini-status-time">' + formatHMS(elapsedSinceSec(onBreak.end)) + "</span>";
     } else if (gBreak) {
       cls += " on-break";
-      html = '<span class="mini-status-dot"></span><span class="mini-status-state">休憩中</span><span class="mini-status-name"></span><span class="mini-status-time">' + formatHMS(elapsedSinceSec(gBreak.start)) + "</span>";
+      html = '<span class="mini-status-dot"></span><span class="mini-status-state">休憩中</span><span class="mini-status-name"></span><span class="mini-status-time is-break-time">' + formatHMS(elapsedSinceSec(gBreak.start)) + "</span>";
     }
     if (!html) { el.hidden = true; el.innerHTML = ""; return; }
     el.className = cls;
@@ -3382,13 +3453,13 @@
         (typeof state.focusCycleOverrideSec === "number" && state.focusCycleOverrideSec > 0 ? '<p class="focus-cycle-override-note">今回のサイクルのみ' + Math.round(state.focusCycleOverrideSec / 60) + '分に変更中（次回はまた90分に戻ります）</p>' : '') +
         '</div>';
       card.innerHTML =
-        '<svg class="status-gauge-frame" id="statusGaugeFrame"><defs><linearGradient id="statusGaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient><radialGradient id="sgcBodyGrad" cx="0.38" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff6ae"/><stop offset="0.6" stop-color="#ffdc4d"/><stop offset="1" stop-color="#ffc728"/></radialGradient></defs><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect><g class="status-gauge-frame-head" id="statusGaugeFrameHead" transform="translate(-40,-40)"><g class="sgc-flip" id="statusGaugeChickFlip"><g class="sgc-inner"><g class="sgc-speed"><path d="M2.5 12h-2.6M3.2 16.5h-3.4M2.5 21h-2.2" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.6 29.6h2.6m-1.3 0h3.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.6 29.6h5.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-body"><path d="M5.2 17.5c-2.4-.4-3.6-2-3.6-3.6 1.6.2 3.6.6 4.8 2.2z" fill="#ffc21a"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.2 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.4 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><g class="sgc-wing"><ellipse cx="10.8" cy="19" rx="5" ry="3.3" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M8.6 18.4c1.4-.7 3-.7 4.4-.1" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/></g><ellipse cx="21.4" cy="13" rx="2.5" ry="2.9" fill="#2b1d12"/><circle cx="22.2" cy="11.8" r="1" fill="#fff"/><circle cx="20.6" cy="14.2" r=".5" fill="#fff"/><ellipse cx="25.2" cy="18" rx="2.6" ry="1.6" fill="#ff7d96" opacity=".6"/><path d="M27.4 14.6c2.6-.2 4.2.6 4.2 1.7 0 1.2-1.6 1.9-4.2 1.7-.8-.1-1.2-.5-1.2-1.7 0-1.1.4-1.6 1.2-1.7z" fill="#ff9d2e"/><path d="M27.2 16.3h3.8" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g><g class="sgc-front" id="statusGaugeChickFront" display="none"><g class="sgc-inner"><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><ellipse class="sgc-wing2 sgc-wing2-l" cx="3.8" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="28.2" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse cx="11.2" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="12" cy="12.8" r="1" fill="#fff"/><circle cx="10.4" cy="15.2" r=".5" fill="#fff"/><ellipse cx="20.8" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="21.6" cy="12.8" r="1" fill="#fff"/><circle cx="20" cy="15.2" r=".5" fill="#fff"/><ellipse cx="6.8" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><ellipse cx="25.2" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><path d="M13.6 17.4c1.5-.7 3.3-.7 4.8 0-.3 1.7-1.3 2.6-2.4 2.6s-2.1-.9-2.4-2.6z" fill="#ff9d2e"/><path d="M14.4 18.3h3.2" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g><g class="sgc-back" id="statusGaugeChickBack" display="none"><g class="sgc-inner"><g class="sgc-speed-v"><path d="M11 32.5v2.4M16 33v2.6M21 32.5v2.4" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><path d="M13.6 26.6c.8 1.6 1.6 2.2 2.4 2.4.8-.2 1.6-.8 2.4-2.4z" fill="#ffc21a" stroke="#f4a900" stroke-width=".6" stroke-linejoin="round"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse class="sgc-wing2 sgc-wing2-l" cx="8.4" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="23.6" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M7 15.6c1-.7 2.2-.8 3.2-.2M22 15.4c1-.6 2.2-.5 3.2.2" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g></svg>' +
+        '<svg class="status-gauge-frame" id="statusGaugeFrame"><defs><linearGradient id="statusGaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient><radialGradient id="sgcBodyGrad" cx="0.38" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff6ae"/><stop offset="0.6" stop-color="#ffdc4d"/><stop offset="1" stop-color="#ffc728"/></radialGradient></defs><rect class="status-gauge-frame-track" id="statusGaugeFrameTrack"></rect><rect class="status-gauge-frame-fill" id="statusGaugeFrameFill"></rect><g class="status-gauge-frame-head" id="statusGaugeFrameHead" transform="translate(-40,-40)"><g class="sgc-flames"><path class="sgc-flame" d="M7.2 6.4C6.4 2.6 9.4 1.6 9.2 -1.6C11.2 2.0 13.6 2.6 12.8 6.4Z" fill="#ff5a1f"/><path class="sgc-flame sgc-flame-in" d="M8.5 6.4C8.0 4 9.7 3.4 9.6 1.4C10.7 3.2 12.0 4 11.5 6.4Z" fill="#ffd23f"/><path class="sgc-flame" d="M19.2 6.4C18.4 2.6 21.4 1.6 21.2 -1.6C23.2 2.0 25.6 2.6 24.8 6.4Z" fill="#ff5a1f"/><path class="sgc-flame sgc-flame-in" d="M20.5 6.4C20.0 4 21.7 3.4 21.6 1.4C22.7 3.2 24.0 4 23.5 6.4Z" fill="#ffd23f"/><path class="sgc-flame" d="M13.2 6.4C12.4 2.6 15.4 1.6 15.2 -4.6C17.2 0.3 19.6 2.6 18.8 6.4Z" fill="#ff5a1f"/><path class="sgc-flame sgc-flame-in" d="M14.5 6.4C14.0 4 15.7 3.4 15.6 -0.4C16.7 2.0 18.0 4 17.5 6.4Z" fill="#ffd23f"/></g><g class="sgc-flip" id="statusGaugeChickFlip"><g class="sgc-inner"><g class="sgc-speed"><path d="M2.5 12h-2.6M3.2 16.5h-3.4M2.5 21h-2.2" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.6 29.6h2.6m-1.3 0h3.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.6 29.6h5.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-body"><path d="M5.2 17.5c-2.4-.4-3.6-2-3.6-3.6 1.6.2 3.6.6 4.8 2.2z" fill="#ffc21a"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.2 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.4 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><g class="sgc-wing"><ellipse cx="10.8" cy="19" rx="5" ry="3.3" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M8.6 18.4c1.4-.7 3-.7 4.4-.1" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/></g><ellipse cx="21.4" cy="13" rx="2.5" ry="2.9" fill="#2b1d12"/><circle cx="22.2" cy="11.8" r="1" fill="#fff"/><circle cx="20.6" cy="14.2" r=".5" fill="#fff"/><ellipse cx="25.2" cy="18" rx="2.6" ry="1.6" fill="#ff7d96" opacity=".6"/><path d="M27.4 14.6c2.6-.2 4.2.6 4.2 1.7 0 1.2-1.6 1.9-4.2 1.7-.8-.1-1.2-.5-1.2-1.7 0-1.1.4-1.6 1.2-1.7z" fill="#ff9d2e"/><path d="M27.2 16.3h3.8" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-fierce-only"><path d="M5.4 10.2Q15 3.6 26.4 9.8" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round" fill="none"/><g class="sgc-tail"><path d="M5.6 10.4c-3-.2-4.8 1-5.8 3.2M5.4 11.2c-2.6 1.2-3.6 3.2-3.8 5.2" stroke="#dc2626" stroke-width="1.9" stroke-linecap="round" fill="none"/></g><path d="M17.8 9.4L24.6 11.8" stroke="#2b1d12" stroke-width="1.9" stroke-linecap="round" fill="none"/></g><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g><g class="sgc-front" id="statusGaugeChickFront" display="none"><g class="sgc-inner"><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><ellipse class="sgc-wing2 sgc-wing2-l" cx="3.8" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="28.2" cy="18" rx="2.8" ry="4.6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse cx="11.2" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="12" cy="12.8" r="1" fill="#fff"/><circle cx="10.4" cy="15.2" r=".5" fill="#fff"/><ellipse cx="20.8" cy="14" rx="2.4" ry="2.8" fill="#2b1d12"/><circle cx="21.6" cy="12.8" r="1" fill="#fff"/><circle cx="20" cy="15.2" r=".5" fill="#fff"/><ellipse cx="6.8" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><ellipse cx="25.2" cy="19" rx="2.4" ry="1.5" fill="#ff7d96" opacity=".6"/><path d="M13.6 17.4c1.5-.7 3.3-.7 4.8 0-.3 1.7-1.3 2.6-2.4 2.6s-2.1-.9-2.4-2.6z" fill="#ff9d2e"/><path d="M14.4 18.3h3.2" stroke="#e07b00" stroke-width=".6" stroke-linecap="round"/><g class="sgc-fierce-only"><path d="M4.4 9.2Q16 3.4 27.6 9.2" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round" fill="none"/><g class="sgc-tail"><path d="M27.4 9.4c3 .4 4.6 2.2 4.8 4.8M27.2 10c2.4 1.4 3.2 3.4 3 6" stroke="#dc2626" stroke-width="1.9" stroke-linecap="round" fill="none"/></g><path d="M8 10.6L13.8 12.4M24 10.6L18.2 12.4" stroke="#2b1d12" stroke-width="1.9" stroke-linecap="round" fill="none"/></g><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g><g class="sgc-back" id="statusGaugeChickBack" display="none"><g class="sgc-inner"><g class="sgc-speed-v"><path d="M11 32.5v2.4M16 33v2.6M21 32.5v2.4" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-a"><path d="M12.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="sgc-leg sgc-leg-b"><path d="M19.5 26v3" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M17.4 29.6h4.2" stroke="#ff9d2e" stroke-width="2" stroke-linecap="round" fill="none"/></g><path d="M13.6 26.6c.8 1.6 1.6 2.2 2.4 2.4.8-.2 1.6-.8 2.4-2.4z" fill="#ffc21a" stroke="#f4a900" stroke-width=".6" stroke-linejoin="round"/><ellipse cx="16" cy="16.4" rx="12.6" ry="11.4" fill="url(#sgcBodyGrad)" stroke="#f4b400" stroke-width="1"/><path d="M14.6 5.6c-.9-1.9-.3-3.4 1.1-3.9M17.6 5.2c.2-2 1.3-3 2.8-3.1" stroke="#f4b400" stroke-width="1.7" stroke-linecap="round" fill="none"/><ellipse class="sgc-wing2 sgc-wing2-l" cx="8.4" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><ellipse class="sgc-wing2 sgc-wing2-r" cx="23.6" cy="17.6" rx="3.8" ry="6" fill="#ffc21a" stroke="#f4a900" stroke-width=".7"/><path d="M7 15.6c1-.7 2.2-.8 3.2-.2M22 15.4c1-.6 2.2-.5 3.2.2" stroke="#fff3b0" stroke-width=".9" stroke-linecap="round" fill="none"/><g class="sgc-fierce-only"><path d="M4.4 9.2Q16 3.4 27.6 9.2" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round" fill="none"/><g class="sgc-tail sgc-tail-c"><path d="M16 6.6c-1.8 3-2.2 5.6-1.6 8.6M16 6.6c1.8 3 2.2 5.6 1.6 8.6" stroke="#dc2626" stroke-width="1.9" stroke-linecap="round" fill="none"/></g><circle cx="16" cy="6.6" r="1.5" fill="#dc2626"/></g><g class="sgc-shell"><path d="M5 22.6L7.75 20.2 10.5 22.6 13.25 20.2 16 22.6 18.75 20.2 21.5 22.6 24.25 20.2 27 22.6V25.5Q27 28.6 16 28.6T5 25.5z" fill="#fffaf0" stroke="#e6d3a8" stroke-width=".8" stroke-linejoin="round"/></g></g></g></g></svg>' +
         '<h2>現在の状況</h2>' +
         '<div class="status-icon-circle running">▶</div>' +
         '<span class="status-badge running"><i class="sb-dot"></i>作業中</span>' +
         '<div class="timer-project">' + (runningTask ? '<span class="task-id-badge">' + escapeHtml(runningTask.id) + '</span> ' : '') + escapeHtml(projectLabel(running)) + (running.number ? ' <span class="number-badge">' + escapeHtml(running.number) + '</span>' : '') + '</div>' +
         '<div class="timer-total-line"><span class="timer-total-label">今回</span><span class="timer-display" id="elapsedTimer">' + formatHMS(sessionElapsedSec) + '</span></div>' +
-        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i><span class="fcb-pct" id="focusCycleBarPct" style="--p:' + focusCycleBarPct(focusCycleRemainingSec()) + '%">経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span><b class="fcb-prep-mark" style="left:' + (focusPrepSec() / (currentFocusCycleSec() || 1) * 100).toFixed(2) + '%"></b></div><div class="fcb-prep" id="focusPrepNote"' + (focusPrepRemainingSec() > 0 ? '' : ' hidden') + '>' + focusPrepNoteHtml(focusPrepRemainingSec()) + '</div>' + focusOverrideHtml + '</div>' +
+        '<div class="focus-cycle-badge' + (focusCycleRemainingSec() <= 300 ? ' is-low' : '') + '" id="focusCycleBadge"><div class="fcb-top"><span class="fcb-label">集中サイクル残り</span><span class="focus-cycle-badge-num" id="focusCycleBadgeNum">' + formatMMSS(focusCycleRemainingSec()) + '</span></div><div class="fcb-bar"><i id="focusCycleBarFill" style="width:' + focusCycleBarPct(focusCycleRemainingSec()) + '%"></i><span class="fcb-pct" id="focusCycleBarPct" style="--p:' + focusCycleBarPct(focusCycleRemainingSec()) + '%">経過 ' + Math.round(focusCycleBarPct(focusCycleRemainingSec())) + '%</span><b class="fcb-prep-mark" style="left:' + (focusPrepSec() / (currentFocusCycleSec() || 1) * 100).toFixed(2) + '%"></b></div><div class="fcb-prep" id="focusPrepNote"' + (focusPrepRemainingSec() > 0 ? '' : ' hidden') + '>' + focusPrepNoteHtml(focusPrepRemainingSec()) + '</div><div class="fcb-fight" id="focusFightNote" data-lv="' + focusFightLevel() + '"' + (focusFightLevel() > 0 ? '' : ' hidden') + '>' + focusFightNoteHtml(focusFightLevel()) + '</div>' + focusOverrideHtml + '</div>' +
         '<div class="timer-task-start">タスクの開始日：' + escapeHtml(taskFirstStartDateDisplay) + '</div>' +
         '<div class="timer-session-block">' +
         (hasPriorTime ? '<div class="timer-session-elapsed" id="sessionElapsedTimer">合計：' + formatHMS(priorTaskSec + sessionElapsedSec) + '</div>' : '') +
@@ -3483,7 +3554,7 @@
         '<div class="status-icon-circle on-break">' + icon("coffee") + '</div>' +
         '<span class="status-badge on-break">' + icon("coffee") + ' <span class="badge-text">休憩中</span></span>' +
         '<div class="timer-memo">休憩開始：' + escapeHtml(formatTimeShort(activeGeneralBreak.start)) + '〜</div>' +
-        '<div class="break-elapsed-badge" id="breakElapsedTimer">休憩してから ' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</div>' +
+        '<div class="break-elapsed-badge" id="breakElapsedTimer"><span class="brk-el-label">休憩してから</span><span class="brk-el-time" id="breakElapsedTime">' + formatHMS(elapsedSinceSec(activeGeneralBreak.start)) + '</span></div>' +
         breakTipHtml() +
         '<button type="button" class="big-btn start" id="resumeGeneralBreakBtn">▶ 業務を再開</button>';
       document.getElementById("resumeGeneralBreakBtn").addEventListener("click", function () {
@@ -3776,7 +3847,7 @@
           '<div class="plan-row-title-line">' +
           '<div class="plan-row-field plan-row-project">' + escapeHtml(p.project) + '</div>' +
           (p.memo ? '<div class="plan-row-field plan-row-memo"><span class="plan-row-sep">＞</span>' + escapeHtml(p.memo) + '</div>' : '') +
-          (p.number ? '<div class="plan-row-field"><span class="plan-row-sep">＞</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
+          (p.number ? '<div class="plan-row-field plan-row-field-num"><span class="plan-row-sep">＞</span><span class="number-badge">' + escapeHtml(p.number) + '</span></div>' : '') +
           (isActivePlan ? ' <span class="plan-row-active-badge">実施中</span>' : '') +
           (p.done ? ' <span class="plan-row-done-badge">✓ 完了</span>' : '') +
           '</div>' +
@@ -4075,6 +4146,16 @@
           var prepRemainEl = document.getElementById("focusPrepRemain");
           if (prepRemainEl && prepRem > 0) prepRemainEl.textContent = "あと " + formatMMSS(prepRem);
         }
+        var fightNoteEl = document.getElementById("focusFightNote");
+        if (fightNoteEl) {
+          var fLv = focusFightLevel();
+          fightNoteEl.hidden = fLv <= 0;
+          if (String(fLv) !== fightNoteEl.getAttribute("data-lv")) {
+            fightNoteEl.setAttribute("data-lv", fLv);
+            var fMsgEl = document.getElementById("focusFightMsg");
+            if (fMsgEl && fLv > 0) fMsgEl.textContent = focusFightMsg(fLv);
+          }
+        }
         var focusBarFillEl = document.getElementById("focusCycleBarFill");
         if (focusBarFillEl) focusBarFillEl.style.width = focusCycleBarPct(focusRemainingSec) + "%";
         var focusBarPctEl = document.getElementById("focusCycleBarPct");
@@ -4105,7 +4186,9 @@
         if (onBreakForTimer) {
           breakTimerEl.textContent = "中断してから " + formatHMS(elapsedSinceSec(onBreakForTimer.end));
         } else if (activeGeneralBreakForTimer) {
-          breakTimerEl.textContent = "休憩してから " + formatHMS(elapsedSinceSec(activeGeneralBreakForTimer.start));
+          var brkTimeEl = document.getElementById("breakElapsedTime");
+          if (brkTimeEl) brkTimeEl.textContent = formatHMS(elapsedSinceSec(activeGeneralBreakForTimer.start));
+          else breakTimerEl.textContent = "休憩してから " + formatHMS(elapsedSinceSec(activeGeneralBreakForTimer.start));
         }
       }
     }
@@ -6458,6 +6541,13 @@
 
     var labels = entries.map(function (e) { return e.name; });
     var memoMap = totalsByProjectMemoMap();
+    // 2026-10-18：総作業時間（表示期間内の全プロジェクト合計）に対する割合を表とツールチップに表示する。
+    var grandTotalSec = entries.reduce(function (a, e) { return a + e.sec; }, 0);
+    function pctOfTotal(sec) {
+      if (!grandTotalSec) return "0%";
+      var v = Math.round(sec / grandTotalSec * 1000) / 10;
+      return v.toFixed(1) + "%";
+    }
 
     // 2026-09-21：「プロジェクト別の内訳」グラフの中身（各プロジェクトの棒）を、業務内容ごとの
     // 積み上げ式（stacked bar）で表示する。積み上げの並び順は、プロジェクトをまたいだ
@@ -6479,6 +6569,28 @@
       };
     });
 
+    // 2026-10-18：幅の小さい棒（作業時間が短い業務内容）はタップしづらいため、タップした行（プロジェクト）の中で
+    // 指の位置にいちばん近い棒をツールチップの対象にする独自の選択モードを使う。
+    if (Chart.Interaction && Chart.Interaction.modes && !Chart.Interaction.modes.projRowNearest) {
+      Chart.Interaction.modes.projRowNearest = function (chart, e) {
+        var yScale = chart.scales.y;
+        var row = Math.round(yScale.getValueForPixel(e.y));
+        if (!(row >= 0 && row < chart.data.labels.length)) return [];
+        var best = null, bestDist = Infinity;
+        chart.data.datasets.forEach(function (ds, di) {
+          if (!(ds.data[row] > 0)) return;
+          var meta = chart.getDatasetMeta(di);
+          if (meta.hidden) return;
+          var el = meta.data[row];
+          if (!el) return;
+          var props = el.getProps(["x", "base"], true);
+          var lo = Math.min(props.x, props.base), hi = Math.max(props.x, props.base);
+          var d = e.x < lo ? lo - e.x : (e.x > hi ? e.x - hi : 0);
+          if (d < bestDist) { bestDist = d; best = { element: el, datasetIndex: di, index: row }; }
+        });
+        return best ? [best] : [];
+      };
+    }
     var ctx = document.getElementById("projectChart").getContext("2d");
     if (projectChartInstance) projectChartInstance.destroy();
     projectChartInstance = new Chart(ctx, {
@@ -6487,12 +6599,12 @@
       options: {
         indexAxis: "y",
         responsive: true, maintainAspectRatio: false,
-        interaction: { mode: "nearest", intersect: true },
+        interaction: { mode: "projRowNearest", intersect: false },
         plugins: {
           legend: { display: false },
           tooltip: {
             filter: function (item) { return item.parsed.x > 0; },
-            callbacks: { label: function (item) { return item.dataset.label + "：" + item.parsed.x + " 時間"; } }
+            callbacks: { label: function (item) { return item.dataset.label + "：" + item.parsed.x + " 時間（総時間の" + pctOfTotal(item.parsed.x * 3600) + "）"; } }
           }
         },
         scales: {
@@ -6505,7 +6617,7 @@
     var memoMap = totalsByProjectMemoMap();
     var numberMap = totalsByProjectMemoNumberMap();
     var tableWrap = document.getElementById("projectTableWrap");
-    var html = '<table class="data-table proj-breakdown-table"><thead><tr><th>プロジェクト</th><th class="num">合計作業時間</th></tr></thead><tbody>';
+    var html = '<table class="data-table proj-breakdown-table"><thead><tr><th>プロジェクト</th><th class="num">合計作業時間</th><th class="num">総時間比</th></tr></thead><tbody>';
     entries.forEach(function (e) {
       var memoEntries = Object.keys(memoMap[e.name] || {}).map(function (k) { return { name: k, sec: memoMap[e.name][k] }; })
         .sort(function (a, b) { return b.sec - a.sec; });
@@ -6513,7 +6625,7 @@
       var isOpen = hasBreakdown && !!expandedStatsProjects[e.name];
       html += '<tr class="proj-row' + (hasBreakdown ? ' proj-row-toggle' : '') + (isOpen ? ' expanded' : '') + '" data-project="' + escapeHtml(e.name) + '">' +
         '<td>' + (hasBreakdown ? '<span class="proj-row-arrow">▶</span>' : '') + escapeHtml(e.name) + '</td>' +
-        '<td class="num">' + formatHM(e.sec) + '</td></tr>';
+        '<td class="num">' + formatHM(e.sec) + '</td><td class="num pct-cell">' + pctOfTotal(e.sec) + '</td></tr>';
       if (isOpen) {
         memoEntries.forEach(function (m) {
           // 2026-09-30：業務内容の行をさらにトグルすると、その業務内容の中の番号ごとの
@@ -6526,16 +6638,17 @@
           var isMemoOpen = hasNumberBreakdown && !!expandedStatsProjectMemos[memoKey];
           html += '<tr class="proj-memo-row' + (hasNumberBreakdown ? ' proj-row-toggle' : '') + (isMemoOpen ? ' expanded' : '') + '" data-project="' + escapeHtml(e.name) + '" data-memo="' + escapeHtml(m.name) + '">' +
             '<td>' + (hasNumberBreakdown ? '<span class="proj-row-arrow">▶</span>' : '') + '<span class="memo-name">' + escapeHtml(m.name) + '</span></td>' +
-            '<td class="num">' + formatHM(m.sec) + '</td></tr>';
+            '<td class="num">' + formatHM(m.sec) + '</td><td class="num pct-cell">' + pctOfTotal(m.sec) + '</td></tr>';
           if (isMemoOpen) {
             numEntries.forEach(function (n) {
               var label = n.name === "(番号未設定)" ? escapeHtml(n.name) : '<span class="number-badge">' + escapeHtml(n.name) + '</span>';
-              html += '<tr class="proj-number-row"><td>' + label + '</td><td class="num">' + formatHM(n.sec) + '</td></tr>';
+              html += '<tr class="proj-number-row"><td>' + label + '</td><td class="num">' + formatHM(n.sec) + '</td><td class="num pct-cell">' + pctOfTotal(n.sec) + '</td></tr>';
             });
           }
         });
       }
     });
+    html += '<tr class="proj-total-row"><td>全体（合計）</td><td class="num">' + formatHM(grandTotalSec) + '</td><td class="num pct-cell">100%</td></tr>';
     tableWrap.innerHTML = html + "</tbody></table>";
   }
 
@@ -7232,6 +7345,10 @@
   }
   function renderAll() {
     if (rolloverStaleDayState()) persistState();
+    // 「休憩を開始」を押している間だけ画面全体の色を変える（CSS の .is-resting）
+    var restingNow = !!getActiveGeneralBreak(); // 「休憩を開始」を押した休憩中だけ（中断中は変えない）
+    document.documentElement.classList.toggle("is-resting", restingNow);
+    document.body.classList.toggle("is-resting", restingNow); // viz-root が body 側にある単体版でも効かせる
     populateProjectDatalist();
     renderMonthlyGoalsCard();
     renderStatusCard();
