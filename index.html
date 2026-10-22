@@ -126,6 +126,96 @@
      ミントグリーン系に差し替える（作業中の色・チャートの色は変えない）。JS が renderAll() で html に .is-resting を付け外しする。 */
   .viz-root.is-resting { --page-plane: #0f2f2b; --surface-1: #15403a; --border: rgba(120,220,200,0.28); --series-4: #34d3b4; }
   .viz-root.viz-light.is-resting { --page-plane: #cdeee4; --surface-1: #e9faf4; --border: rgba(20,110,90,0.30); --series-4: #1f8a7a; }
+  /* 2026-10-22：休憩中（「休憩を開始」中）は、画面のいちばん手前に大きなひよこが寝そべって眠る演出を出す。
+     操作の邪魔にならないよう pointer-events:none（タップは下の画面にそのまま届く）。 */
+  .rest-chick-layer { position: fixed; left: 0; right: 0; bottom: calc(var(--rest-dock-h, 190px) - 4px + env(safe-area-inset-bottom, 0px) + 12px); z-index: 2147483000; pointer-events: none; display: flex; justify-content: center; padding: 0 8px; transform: translateY(36px); opacity: 0; visibility: hidden; transition: transform .9s cubic-bezier(.2,.8,.2,1) .15s, opacity .6s ease .15s, visibility 0s linear .9s; }
+  .is-resting .rest-chick-layer { transform: none; opacity: 1; visibility: visible; transition-delay: .25s, .25s, 0s; }
+  .rest-chick-layer svg { width: min(94vw, 520px); height: auto; display: block; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0,0,0,.22)); }
+  @media (min-width: 900px) { .rest-chick-layer { justify-content: flex-end; padding-right: 20px; } .rest-chick-layer svg { width: 440px; } }
+  /* 休憩中は「現在の状況」カードを画面下に固定（ドック）し、その上にひよこを寝かせる */
+  .is-resting #dashboard .status-card.break-general { position: fixed; left: 0; right: 0; margin: 0 auto; width: min(94vw, 520px); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 2147482900; padding: 14px 18px 16px; display: flex; flex-direction: column; align-items: center; min-height: 0; animation: restDockIn .7s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 -4px 26px rgba(0,0,0,.22), 0 10px 28px rgba(0,0,0,.2); }
+  .is-resting #dashboard .status-card.break-general > h2, .is-resting #dashboard .status-card.break-general .status-icon-circle, .is-resting #dashboard .status-card.break-general .break-tip-box { display: none; }
+  .is-resting #dashboard .status-card.break-general .status-badge.on-break { font-size: 18px; padding: 6px 18px; margin-bottom: 6px; gap: 8px; animation: brkGlow 2.8s ease-in-out infinite; }
+  .is-resting #dashboard .status-card.break-general .status-badge.on-break .ic { width: 22px; height: 22px; }
+  .is-resting #dashboard .status-card.break-general .timer-memo { font-size: 12px; margin-bottom: 4px; }
+  .is-resting #dashboard .status-card.break-general .break-elapsed-badge { margin: 0 0 10px; padding: 4px 22px 6px; }
+  .is-resting #dashboard .status-card.break-general .brk-el-time { font-size: 36px; }
+  .is-resting #dashboard .status-card.break-general button.big-btn { animation: none; width: 100%; }
+  .is-resting main { padding-bottom: calc(var(--rest-dock-h, 190px) + 220px); }
+  @media (min-width: 900px) { .is-resting #dashboard .status-card.break-general { left: auto; right: 20px; margin: 0; width: 440px; } }
+  @keyframes restDockIn { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+  /* 2026-10-22：作業中は、ドックの上でひよこがダンス（ぴょんぴょん跳ねて、ゆらゆら揺れて、つばさを交互にぱたぱた、音符がふわり）。
+     ひよこの絵は休憩中と同じく持ち手（.rc-grab）。セットで動かせる。モーダル（z-index 9998〜）より下。 */
+  .work-chick-layer { position: fixed; left: 0; right: 0; bottom: calc(var(--rest-dock-h, 190px) - 4px + env(safe-area-inset-bottom, 0px) + 12px); z-index: 901; pointer-events: none; display: flex; justify-content: center; opacity: 0; visibility: hidden; transform: translateY(24px); transition: transform .6s cubic-bezier(.2,.8,.2,1) .1s, opacity .4s ease .1s, visibility 0s linear .7s; }
+  .is-working .work-chick-layer { opacity: 1; visibility: visible; transform: none; transition-delay: .2s, .2s, 0s; }
+  .work-chick-layer svg { width: 168px; height: auto; display: block; overflow: visible; filter: drop-shadow(0 5px 8px rgba(0,0,0,.2)); }
+  @media (min-width: 900px) { .work-chick-layer { left: auto; right: 20px; width: 440px; } }
+  .work-chick-layer .wc-sway, .work-chick-layer .wc-bounce, .work-chick-layer .wc-wing-l, .work-chick-layer .wc-wing-r, .work-chick-layer .wc-shadow, .work-chick-layer .wc-face, .work-chick-layer .wc-eyes, .work-chick-layer .wc-foot-l, .work-chick-layer .wc-foot-r { transform-box: fill-box; }
+  /* 2026-10-22：ダンスは「ゆっくり・自由に」。動きごとに周期をずらして（体の移動14秒／ジャンプ8秒／つばさ9.6秒・11.2秒／顔6.4秒／足4秒）、毎回違う踊りに見えるようにした */
+  .work-chick-layer .wc-sway { transform-origin: 50% 100%; animation: wcSway 14s ease-in-out infinite; }
+  .work-chick-layer .wc-bounce { transform-origin: 50% 100%; animation: wcBounce 8s ease-in-out infinite; }
+  .work-chick-layer .wc-wing-l { transform-origin: 85% 12%; animation: wcWingL 9.6s ease-in-out infinite; }
+  .work-chick-layer .wc-wing-r { transform-origin: 15% 12%; animation: wcWingR 11.2s ease-in-out infinite; }
+  .work-chick-layer .wc-shadow { transform-origin: 50% 50%; animation: wcShadow 8s ease-in-out infinite; }
+  .work-chick-layer .wc-face { animation: wcFace 6.4s ease-in-out infinite; }
+  .work-chick-layer .wc-eyes { transform-origin: 50% 50%; animation: wcBlink 5s ease-in-out infinite; }
+  .work-chick-layer .wc-foot-l { transform-origin: 50% 20%; animation: wcFoot 4s ease-in-out infinite; }
+  .work-chick-layer .wc-foot-r { transform-origin: 50% 20%; animation: wcFoot 4s ease-in-out -2s infinite; }
+  .work-chick-layer .wc-note { font-family: inherit; font-weight: 800; fill: var(--series-7); opacity: 0; transform-box: fill-box; animation: wcNote 4.6s ease-in-out infinite; }
+  .work-chick-layer .wc-n2 { animation-delay: 1.5s; fill: var(--series-2); }
+  .work-chick-layer .wc-n3 { animation-delay: 3.1s; fill: var(--series-4); }
+  @keyframes wcSway { 0%,100% { transform: translate(0,0) rotate(0deg); } 10% { transform: translate(-18px,0) rotate(-8deg); } 22% { transform: translate(-18px,0) rotate(6deg); } 34% { transform: translate(0,0) rotate(-4deg); } 46% { transform: translate(20px,0) rotate(9deg); } 58% { transform: translate(20px,0) rotate(-6deg); } 70% { transform: translate(8px,0) rotate(3deg); } 82% { transform: translate(-8px,0) rotate(-3deg); } }
+  @keyframes wcBounce { 0%,100% { transform: translateY(0) scale(1.04,.94); } 8% { transform: translateY(-16px) scale(.97,1.04); } 16% { transform: translateY(0) scale(1.05,.93); } 24%,50% { transform: translateY(0) scale(1,1); } 32% { transform: translateY(-8px) scale(.98,1.02); } 40% { transform: translateY(0) scale(1.03,.96); } 60% { transform: translateY(0) scale(1.03,.96); } 68% { transform: translateY(-20px) scale(.96,1.05); } 78% { transform: translateY(0) scale(1.06,.92); } 86% { transform: translateY(0) scale(1,1); } }
+  @keyframes wcWingL { 0%,44%,70%,100% { transform: rotate(0deg); } 12% { transform: rotate(50deg); } 22% { transform: rotate(20deg); } 32% { transform: rotate(55deg); } 80% { transform: rotate(25deg); } 90% { transform: rotate(10deg); } }
+  @keyframes wcWingR { 0%,20%,64%,100% { transform: rotate(0deg); } 30% { transform: rotate(-55deg); } 40% { transform: rotate(-25deg); } 52% { transform: rotate(-60deg); } 85% { transform: rotate(-20deg); } }
+  @keyframes wcShadow { 0%,16%,24%,40%,50%,60%,78%,86%,100% { transform: scale(1); opacity: 1; } 8% { transform: scale(.78); opacity: .5; } 32% { transform: scale(.88); opacity: .75; } 68% { transform: scale(.7); opacity: .45; } }
+  @keyframes wcFace { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-3px,-1px); } 50% { transform: translate(3px,0); } 75% { transform: translate(2px,-2px); } }
+  @keyframes wcBlink { 0%,90%,100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+  @keyframes wcFoot { 0%,50%,100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-6px) rotate(-8deg); } }
+  @keyframes wcNote { 0% { opacity: 0; transform: translate(0,8px) rotate(-8deg); } 25% { opacity: .95; } 60% { transform: translate(6px,-14px) rotate(8deg); } 100% { opacity: 0; transform: translate(-4px,-34px) rotate(-6deg); } }
+  /* 2026-10-22：作業中（running）の「現在の状況」カードも画面下に固定（ドック）。表示は「作業中・プロジェクト名・今回・集中サイクル残り・中断」に絞る。
+     休憩中と同じく長押し→ドラッグで動かせ、動かすとふわふわ浮く。モーダル（z-index 9998〜）より下に置く。 */
+  .is-working #dashboard .status-card.running { position: fixed; left: 0; right: 0; margin: 0 auto; width: min(94vw, 520px); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 900; padding: 12px 16px 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 0; box-shadow: 0 -4px 26px rgba(0,0,0,.20), 0 10px 28px rgba(0,0,0,.18); }
+  .is-working #dashboard .status-card.running > h2, .is-working #dashboard .status-card.running > .status-icon-circle, .is-working #dashboard .status-card.running .timer-task-start, .is-working #dashboard .status-card.running .timer-session-block, .is-working #dashboard .status-card.running .running-memo-row, .is-working #dashboard .status-card.running .focus-cycle-override-field { display: none; }
+  .is-working #dashboard .status-card.running .status-badge { margin-bottom: 6px; }
+  .is-working #dashboard .status-card.running > .timer-project { font-size: 18px; margin-bottom: 2px; }
+  .is-working #dashboard .status-card.running .timer-total-line { margin: 2px 0 0; }
+  .is-working #dashboard .status-card.running .focus-cycle-badge { margin: 8px 0 0; padding: 10px 12px 12px; }
+  .is-working #dashboard .status-card.running .focus-cycle-badge-num { font-size: 30px; }
+  .is-working #dashboard .status-card.running .status-btn-row { margin-top: 10px; width: 100%; }
+  .is-working #dashboard .status-card.running button.big-btn { width: 100%; }
+  .is-working main { padding-bottom: calc(var(--rest-dock-h, 190px) + 28px); }
+  @media (min-width: 900px) { .is-working #dashboard .status-card.running { left: auto; right: 20px; margin: 0; width: 440px; } }
+  /* 2026-10-22：ひよこと休憩カード（ドック）は「セット」で押して0.06秒後から→ドラッグで動かせる。ひよこの絵／カードの余白部分が持ち手で、ボタンは今までどおり押せる。
+     位置は html の --rc-dx / --rc-dy（2つ共通）。元の位置から離れたら .rc-floating になり、セットでふわふわ上下する。ダブルタップで「画面の真ん中に浮かぶ／画面下に戻る」。表示した直後は真ん中に浮かぶ（初期位置）。 */
+  .rest-chick-layer svg, .work-chick-layer svg, .is-resting #dashboard .status-card.break-general, .is-working #dashboard .status-card.running { translate: var(--rc-dx, 0px) calc(var(--rc-dy, 0px) + var(--rc-bob, 0px)); scale: 1; transition: scale .15s ease, filter .15s ease; }
+  .rest-chick-layer svg, .work-chick-layer svg { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .is-resting #dashboard .status-card.break-general, .is-working #dashboard .status-card.running { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; cursor: grab; }
+  .is-resting #dashboard .status-card.break-general button, .is-working #dashboard .status-card.running button { cursor: pointer; }
+  .rc-pressing .rest-chick-layer svg, .rc-pressing .work-chick-layer svg, .rc-pressing #dashboard .status-card.break-general, .rc-pressing #dashboard .status-card.running { scale: 1.012; }
+  .rc-dragging .rest-chick-layer svg, .rc-dragging .work-chick-layer svg, .rc-dragging #dashboard .status-card.break-general, .rc-dragging #dashboard .status-card.running { scale: 1.03; cursor: grabbing; }
+  .rc-dragging .rest-chick-layer svg, .rc-dragging .work-chick-layer svg { filter: drop-shadow(0 14px 18px rgba(0,0,0,.32)); }
+  .rc-dragging #dashboard .status-card.break-general, .rc-dragging #dashboard .status-card.running { cursor: grabbing; }
+  .rc-gliding .rest-chick-layer svg, .rc-gliding .work-chick-layer svg, .rc-gliding #dashboard .status-card.break-general, .rc-gliding #dashboard .status-card.running { transition: translate .7s cubic-bezier(.2,.8,.2,1), scale .15s ease, filter .15s ease; }
+  .rest-chick-layer .rc-grab, .work-chick-layer .rc-grab { pointer-events: all; cursor: grab; }
+  @property --rc-bob { syntax: "<length>"; inherits: false; initial-value: 0px; }
+  @keyframes rcBob { 0%,100% { --rc-bob: 0px; } 50% { --rc-bob: -9px; } }
+  .rc-floating .rest-chick-layer svg, .rc-floating .work-chick-layer svg { animation: rcBob 4.4s ease-in-out infinite; }
+  .rc-floating #dashboard .status-card.break-general { animation: restDockIn .7s cubic-bezier(.2,.8,.2,1) both, rcBob 4.4s ease-in-out infinite; }
+  .rc-floating #dashboard .status-card.running { animation: statusCardFloat 3.4s ease-in-out infinite, rcBob 4.4s ease-in-out infinite; }
+  .rc-dragging .rest-chick-layer svg, .rc-dragging .work-chick-layer svg, .rc-dragging #dashboard .status-card.break-general, .rc-dragging #dashboard .status-card.running { animation-play-state: paused; }
+  .rest-chick-layer .rc-breathe { transform-box: fill-box; transform-origin: 50% 100%; animation: rcBreathe 3.8s ease-in-out infinite; }
+  .rest-chick-layer .rc-blanket { transform-box: fill-box; transform-origin: 50% 100%; animation: rcBreathe 3.8s ease-in-out infinite; }
+  .rest-chick-layer .rc-wing { transform-box: fill-box; transform-origin: 80% 20%; animation: rcWing 3.8s ease-in-out infinite; }
+  .rest-chick-layer .rc-z { font-family: inherit; font-weight: 800; fill: var(--text-primary); opacity: 0; transform-box: fill-box; animation: rcZ 3.6s ease-in-out infinite; }
+  .rest-chick-layer .rc-z2 { animation-delay: 1.2s; }
+  .rest-chick-layer .rc-z3 { animation-delay: 2.4s; }
+  .rest-chick-layer .rc-bubble { animation: rcBubble 3.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 0% 100%; }
+  @keyframes rcBreathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.012,1.05); } }
+  @keyframes rcWing { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(2.5deg); } }
+  @keyframes rcZ { 0% { opacity: 0; transform: translate(0,6px) scale(.7); } 25% { opacity: .95; } 80% { opacity: .55; } 100% { opacity: 0; transform: translate(16px,-34px) scale(1.25); } }
+  @keyframes rcBubble { 0%,100% { transform: scale(.85); opacity: .5; } 50% { transform: scale(1.1); opacity: .9; } }
+  @media (prefers-reduced-motion: reduce) { .is-resting #dashboard .status-card.break-general { animation: none; } .rest-chick-layer { transition: none; } .rest-chick-layer .rc-breathe, .rest-chick-layer .rc-blanket, .rest-chick-layer .rc-wing, .rest-chick-layer .rc-bubble { animation: none; } .rc-floating .rest-chick-layer svg, .rc-floating #dashboard .status-card.break-general, .rc-floating #dashboard .status-card.running { animation: none; } .rest-chick-layer .rc-z { animation: none; opacity: .8; } .work-chick-layer .wc-sway, .work-chick-layer .wc-bounce, .work-chick-layer .wc-wing-l, .work-chick-layer .wc-wing-r, .work-chick-layer .wc-shadow, .work-chick-layer .wc-face, .work-chick-layer .wc-eyes, .work-chick-layer .wc-foot-l, .work-chick-layer .wc-foot-r { animation: none; } .work-chick-layer .wc-note { animation: none; opacity: .8; } .work-chick-layer { transition: none; } }
   .is-resting header.app-header { background: #1f8a7a; transition: background-color .6s ease; }
   :root:not(.viz-light) .is-resting header.app-header, .viz-root.is-resting:not(.viz-light) header.app-header { background: #176a5d; }
   .is-resting #dashboard .status-card.break-general .status-badge.on-break { background: linear-gradient(135deg, var(--series-4), color-mix(in srgb, var(--series-4) 70%, #0e7490)); box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 40%, transparent); }
@@ -840,6 +930,27 @@
   .mode-toggle { display: flex; gap: 4px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
   .mode-toggle-btn { appearance: none; border: none; background: transparent; border-radius: 999px; font-size: 12px; font-weight: 600; padding: 6px 14px; cursor: pointer; color: var(--text-secondary); }
   .mode-toggle-btn.active { background: var(--series-1); color: #fff; }
+  /* 2026-10-21：スケジュールの「円表示」（1日=24時間の円グラフ） */
+  .sch-circle-wrap { max-width: 360px; margin: 0 auto; }
+  .sch-circle-wrap svg { width: 100%; height: auto; display: block; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .sch-circle-wrap .cir-arc { cursor: pointer; }
+  .sch-circle-wrap .cir-track { fill: var(--page-plane); stroke: var(--border); stroke-width: 1; }
+  .sch-circle-wrap .cir-tick { stroke: var(--text-muted); stroke-width: 1; opacity: .55; }
+  .sch-circle-wrap .cir-hour { fill: var(--text-secondary); font-size: 11px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+  .sch-circle-wrap .cir-center-label { fill: var(--text-secondary); font-size: 12px; text-anchor: middle; }
+  .sch-circle-wrap .cir-center-time { fill: var(--text-primary); font-size: 24px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .sch-circle-wrap .cir-center-date { fill: var(--text-muted); font-size: 11px; text-anchor: middle; }
+  .sch-circle-wrap .cir-now { stroke: #e5484d; stroke-width: 2; stroke-linecap: round; }
+  .sch-circle-wrap .cir-now-dot { fill: #e5484d; }
+  .sch-circle-detail { min-height: 44px; margin: 8px auto 0; max-width: 360px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+  .sch-circle-detail .cir-detail-card { display: inline-flex; flex-direction: column; gap: 6px; align-items: center; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; max-width: 100%; }
+  .sch-circle-detail .cir-detail-name { font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+  .sch-circle-detail .cir-detail-edit { appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; padding: 5px 14px; border-radius: 6px; cursor: pointer; }
+  .sch-circle-legend { display: flex; flex-direction: column; gap: 4px; max-width: 420px; margin: 10px auto 0; }
+  .sch-circle-legend .cir-leg-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); min-width: 0; }
+  .sch-circle-legend .cir-leg-dot { flex: none; width: 11px; height: 11px; border-radius: 3px; }
+  .sch-circle-legend .cir-leg-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .sch-circle-legend .cir-leg-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
   .cal-nav { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 10px; }
   .cal-nav-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; font-size: 17px; line-height: 1; color: var(--text-secondary); }
   .cal-nav-btn:hover { background: var(--page-plane); }
@@ -1361,6 +1472,7 @@
           <div class="mode-toggle">
             <button type="button" id="scheduleMonthModeBtn" class="mode-toggle-btn">月表示</button>
             <button type="button" id="scheduleDayModeBtn" class="mode-toggle-btn active">日表示</button>
+            <button type="button" id="scheduleCircleModeBtn" class="mode-toggle-btn">円表示</button>
           </div>
         </div>
 
@@ -1421,6 +1533,21 @@
           <div class="day-timeline-scroll" id="dayTimelineScroll">
             <div class="day-timeline" id="dayTimeline"></div>
           </div>
+        </div>
+
+        <!-- 2026-10-21：1日（24時間）を円にして見る「円表示」。0:00が真上、時計回りに24時間。 -->
+        <div id="scheduleCircleView" style="display:none;">
+          <div class="cal-nav">
+            <button type="button" id="schCirPrevBtn" class="cal-nav-btn" aria-label="前の日">‹</button>
+            <span id="schCirLabel" class="cal-month-label"></span>
+            <button type="button" id="schCirTodayBtn" class="cal-today-btn">今日</button>
+            <button type="button" id="schCirNextBtn" class="cal-nav-btn" aria-label="次の日">›</button>
+          </div>
+          <div id="schCirTotal" class="generated-note" style="margin-bottom:8px; text-align:center;"></div>
+          <div class="sch-circle-wrap" id="schCircleWrap"></div>
+          <div class="sch-circle-detail" id="schCircleDetail"></div>
+          <div class="sch-circle-legend" id="schCircleLegend"></div>
+          <p class="generated-note" style="margin-top:8px; text-align:center;">円は0:00が真上・時計回りの24時間です。色の帯をタップすると詳細が出ます（細い帯は近くをタップでOK）。</p>
         </div>
       </div>
     </div>
@@ -1636,6 +1763,90 @@
     <div class="goal-prompt-list" id="goalPromptList"></div>
     <div class="goal-prompt-footer"><button type="button" class="goal-prompt-close-btn" id="goalPromptCloseBtn">完了（閉じる）</button></div>
   </div>
+</div>
+
+<div class="rest-chick-layer" id="restChickLayer" aria-hidden="true">
+  <svg viewBox="0 0 440 214" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="rcBody" cx="0.35" cy="0.2" r="1"><stop offset="0" stop-color="#fff6b8"/><stop offset="0.5" stop-color="#ffe26e"/><stop offset="1" stop-color="#f4bd2c"/></radialGradient>
+      <radialGradient id="rcHead" cx="0.38" cy="0.22" r="0.95"><stop offset="0" stop-color="#fffac4"/><stop offset="0.55" stop-color="#ffe574"/><stop offset="1" stop-color="#f6c232"/></radialGradient>
+      <linearGradient id="rcBeak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb74d"/><stop offset="1" stop-color="#f08a1e"/></linearGradient>
+      <linearGradient id="rcBlanket" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#96e3d0"/><stop offset="1" stop-color="#5cbfa8"/></linearGradient>
+      <linearGradient id="rcPillow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6ea"/><stop offset="1" stop-color="#f3dcc0"/></linearGradient>
+    </defs>
+    <ellipse class="rc-shadow" cx="220" cy="207" rx="204" ry="7" fill="rgba(0,0,0,.20)"/>
+    <!-- まくら -->
+    <g class="rc-grab"><rect x="262" y="172" width="158" height="34" rx="17" fill="url(#rcPillow)" stroke="#e3c8a4" stroke-width="2.2"/></g>
+    <!-- からだ -->
+    <g class="rc-breathe rc-grab">
+      <path d="M44 132c-16-2-26-12-28-26 14-2 26 4 34 16zM50 142c-18 2-32-4-38-16 14-4 28 0 38 10z" fill="#f4bd2c" stroke="#e0a526" stroke-width="2.2" stroke-linejoin="round"/>
+      <ellipse cx="172" cy="152" rx="142" ry="55" fill="url(#rcBody)" stroke="#e0a526" stroke-width="2.4"/>
+      <path d="M70 112c26-14 70-20 108-16" stroke="#fffbe0" stroke-width="5" stroke-linecap="round" fill="none" opacity=".55"/>
+    </g>
+    <!-- ブランケット -->
+    <g class="rc-blanket rc-grab">
+      <path d="M28 204C22 160 56 122 112 116C172 110 236 116 290 134C308 148 308 186 302 204Q285 210 268 204T234 204T200 204T166 204T132 204T98 204T64 204T28 204Z" fill="url(#rcBlanket)" stroke="#3e9c86" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M50 146C68 128 90 121 114 119C174 113 236 119 286 137" stroke="#fff" stroke-opacity=".6" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M92 130c-4 24-4 50 0 74M148 121c-4 28-4 56 0 83M206 122c-3 28-3 56 1 82M258 130c-2 26-2 52 2 74" stroke="#3e9c86" stroke-opacity=".28" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <circle cx="70" cy="176" r="3.2" fill="#fff" opacity=".7"/><circle cx="126" cy="186" r="3.2" fill="#fff" opacity=".7"/><circle cx="184" cy="178" r="3.2" fill="#fff" opacity=".7"/><circle cx="238" cy="188" r="3.2" fill="#fff" opacity=".7"/>
+    </g>
+    <!-- あたま（横向き。まくらに頭を乗せて右を向いて眠る） -->
+    <g class="rc-head rc-grab" transform="rotate(-3 340 142)">
+      <path d="M332 90c-10-5-16-15-15-25c9 2 17 11 18 24zM345 87c-6-12-4-25 2-33c7 8 9 22 3 34zM357 91c3-10 10-17 18-16c-1 9-7 17-15 20z" fill="#ffe574" stroke="#e0a526" stroke-width="2.2" stroke-linejoin="round"/>
+      <circle cx="338" cy="142" r="55" fill="url(#rcHead)" stroke="#e0a526" stroke-width="2.4"/>
+      <ellipse cx="314" cy="110" rx="15" ry="7" transform="rotate(-28 314 110)" fill="#fff" opacity=".28"/>
+      <!-- とじた目（横顔なので片目だけ） -->
+      <path d="M349 137q9 8 18 0" stroke="#4a3320" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <path d="M366.5 138.5l4 3" stroke="#4a3320" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+      <!-- ほっぺ -->
+      <ellipse cx="344" cy="158" rx="11" ry="7" fill="#ff93a8" opacity=".45"/>
+      <!-- くちばし（右向き・上と下） -->
+      <path d="M389 143c10-3 22-1 27 6l-28 2z" fill="url(#rcBeak)" stroke="#d9741a" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M388 152l27-1c-3 7-13 10-24 8z" fill="#f08a1e" stroke="#d9741a" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="400" cy="147" r="1" fill="#b85e10"/>
+      <g class="rc-bubble"><circle cx="424" cy="160" r="8" fill="#d4f0ff" fill-opacity=".6" stroke="#9bd6f0" stroke-width="1.6"/><path d="M420 158q2-3 5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity=".9"/></g>
+    </g>
+    <text class="rc-z rc-z1" x="392" y="80" font-size="20">Z</text>
+    <text class="rc-z rc-z2" x="396" y="50" font-size="26">Z</text>
+    <text class="rc-z rc-z3" x="414" y="18" font-size="32">Z</text>
+  </svg>
+</div>
+
+<div class="work-chick-layer" id="workChickLayer" aria-hidden="true">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="wcBody" cx="0.36" cy="0.22" r="0.95"><stop offset="0" stop-color="#fff7bf"/><stop offset="0.5" stop-color="#ffe270"/><stop offset="1" stop-color="#f4bd2c"/></radialGradient>
+      <linearGradient id="wcBeak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb74d"/><stop offset="1" stop-color="#f08a1e"/></linearGradient>
+    </defs>
+    <ellipse class="wc-shadow" cx="100" cy="192" rx="52" ry="6" fill="rgba(0,0,0,.22)"/>
+    <g class="wc-sway">
+      <g class="wc-bounce rc-grab">
+        <!-- あし -->
+        <g stroke="#d9741a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" fill="#f59e2b">
+          <path class="wc-foot-l" d="M66 172c2-7 10-9 16-6 4 2 6 6 5 10-8 4-17 3-21-4z"/><path class="wc-foot-r" d="M134 172c-2-7-10-9-16-6-4 2-6 6-5 10 8 4 17 3 21-4z"/>
+        </g>
+        <!-- つばさ（交互にぱたぱた） -->
+        <g class="wc-wing-l"><ellipse cx="44" cy="122" rx="14" ry="30" transform="rotate(14 44 122)" fill="#f6c232" stroke="#e0a526" stroke-width="2.2"/></g>
+        <g class="wc-wing-r"><ellipse cx="156" cy="122" rx="14" ry="30" transform="rotate(-14 156 122)" fill="#f6c232" stroke="#e0a526" stroke-width="2.2"/></g>
+        <!-- からだ＋あたま（ひとつの丸） -->
+        <path d="M90 50c-8-6-12-14-10-22c8 2 14 10 14 21zM101 47c-4-11-2-22 4-28c6 7 6 19 0 29zM112 50c2-9 8-15 15-14c-1 8-6 15-13 18z" fill="#ffe574" stroke="#e0a526" stroke-width="2.2" stroke-linejoin="round"/>
+        <ellipse cx="100" cy="110" rx="64" ry="62" fill="url(#wcBody)" stroke="#e0a526" stroke-width="2.4"/>
+        <ellipse cx="100" cy="134" rx="36" ry="28" fill="#fff6c4" opacity=".55"/>
+        <ellipse cx="74" cy="68" rx="15" ry="7" transform="rotate(-30 74 68)" fill="#fff" opacity=".32"/>
+        <!-- かお（体より少し遅れて動く＋まばたき） -->
+        <g class="wc-face">
+        <g class="wc-eyes"><ellipse cx="78" cy="98" rx="5.6" ry="6.8" fill="#3a2a1a"/><ellipse cx="122" cy="98" rx="5.6" ry="6.8" fill="#3a2a1a"/>
+        <circle cx="80" cy="95" r="2.1" fill="#fff"/><circle cx="124" cy="95" r="2.1" fill="#fff"/></g>
+        <ellipse cx="60" cy="116" rx="9" ry="6" fill="#ff93a8" opacity=".5"/><ellipse cx="140" cy="116" rx="9" ry="6" fill="#ff93a8" opacity=".5"/>
+        <path d="M89 110c0-5 22-5 22 0c0 3-4 6-11 6s-11-3-11-6z" fill="url(#wcBeak)" stroke="#d9741a" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M93 116c2 7 12 7 14 0z" fill="#f08a1e" stroke="#d9741a" stroke-width="1.4" stroke-linejoin="round"/>
+        </g>
+      </g>
+    </g>
+    <text class="wc-note wc-n1" x="150" y="64" font-size="22">&#9834;</text>
+    <text class="wc-note wc-n2" x="30" y="58" font-size="26">&#9835;</text>
+    <text class="wc-note wc-n3" x="168" y="40" font-size="20">&#9834;</text>
+  </svg>
 </div>
 
 <datalist id="projectList"></datalist>
@@ -4194,6 +4405,8 @@
     }
     renderMiniStatus();
     updateScheduleLiveGauge();
+    updateRestDockHeight();
+    if (scheduleViewMode === "circle" && scheduleDayState === todayDateInputValue() && Math.floor(Date.now() / 1000) % 5 === 0) renderScheduleCircleView(); // 現在時刻の針・作業中の帯を5秒ごとに更新
   }
 
   // ---- stat tiles (dashboard) ----
@@ -5248,7 +5461,10 @@
     document.getElementById("scheduleDayModeBtn").classList.toggle("active", mode === "day");
     document.getElementById("scheduleMonthView").style.display = mode === "month" ? "" : "none";
     document.getElementById("scheduleDayView").style.display = mode === "day" ? "" : "none";
+    document.getElementById("scheduleCircleModeBtn").classList.toggle("active", mode === "circle");
+    document.getElementById("scheduleCircleView").style.display = mode === "circle" ? "" : "none";
     if (mode === "month") renderScheduleMonthCalendar();
+    else if (mode === "circle") renderScheduleCircleView();
     else renderScheduleDayView();
   }
 
@@ -5634,6 +5850,166 @@
       renderScheduleDayView(true);
     });
   }
+
+  // ---- 円表示（1日=24時間の円。0:00が真上・時計回り） ----
+  var scheduleCircleSelKey = null; // タップで選択中の帯（"work|<sessionId>|<segIndex>" / "break|<breakId>"）
+  var CIR = { size: 340, c: 170, rOut: 140, rIn: 84, rLabel: 156 };
+  function cirPt(r, deg) {
+    var rad = deg * Math.PI / 180;
+    return [CIR.c + r * Math.sin(rad), CIR.c - r * Math.cos(rad)];
+  }
+  function cirArcPath(r0, r1, a0, a1) {
+    if (a1 - a0 >= 359.99) a1 = a0 + 359.99;
+    var large = (a1 - a0) > 180 ? 1 : 0;
+    var p0 = cirPt(r1, a0), p1 = cirPt(r1, a1), p2 = cirPt(r0, a1), p3 = cirPt(r0, a0);
+    return "M" + p0[0].toFixed(2) + " " + p0[1].toFixed(2) +
+      " A" + r1 + " " + r1 + " 0 " + large + " 1 " + p1[0].toFixed(2) + " " + p1[1].toFixed(2) +
+      " L" + p2[0].toFixed(2) + " " + p2[1].toFixed(2) +
+      " A" + r0 + " " + r0 + " 0 " + large + " 0 " + p3[0].toFixed(2) + " " + p3[1].toFixed(2) + " Z";
+  }
+  function scheduleCircleBlocks(dateStr) {
+    var isToday = dateStr === todayDateInputValue();
+    var nowMin = minutesOfDay(nowLocalIso());
+    var out = [];
+    state.sessions.forEach(function (s) {
+      getSegments(s).forEach(function (seg, segIdx) {
+        if (!isSameDate(seg.start, dateStr)) return;
+        var st = minutesOfDay(seg.start);
+        var en = seg.end ? (isSameDate(seg.end, dateStr) ? minutesOfDay(seg.end) : 24 * 60) : (isToday ? nowMin : 24 * 60);
+        if (en < st) en = 24 * 60;
+        var memo = s.memo && s.memo.trim(), num = s.number && s.number.trim();
+        out.push({
+          kind: "work", key: "work|" + s.id + "|" + segIdx, sessionId: s.id, startMin: st, endMin: Math.min(en, 24 * 60),
+          startIso: seg.start, endIso: seg.end, running: !seg.end,
+          color: colorForProjectAndMemo(projectLabel(s), s.memo),
+          name: projectLabel(s) + (memo ? "・" + memo : "") + (num ? "（" + num + "）" : ""),
+          legendKey: projectLabel(s) + (memo ? "・" + memo : "")
+        });
+      });
+    });
+    getGeneralBreaks().forEach(function (b) {
+      if (!isSameDate(b.start, dateStr)) return;
+      var st = minutesOfDay(b.start);
+      var en = b.end ? (isSameDate(b.end, dateStr) ? minutesOfDay(b.end) : 24 * 60) : (isToday ? nowMin : 24 * 60);
+      if (en < st) en = 24 * 60;
+      out.push({ kind: "break", key: "break|" + b.id, breakId: b.id, startMin: st, endMin: Math.min(en, 24 * 60), startIso: b.start, endIso: b.end, running: !b.end, color: "#34d3b4", name: "休憩", legendKey: "休憩" });
+    });
+    out.sort(function (a, b) { return a.startMin - b.startMin; });
+    return out;
+  }
+  function renderScheduleCircleView() {
+    var wrap = document.getElementById("schCircleWrap");
+    if (!wrap) return;
+    var dateStr = scheduleDayState;
+    var d = new Date(dateStr + "T00:00:00");
+    var wd = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+    document.getElementById("schCirLabel").textContent = (d.getMonth() + 1) + "月" + d.getDate() + "日（" + wd + "）";
+    var blocks = scheduleCircleBlocks(dateStr);
+    var isToday = dateStr === todayDateInputValue();
+    var totalSec = daySecTotal(dateStr);
+    document.getElementById("schCirTotal").textContent = "この日の合計：" + formatHM(totalSec);
+
+    var svg = '<svg viewBox="0 0 ' + CIR.size + ' ' + CIR.size + '" role="img" aria-label="1日の作業の円表示" id="schCircleSvg">';
+    svg += '<path class="cir-track" fill-rule="evenodd" d="' + cirArcPath(CIR.rIn, CIR.rOut, 0, 359.99) + '"/>';
+    for (var h = 0; h < 24; h++) {
+      var a = h * 15, big = h % 6 === 0;
+      var t0 = cirPt(CIR.rOut + 1, a), t1 = cirPt(CIR.rOut + (big ? 8 : 4), a);
+      svg += '<line class="cir-tick" x1="' + t0[0].toFixed(1) + '" y1="' + t0[1].toFixed(1) + '" x2="' + t1[0].toFixed(1) + '" y2="' + t1[1].toFixed(1) + '"/>';
+    }
+    [0, 3, 6, 9, 12, 15, 18, 21].forEach(function (hh) {
+      var lp = cirPt(CIR.rLabel + 4, hh * 15);
+      svg += '<text class="cir-hour" x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '">' + hh + '</text>';
+    });
+    blocks.forEach(function (b) {
+      var a0 = b.startMin / 1440 * 360, a1 = b.endMin / 1440 * 360;
+      if (a1 - a0 < 1.5) a1 = a0 + 1.5; // 短い記録も見えるように最小の角度を確保
+      var sel = scheduleCircleSelKey === b.key;
+      svg += '<path class="cir-arc" data-key="' + escapeHtml(b.key) + '" d="' + cirArcPath(sel ? CIR.rIn - 3 : CIR.rIn, sel ? CIR.rOut + 4 : CIR.rOut, a0, a1) + '" fill="' + b.color + '"' +
+        (b.kind === "break" ? ' fill-opacity="0.85"' : '') +
+        (sel ? ' stroke="var(--text-primary)" stroke-width="2"' : ' stroke="var(--surface-1)" stroke-width="0.8"') + '/>';
+    });
+    if (isToday) {
+      var na = minutesOfDay(nowLocalIso()) / 1440 * 360;
+      var n0 = cirPt(CIR.rIn - 6, na), n1 = cirPt(CIR.rOut + 10, na);
+      svg += '<line class="cir-now" x1="' + n0[0].toFixed(1) + '" y1="' + n0[1].toFixed(1) + '" x2="' + n1[0].toFixed(1) + '" y2="' + n1[1].toFixed(1) + '"/>';
+      svg += '<circle class="cir-now-dot" cx="' + n1[0].toFixed(1) + '" cy="' + n1[1].toFixed(1) + '" r="3.5"/>';
+    }
+    svg += '<text class="cir-center-date" x="' + CIR.c + '" y="' + (CIR.c - 26) + '">' + (d.getMonth() + 1) + '/' + d.getDate() + '（' + wd + '）</text>';
+    svg += '<text class="cir-center-label" x="' + CIR.c + '" y="' + (CIR.c - 6) + '">作業合計</text>';
+    svg += '<text class="cir-center-time" x="' + CIR.c + '" y="' + (CIR.c + 22) + '">' + escapeHtml(formatHM(totalSec)) + '</text>';
+    svg += '</svg>';
+    wrap.innerHTML = svg;
+
+    // 選択中の帯の詳細
+    var detail = document.getElementById("schCircleDetail");
+    var selBlock = blocks.find(function (b) { return b.key === scheduleCircleSelKey; });
+    if (!selBlock) { scheduleCircleSelKey = null; detail.innerHTML = ""; }
+    else {
+      var durSec = Math.max(0, Math.round((selBlock.endMin - selBlock.startMin) * 60));
+      detail.innerHTML = '<div class="cir-detail-card"><span class="cir-detail-name">' + escapeHtml(selBlock.name) + '</span>' +
+        '<span>' + escapeHtml(formatTimeShort(selBlock.startIso)) + '〜' + (selBlock.endIso ? escapeHtml(formatTimeShort(selBlock.endIso)) : '') + '（' + escapeHtml(formatHM(durSec)) + '）</span>' +
+        (selBlock.kind === "work" ? '<button type="button" class="cir-detail-edit" data-session-id="' + escapeHtml(selBlock.sessionId) + '">編集</button>' : '') + '</div>';
+    }
+
+    // 凡例（プロジェクト・業務内容ごとの合計。長い順）
+    var agg = {}, order = [];
+    blocks.forEach(function (b) {
+      var sec = Math.max(0, (b.endMin - b.startMin) * 60);
+      if (!agg[b.legendKey]) { agg[b.legendKey] = { color: b.color, sec: 0 }; order.push(b.legendKey); }
+      agg[b.legendKey].sec += sec;
+    });
+    order.sort(function (x, y) { return agg[y].sec - agg[x].sec; });
+    document.getElementById("schCircleLegend").innerHTML = order.length ? order.map(function (k) {
+      return '<div class="cir-leg-row"><span class="cir-leg-dot" style="background:' + agg[k].color + ';"></span><span class="cir-leg-name">' + escapeHtml(k) + '</span><span class="cir-leg-time">' + escapeHtml(formatHM(Math.round(agg[k].sec))) + '</span></div>';
+    }).join("") : '<div class="empty-state">この日の記録はありません。</div>';
+  }
+  // タップ位置の角度から帯を特定する（細い帯でも押せるよう、±約20分ぶんの余裕を持たせる）。
+  document.getElementById("schCircleWrap").addEventListener("click", function (evt) {
+    var svgEl = document.getElementById("schCircleSvg");
+    if (!svgEl) return;
+    var r = svgEl.getBoundingClientRect();
+    var scale = CIR.size / r.width;
+    var dx = (evt.clientX - r.left) * scale - CIR.c, dy = (evt.clientY - r.top) * scale - CIR.c;
+    var rad = Math.sqrt(dx * dx + dy * dy);
+    var picked = null;
+    if (rad >= CIR.rIn - 20 && rad <= CIR.rOut + 20) {
+      var ang = Math.atan2(dx, -dy) * 180 / Math.PI;
+      if (ang < 0) ang += 360;
+      var min = ang / 360 * 1440;
+      var best = Infinity;
+      scheduleCircleBlocks(scheduleDayState).forEach(function (b) {
+        var dist = min < b.startMin ? b.startMin - min : (min > b.endMin ? min - b.endMin : 0);
+        if (dist < best) { best = dist; picked = b; }
+      });
+      if (best > 20) picked = null;
+    }
+    scheduleCircleSelKey = (picked && picked.key !== scheduleCircleSelKey) ? picked.key : null;
+    renderScheduleCircleView();
+  });
+  document.getElementById("schCircleDetail").addEventListener("click", function (evt) {
+    var btn = evt.target.closest ? evt.target.closest(".cir-detail-edit") : null;
+    if (!btn) return;
+    var sessionId = btn.getAttribute("data-session-id");
+    var historyTabBtn = document.querySelector('nav.tabs button[data-tab="history"]');
+    var histFilterEl = document.getElementById("histProjectFilter");
+    if (histFilterEl) histFilterEl.value = "__all__";
+    historyEditingId = sessionId;
+    historyEditDraftSegments = null;
+    generalBreakEditingId = null;
+    if (historyTabBtn) historyTabBtn.click();
+    renderHistoryList();
+    scrollToAndHighlightHistoryEdit();
+  });
+  function shiftCircleDay(delta) {
+    if (delta === 0) scheduleDayState = todayDateInputValue();
+    else { var d = new Date(scheduleDayState + "T00:00:00"); d.setDate(d.getDate() + delta); scheduleDayState = dateStrOf(d); }
+    scheduleCircleSelKey = null;
+    renderScheduleCircleView();
+  }
+  document.getElementById("schCirPrevBtn").addEventListener("click", function () { shiftCircleDay(-1); });
+  document.getElementById("schCirNextBtn").addEventListener("click", function () { shiftCircleDay(1); });
+  document.getElementById("schCirTodayBtn").addEventListener("click", function () { shiftCircleDay(0); });
+  document.getElementById("scheduleCircleModeBtn").addEventListener("click", function () { switchScheduleMode("circle"); });
 
   function updateScheduleLiveGauge() {
     var isToday = scheduleDayState === todayDateInputValue();
@@ -6171,6 +6547,7 @@
     }
     if (!scheduleDayState) scheduleDayState = todayDateInputValue();
     if (scheduleViewMode === "month") renderScheduleMonthCalendar();
+    else if (scheduleViewMode === "circle") renderScheduleCircleView();
     else renderScheduleDayView();
   }
 
@@ -7343,12 +7720,147 @@
     });
     return changed;
   }
+  // 休憩中ドック（固定表示の「現在の状況」カード）の高さを CSS 変数に反映し、ひよこをその真上に置く
+  function updateRestDockHeight() {
+    var c = document.getElementById("statusCard");
+    if (!(document.documentElement.classList.contains("is-resting") || document.documentElement.classList.contains("is-working")) || !c) return;
+    var h = c.offsetHeight;
+    if (h > 0) document.documentElement.style.setProperty("--rest-dock-h", h + "px");
+  }
+  window.addEventListener("resize", updateRestDockHeight);
+  // 2026-10-22：休憩中のひよこと休憩カード（ドック）を「セット」で、押して0.06秒後から→ドラッグして動かせる。
+  // 長押し前に10px以上動いたら何もしない（スクロール優先）。ダブルタップで画面の真ん中に浮かぶ／元の位置に戻る。
+  // 休憩を終えると位置は元（ドックを画面下に固定した状態）に戻る。セット全体が画面の外には出ない。
+  (function initChickDrag() {
+    var root = document.documentElement;
+    var layer = document.getElementById("restChickLayer");
+    var svg = layer ? layer.querySelector("svg") : null;
+    var card = document.getElementById("statusCard");
+    var workSvg = document.querySelector("#workChickLayer svg");
+    if (!svg || !card) return;
+    var HOLD_MS = 60; // 押してから「動かせる状態」になるまでの時間（ミリ秒）。動かさずに離せばタップ扱いなのでダブルタップとは干渉しない
+    var pos = { x: 0, y: 0 }, ap = { x: 0, y: 0 }, start = null, timer = null, armed = false, dragging = false, lastTap = 0, glideTimer = null, autoDone = false, userMoved = false;
+    function apply() { ap.x = pos.x; ap.y = pos.y; root.style.setProperty("--rc-dx", pos.x + "px"); root.style.setProperty("--rc-dy", pos.y + "px"); }
+    function away() { return Math.abs(pos.x) > 24 || Math.abs(pos.y) > 24; }
+    function syncFloating() { root.classList.toggle("rc-floating", away()); }
+    // ひよこ＋カードをまとめた範囲（いまの移動量を引いた「元の位置」基準）
+    function docked() { return root.classList.contains("is-resting") || root.classList.contains("is-working"); }
+    function homeBox() {
+      var c = card.getBoundingClientRect();
+      var cs = root.classList.contains("is-resting") ? svg : (root.classList.contains("is-working") ? workSvg : null); // 休憩中＝寝ているひよこ／作業中＝ダンスするひよこ
+      var a = cs ? cs.getBoundingClientRect() : c;
+      return { l: Math.min(a.left, c.left) - ap.x, r: Math.max(a.right, c.right) - ap.x, t: Math.min(a.top, c.top) - ap.y, b: Math.max(a.bottom, c.bottom) - ap.y };
+    }
+    function clampPos() {
+      var bx = homeBox(), vw = root.clientWidth, vh = window.innerHeight, m = 4;
+      var minX = m - bx.l, maxX = vw - m - bx.r, minY = m - bx.t, maxY = vh - m - bx.b;
+      pos.x = Math.min(Math.max(pos.x, Math.min(minX, maxX)), Math.max(minX, maxX));
+      pos.y = Math.min(Math.max(pos.y, Math.min(minY, maxY)), Math.max(minY, maxY));
+    }
+    function glide() {
+      root.classList.add("rc-gliding");
+      if (glideTimer) clearTimeout(glideTimer);
+      glideTimer = setTimeout(function () { root.classList.remove("rc-gliding"); }, 800);
+    }
+    // セット（ひよこ＋カード／作業中はカードだけ）を画面の真ん中に置く
+    function centerSet() {
+      var bx = homeBox();
+      pos.x = root.clientWidth / 2 - (bx.l + bx.r) / 2;
+      pos.y = window.innerHeight / 2 - (bx.t + bx.b) / 2;
+      clampPos(); apply(); syncFloating();
+    }
+    function toggleFloat() {
+      userMoved = true;
+      glide();
+      if (away()) { pos.x = 0; pos.y = 0; apply(); syncFloating(); return; } // 真ん中 → 画面下
+      centerSet(); // 画面下 → 真ん中
+    }
+    // 2026-10-22：作業中／休憩中のドックは、初期表示で画面の真ん中に浮かべる（触っていなければ、表示が落ち着いた後にもう一度中央へ合わせ直す）
+    function scheduleCenter() {
+      [90, 900].forEach(function (ms) {
+        setTimeout(function () { if (!userMoved && docked()) centerSet(); }, ms);
+      });
+    }
+    function cancelTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+    function endDrag() {
+      cancelTimer();
+      root.classList.remove("rc-pressing");
+      if (dragging) { dragging = false; root.classList.remove("rc-dragging"); }
+      armed = false;
+      start = null;
+    }
+    // 持ち手：ひよこの絵（.rc-grab）、または休憩カードのボタン以外の部分
+    document.addEventListener("pointerdown", function (e) {
+      if (!docked()) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      var tg = e.target && e.target.closest ? e.target : null;
+      if (!tg) return;
+      var holder = tg.closest(".rc-grab");
+      if (!holder && tg.closest("#statusCard") && !tg.closest("button, a, input, select, textarea, label, summary")) holder = card;
+      if (!holder) return;
+      start = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, id: e.pointerId, holder: holder, t: Date.now() };
+      armed = false;
+      cancelTimer();
+      root.classList.add("rc-pressing");
+      timer = setTimeout(function () { timer = null; if (start) armed = true; }, HOLD_MS); // 押して少し経つと「動かせる状態」に
+    });
+    window.addEventListener("pointermove", function (e) {
+      if (!start || e.pointerId !== start.id) return;
+      if (!dragging) {
+        var mv = Math.max(Math.abs(e.clientX - start.x), Math.abs(e.clientY - start.y));
+        if (armed) {
+          if (mv > 4) { // 動かせる状態で少しでも動かしたら、その場から動かし始める（ジャンプしない）
+            dragging = true; userMoved = true;
+            start.x = e.clientX; start.y = e.clientY; start.px = pos.x; start.py = pos.y;
+            root.classList.add("rc-dragging");
+            try { start.holder.setPointerCapture(start.id); } catch (err) {}
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+          }
+          return;
+        }
+        if (mv > 10) { cancelTimer(); root.classList.remove("rc-pressing"); start = null; } // 押した直後に動かしたら何もしない
+        return;
+      }
+      e.preventDefault();
+      pos.x = start.px + (e.clientX - start.x);
+      pos.y = start.py + (e.clientY - start.y);
+      clampPos();
+      apply();
+      syncFloating();
+    });
+    window.addEventListener("pointerup", function () {
+      if (start && !dragging && Date.now() - start.t < 350) { // 動かさずに離した＝タップ。400ms以内に2回でダブルタップ
+        var now = Date.now();
+        if (now - lastTap < 400) { lastTap = 0; endDrag(); toggleFloat(); return; }
+        lastTap = now;
+      }
+      endDrag();
+    });
+    window.addEventListener("pointercancel", endDrag);
+    document.addEventListener("contextmenu", function (e) {
+      if (docked() && e.target && e.target.closest && (e.target.closest(".rc-grab") || e.target.closest("#statusCard"))) e.preventDefault();
+    });
+    // 休憩が終わったら位置を元に戻す
+    new MutationObserver(function () {
+      if (!docked()) {
+        if (pos.x || pos.y || root.classList.contains("rc-floating") || autoDone) { endDrag(); pos.x = 0; pos.y = 0; apply(); syncFloating(); }
+        autoDone = false; userMoved = false;
+      } else if (!autoDone) {
+        autoDone = true; userMoved = false;
+        scheduleCenter();
+      }
+    }).observe(root, { attributes: true, attributeFilter: ["class"] });
+    if (docked()) { autoDone = true; scheduleCenter(); }
+    window.addEventListener("resize", function () { if (pos.x || pos.y) { clampPos(); apply(); syncFloating(); } });
+  })();
   function renderAll() {
     if (rolloverStaleDayState()) persistState();
     // 「休憩を開始」を押している間だけ画面全体の色を変える（CSS の .is-resting）
     var restingNow = !!getActiveGeneralBreak(); // 「休憩を開始」を押した休憩中だけ（中断中は変えない）
     document.documentElement.classList.toggle("is-resting", restingNow);
+    document.documentElement.classList.toggle("is-working", !!getRunningSession()); // 作業中は「現在の状況」カードを画面下に固定（ドック）
     document.body.classList.toggle("is-resting", restingNow); // viz-root が body 側にある単体版でも効かせる
+    updateRestDockHeight();
     populateProjectDatalist();
     renderMonthlyGoalsCard();
     renderStatusCard();
@@ -7363,6 +7875,7 @@
     renderStats();
     renderNamesTab();
     updateDataStatusLine();
+    updateRestDockHeight();
 
     if (!document.getElementById("manualStartDate").value) {
       document.getElementById("manualStartDate").value = todayDateInputValue();
