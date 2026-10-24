@@ -173,6 +173,72 @@
   @keyframes wcBlink { 0%,90%,100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
   @keyframes wcFoot { 0%,50%,100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-6px) rotate(-8deg); } }
   @keyframes wcNote { 0% { opacity: 0; transform: translate(0,8px) rotate(-8deg); } 25% { opacity: .95; } 60% { transform: translate(6px,-14px) rotate(8deg); } 100% { opacity: 0; transform: translate(-4px,-34px) rotate(-6deg); } }
+  /* 2026-10-22：ラストスパート（集中サイクル残り5分以内＝Lv1／残り1分以内＝Lv2）はダンスが激しくなる。
+     Lv1：2〜3倍の速さで大きく跳ねる・つばさバタバタ・キリッとした眉・オレンジのオーラ。Lv2：全力ダンス（超高速ジャンプ・全力羽ばたき・炎・汗）。JS が #workChickLayer の data-fight を更新する。 */
+  .wc-brows, .wc-flames, .wc-sweat { display: none; }
+  .wc-flames path { transform-box: fill-box; transform-origin: 50% 100%; animation: wcFlame .28s ease-in-out infinite alternate; }
+  .wc-flames g:nth-child(2n) path { animation-delay: -.14s; }
+  .wc-sweat path { transform-box: fill-box; animation: wcSweat .7s ease-in infinite; }
+  .wc-sweat path:nth-child(2) { animation-delay: -.35s; }
+  .work-chick-layer[data-fight="1"] .wc-brows, .work-chick-layer[data-fight="2"] .wc-brows, .work-chick-layer[data-fight="2"] .wc-flames, .work-chick-layer[data-fight="2"] .wc-sweat { display: inline; }
+  .work-chick-layer[data-fight="1"] svg { filter: drop-shadow(0 0 9px rgba(255,140,40,.6)) drop-shadow(0 5px 8px rgba(0,0,0,.2)); }
+  .work-chick-layer[data-fight="2"] svg { filter: drop-shadow(0 0 12px rgba(255,80,20,.85)) drop-shadow(0 0 22px rgba(255,140,40,.55)) drop-shadow(0 5px 8px rgba(0,0,0,.2)); }
+  .work-chick-layer[data-fight="1"] .wc-eyes, .work-chick-layer[data-fight="2"] .wc-eyes { animation: none; }
+  .work-chick-layer[data-fight="1"] .wc-sway { animation-name: wcSway2; animation-duration: 5s; }
+  .work-chick-layer[data-fight="1"] .wc-bounce { animation-name: wcBounce2; animation-duration: 3.2s; }
+  .work-chick-layer[data-fight="1"] .wc-wing-l { animation-name: wcFlapL; animation-duration: 1.4s; }
+  .work-chick-layer[data-fight="1"] .wc-wing-r { animation-name: wcFlapR; animation-duration: 1.4s; }
+  .work-chick-layer[data-fight="1"] .wc-shadow { animation-duration: 3.2s; }
+  .work-chick-layer[data-fight="1"] .wc-face { animation-duration: 2.4s; }
+  .work-chick-layer[data-fight="1"] .wc-foot-l, .work-chick-layer[data-fight="1"] .wc-foot-r { animation-duration: 1s; }
+  .work-chick-layer[data-fight="1"] .wc-foot-r { animation-delay: -.5s; }
+  .work-chick-layer[data-fight="1"] .wc-note { animation-duration: 2.2s; }
+  .work-chick-layer[data-fight="2"] .wc-sway { animation-name: wcSway3; animation-duration: 1.6s; }
+  .work-chick-layer[data-fight="2"] .wc-bounce { animation-name: wcBounce3; animation-duration: .8s; }
+  .work-chick-layer[data-fight="2"] .wc-wing-l { animation-name: wcFlapL; animation-duration: .4s; }
+  .work-chick-layer[data-fight="2"] .wc-wing-r { animation-name: wcFlapR; animation-duration: .4s; }
+  .work-chick-layer[data-fight="2"] .wc-shadow { animation-duration: .8s; }
+  .work-chick-layer[data-fight="2"] .wc-face { animation-name: wcShake; animation-duration: .25s; }
+  .work-chick-layer[data-fight="2"] .wc-foot-l, .work-chick-layer[data-fight="2"] .wc-foot-r { animation-duration: .3s; }
+  .work-chick-layer[data-fight="2"] .wc-foot-r { animation-delay: -.15s; }
+  .work-chick-layer[data-fight="2"] .wc-note { animation-duration: .9s; }
+  .work-chick-layer[data-fight="2"] .wc-bounce { filter: saturate(1.25) hue-rotate(-8deg); }
+  @keyframes wcSway2 { 0%,100% { transform: translate(0,0) rotate(0deg); } 12% { transform: translate(-24px,0) rotate(-10deg); } 25% { transform: translate(-24px,0) rotate(8deg); } 38% { transform: translate(0,0) rotate(-6deg); } 50% { transform: translate(24px,0) rotate(10deg); } 62% { transform: translate(24px,0) rotate(-8deg); } 75% { transform: translate(0,0) rotate(6deg); } 88% { transform: translate(-12px,0) rotate(-4deg); } }
+  @keyframes wcSway3 { 0%,100% { transform: translate(-22px,0) rotate(-14deg); } 50% { transform: translate(22px,0) rotate(14deg); } }
+  @keyframes wcBounce2 { 0%,100% { transform: translateY(0) scale(1.06,.92); } 12% { transform: translateY(-24px) scale(.96,1.06); } 25% { transform: translateY(0) scale(1.07,.9); } 37% { transform: translateY(-18px) scale(.97,1.05); } 50% { transform: translateY(0) scale(1.06,.92); } 62% { transform: translateY(-30px) scale(.95,1.07); } 75% { transform: translateY(0) scale(1.08,.9); } 87% { transform: translateY(-12px) scale(.98,1.03); } }
+  @keyframes wcBounce3 { 0%,100% { transform: translateY(0) scale(1.08,.88); } 40%,55% { transform: translateY(-36px) scale(.94,1.1); } }
+  @keyframes wcFlapL { 0%,100% { transform: rotate(5deg); } 50% { transform: rotate(78deg); } }
+  @keyframes wcFlapR { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(-78deg); } }
+  @keyframes wcShake { 0%,100% { transform: translate(-3px,1px); } 50% { transform: translate(3px,-1px); } }
+  @keyframes wcFlame { 0% { transform: scale(.9,.8); } 100% { transform: scale(1.1,1.25); } }
+  @keyframes wcSweat { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(10px,30px); opacity: 0; } }
+  /* 2026-10-23：準備タイム（サイクル最初の5分）のひよこは「踊らず、準備運動」。たまごの殻をかぶった赤ちゃんサイズ（約0.68倍）で、
+     ゆっくり深呼吸（息を吸う＝からだが膨らみつばさがふわっと開く／吐く＝しぼんでつばさが下がる）、目は閉じ気味、息のわっかがふわり。
+     終わると殻が飛んで3秒かけて元の大きさに成長し、通常のダンスへ。JS が #workChickLayer の data-prep を更新する。 */
+  .wc-shell, .wc-breath { opacity: 0; pointer-events: none; }
+  .wc-shell { transform-box: fill-box; transform-origin: 50% 100%; transform: translate(6px,-34px) rotate(14deg); transition: opacity .5s ease, transform .9s cubic-bezier(.2,.8,.2,1); }
+  .wc-breath ellipse { fill: none; stroke: var(--series-2); stroke-width: 2; transform-box: fill-box; transform-origin: 0% 50%; }
+  .work-chick-layer .wc-sway { scale: 1; transition: scale 3s ease-in-out; }
+  .work-chick-layer[data-prep="1"] .wc-sway { scale: .68; transition: none; animation-name: wcPrepSway; animation-duration: 9s; }
+  .work-chick-layer[data-prep="1"] .wc-bounce { animation-name: wcBreath; animation-duration: 6s; }
+  .work-chick-layer[data-prep="1"] .wc-wing-l { animation-name: wcPrepWingL; animation-duration: 6s; }
+  .work-chick-layer[data-prep="1"] .wc-wing-r { animation-name: wcPrepWingR; animation-duration: 6s; }
+  .work-chick-layer[data-prep="1"] .wc-foot-l, .work-chick-layer[data-prep="1"] .wc-foot-r { animation: none; }
+  .work-chick-layer[data-prep="1"] .wc-face { animation-duration: 9s; }
+  .work-chick-layer[data-prep="1"] .wc-eyes { animation: wcPrepEyes 6s ease-in-out infinite; }
+  .work-chick-layer[data-prep="1"] .wc-shadow { animation-name: wcPrepShadow; animation-duration: 6s; }
+  .work-chick-layer[data-prep="1"] .wc-note { display: none; }
+  .work-chick-layer[data-prep="1"] .wc-shell { opacity: 1; transform: none; }
+  .work-chick-layer[data-prep="1"] .wc-breath { opacity: 1; }
+  .work-chick-layer[data-prep="1"] .wc-breath ellipse { animation: wcBreathRing 6s ease-out infinite; }
+  .work-chick-layer[data-prep="1"] .wc-breath ellipse:nth-child(2) { animation-delay: .9s; }
+  @keyframes wcPrepSway { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  @keyframes wcBreath { 0%,100% { transform: translateY(0) scale(.97,.96); } 42%,55% { transform: translateY(-5px) scale(1.07,1.08); } }
+  @keyframes wcPrepWingL { 0%,100% { transform: rotate(0deg); } 42%,55% { transform: rotate(52deg); } }
+  @keyframes wcPrepWingR { 0%,100% { transform: rotate(0deg); } 42%,55% { transform: rotate(-52deg); } }
+  @keyframes wcPrepEyes { 0%,100% { transform: scaleY(1); } 10%,88% { transform: scaleY(.12); } }
+  @keyframes wcPrepShadow { 0%,100% { transform: scale(1); opacity: 1; } 42%,55% { transform: scale(.88); opacity: .7; } }
+  @keyframes wcBreathRing { 0%,52% { opacity: 0; transform: translate(0,0) scale(.6); } 60% { opacity: .75; } 100% { opacity: 0; transform: translate(26px,-6px) scale(2.6); } }
   /* 2026-10-22：作業中（running）の「現在の状況」カードも画面下に固定（ドック）。表示は「作業中・プロジェクト名・今回・集中サイクル残り・中断」に絞る。
      休憩中と同じく長押し→ドラッグで動かせ、動かすとふわふわ浮く。モーダル（z-index 9998〜）より下に置く。 */
   .is-working #dashboard .status-card.running { position: fixed; left: 0; right: 0; margin: 0 auto; width: min(94vw, 520px); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 900; padding: 12px 16px 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 0; box-shadow: 0 -4px 26px rgba(0,0,0,.20), 0 10px 28px rgba(0,0,0,.18); }
@@ -215,7 +281,7 @@
   @keyframes rcWing { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(2.5deg); } }
   @keyframes rcZ { 0% { opacity: 0; transform: translate(0,6px) scale(.7); } 25% { opacity: .95; } 80% { opacity: .55; } 100% { opacity: 0; transform: translate(16px,-34px) scale(1.25); } }
   @keyframes rcBubble { 0%,100% { transform: scale(.85); opacity: .5; } 50% { transform: scale(1.1); opacity: .9; } }
-  @media (prefers-reduced-motion: reduce) { .is-resting #dashboard .status-card.break-general { animation: none; } .rest-chick-layer { transition: none; } .rest-chick-layer .rc-breathe, .rest-chick-layer .rc-blanket, .rest-chick-layer .rc-wing, .rest-chick-layer .rc-bubble { animation: none; } .rc-floating .rest-chick-layer svg, .rc-floating #dashboard .status-card.break-general, .rc-floating #dashboard .status-card.running { animation: none; } .rest-chick-layer .rc-z { animation: none; opacity: .8; } .work-chick-layer .wc-sway, .work-chick-layer .wc-bounce, .work-chick-layer .wc-wing-l, .work-chick-layer .wc-wing-r, .work-chick-layer .wc-shadow, .work-chick-layer .wc-face, .work-chick-layer .wc-eyes, .work-chick-layer .wc-foot-l, .work-chick-layer .wc-foot-r { animation: none; } .work-chick-layer .wc-note { animation: none; opacity: .8; } .work-chick-layer { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .is-resting #dashboard .status-card.break-general { animation: none; } .rest-chick-layer { transition: none; } .rest-chick-layer .rc-breathe, .rest-chick-layer .rc-blanket, .rest-chick-layer .rc-wing, .rest-chick-layer .rc-bubble { animation: none; } .rc-floating .rest-chick-layer svg, .rc-floating #dashboard .status-card.break-general, .rc-floating #dashboard .status-card.running { animation: none; } .rest-chick-layer .rc-z { animation: none; opacity: .8; } .work-chick-layer .wc-sway, .work-chick-layer .wc-bounce, .work-chick-layer .wc-wing-l, .work-chick-layer .wc-wing-r, .work-chick-layer .wc-shadow, .work-chick-layer .wc-face, .work-chick-layer .wc-eyes, .work-chick-layer .wc-foot-l, .work-chick-layer .wc-foot-r { animation: none; } .work-chick-layer *, .work-chick-layer[data-fight] * { animation: none !important; } .work-chick-layer .wc-note { opacity: .8; } .work-chick-layer { transition: none; } }
   .is-resting header.app-header { background: #1f8a7a; transition: background-color .6s ease; }
   :root:not(.viz-light) .is-resting header.app-header, .viz-root.is-resting:not(.viz-light) header.app-header { background: #176a5d; }
   .is-resting #dashboard .status-card.break-general .status-badge.on-break { background: linear-gradient(135deg, var(--series-4), color-mix(in srgb, var(--series-4) 70%, #0e7490)); box-shadow: 0 6px 20px color-mix(in srgb, var(--series-4) 40%, transparent); }
@@ -1816,11 +1882,14 @@
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="wcBody" cx="0.36" cy="0.22" r="0.95"><stop offset="0" stop-color="#fff7bf"/><stop offset="0.5" stop-color="#ffe270"/><stop offset="1" stop-color="#f4bd2c"/></radialGradient>
+      <linearGradient id="wcFlame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff4d1a"/><stop offset="0.55" stop-color="#ff9a2e"/><stop offset="1" stop-color="#ffe066"/></linearGradient>
       <linearGradient id="wcBeak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb74d"/><stop offset="1" stop-color="#f08a1e"/></linearGradient>
     </defs>
     <ellipse class="wc-shadow" cx="100" cy="192" rx="52" ry="6" fill="rgba(0,0,0,.22)"/>
     <g class="wc-sway">
       <g class="wc-bounce rc-grab">
+        <!-- ラストスパート（残り1分）の炎 -->
+        <g class="wc-flames"><g transform="translate(30,150) rotate(-35) scale(1.15)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(22,112) rotate(-60) scale(1.0)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(170,150) rotate(35) scale(1.15)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(178,112) rotate(60) scale(1.0)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(58,176) rotate(-15) scale(0.9)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(142,176) rotate(15) scale(0.9)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(46,70) rotate(-75) scale(0.8)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g><g transform="translate(154,70) rotate(75) scale(0.8)"><path d="M0 0C-12-4-14-18-4-34C-3-26 3-24 5-30C14-20 12-4 0 0Z" fill="url(#wcFlame)"/></g></g>
         <!-- あし -->
         <g stroke="#d9741a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" fill="#f59e2b">
           <path class="wc-foot-l" d="M66 172c2-7 10-9 16-6 4 2 6 6 5 10-8 4-17 3-21-4z"/><path class="wc-foot-r" d="M134 172c-2-7-10-9-16-6-4 2-6 6-5 10 8 4 17 3 21-4z"/>
@@ -1835,14 +1904,19 @@
         <ellipse cx="74" cy="68" rx="15" ry="7" transform="rotate(-30 74 68)" fill="#fff" opacity=".32"/>
         <!-- かお（体より少し遅れて動く＋まばたき） -->
         <g class="wc-face">
+        <g class="wc-brows" stroke="#3a2a1a" stroke-width="4.6" stroke-linecap="round" fill="none"><path d="M64 82L90 91"/><path d="M136 82L110 91"/></g>
         <g class="wc-eyes"><ellipse cx="78" cy="98" rx="5.6" ry="6.8" fill="#3a2a1a"/><ellipse cx="122" cy="98" rx="5.6" ry="6.8" fill="#3a2a1a"/>
         <circle cx="80" cy="95" r="2.1" fill="#fff"/><circle cx="124" cy="95" r="2.1" fill="#fff"/></g>
         <ellipse cx="60" cy="116" rx="9" ry="6" fill="#ff93a8" opacity=".5"/><ellipse cx="140" cy="116" rx="9" ry="6" fill="#ff93a8" opacity=".5"/>
         <path d="M89 110c0-5 22-5 22 0c0 3-4 6-11 6s-11-3-11-6z" fill="url(#wcBeak)" stroke="#d9741a" stroke-width="1.6" stroke-linejoin="round"/>
         <path d="M93 116c2 7 12 7 14 0z" fill="#f08a1e" stroke="#d9741a" stroke-width="1.4" stroke-linejoin="round"/>
         </g>
+        <!-- 準備タイム：たまごの殻をかぶった赤ちゃん（準備タイムが終わると殻が飛んで成長） -->
+        <g class="wc-shell"><path d="M54 80L62 68L71 77L81 62L91 75L100 58L109 75L119 62L129 77L138 68L146 80C148 58 126 40 100 40C74 40 52 58 54 80Z" fill="#fffaf0" stroke="#e3d6bd" stroke-width="2.2" stroke-linejoin="round"/><path d="M72 56C80 48 90 45 98 45" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/></g>
       </g>
     </g>
+    <g class="wc-breath"><ellipse cx="108" cy="118" rx="5" ry="3.5"/><ellipse cx="108" cy="118" rx="5" ry="3.5"/></g>
+    <g class="wc-sweat"><path d="M158 66c-5 8-5 13 0 15c5-2 5-7 0-15z" fill="#8fd3ff" stroke="#4aa8e0" stroke-width="1.4"/><path d="M42 72c-5 8-5 13 0 15c5-2 5-7 0-15z" fill="#8fd3ff" stroke="#4aa8e0" stroke-width="1.4"/></g>
     <text class="wc-note wc-n1" x="150" y="64" font-size="22">&#9834;</text>
     <text class="wc-note wc-n2" x="30" y="58" font-size="26">&#9835;</text>
     <text class="wc-note wc-n3" x="168" y="40" font-size="20">&#9834;</text>
@@ -7721,7 +7795,18 @@
     return changed;
   }
   // 休憩中ドック（固定表示の「現在の状況」カード）の高さを CSS 変数に反映し、ひよこをその真上に置く
+  // ラストスパート（集中サイクル残り5分以内＝1／1分以内＝2）に合わせて、ダンスするひよこの激しさを切り替える
+  function updateWorkChickFight() {
+    var el = document.getElementById("workChickLayer");
+    if (!el) return;
+    var lv = document.documentElement.classList.contains("is-working") ? focusFightLevel() : 0;
+    if (String(lv) !== el.getAttribute("data-fight")) el.setAttribute("data-fight", String(lv));
+    // 準備タイム（サイクルの最初の5分）中は「準備運動」の動き（たまごの殻をかぶった赤ちゃんが深呼吸）
+    var prep = document.documentElement.classList.contains("is-working") && focusPrepRemainingSec() > 0 ? "1" : "0";
+    if (prep !== el.getAttribute("data-prep")) el.setAttribute("data-prep", prep);
+  }
   function updateRestDockHeight() {
+    updateWorkChickFight();
     var c = document.getElementById("statusCard");
     if (!(document.documentElement.classList.contains("is-resting") || document.documentElement.classList.contains("is-working")) || !c) return;
     var h = c.offsetHeight;
