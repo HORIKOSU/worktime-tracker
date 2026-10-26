@@ -212,33 +212,30 @@
   @keyframes wcShake { 0%,100% { transform: translate(-3px,1px); } 50% { transform: translate(3px,-1px); } }
   @keyframes wcFlame { 0% { transform: scale(.9,.8); } 100% { transform: scale(1.1,1.25); } }
   @keyframes wcSweat { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(10px,30px); opacity: 0; } }
-  /* 2026-10-23：準備タイム（サイクル最初の5分）のひよこは「踊らず、準備運動」。たまごの殻をかぶった赤ちゃんサイズ（約0.68倍）で、
-     ゆっくり深呼吸（息を吸う＝からだが膨らみつばさがふわっと開く／吐く＝しぼんでつばさが下がる）、目は閉じ気味、息のわっかがふわり。
-     終わると殻が飛んで3秒かけて元の大きさに成長し、通常のダンスへ。JS が #workChickLayer の data-prep を更新する。 */
-  .wc-shell, .wc-breath { opacity: 0; pointer-events: none; }
-  .wc-shell { transform-box: fill-box; transform-origin: 50% 100%; transform: translate(6px,-34px) rotate(14deg); transition: opacity .5s ease, transform .9s cubic-bezier(.2,.8,.2,1); }
-  .wc-breath ellipse { fill: none; stroke: var(--series-2); stroke-width: 2; transform-box: fill-box; transform-origin: 0% 50%; }
+  /* 2026-10-25：準備タイム（サイクル最初の5分）のひよこは「眠そう」ではなく「準備運動中」。たまごの殻をかぶった赤ちゃんサイズ（約0.68倍）で、
+     8秒周期のウォームアップ：①背伸び（つばさを真上に伸ばして背伸び）→②体を左右に倒すサイドストレッチ（つばさも交互に）→③その場で小さく足踏み（ジョギング、つばさを交互に振る）。
+     目は開いたまま（まばたきあり）。終わると殻が飛んで3秒かけて元の大きさに成長し、通常のダンスへ。JS が #workChickLayer の data-prep を更新する。 */
+  .wc-shell { opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: 50% 100%; transform: translate(6px,-34px) rotate(14deg); transition: opacity .5s ease, transform .9s cubic-bezier(.2,.8,.2,1); }
+  .wc-breath { display: none; }
   .work-chick-layer .wc-sway { scale: 1; transition: scale 3s ease-in-out; }
-  .work-chick-layer[data-prep="1"] .wc-sway { scale: .68; transition: none; animation-name: wcPrepSway; animation-duration: 9s; }
-  .work-chick-layer[data-prep="1"] .wc-bounce { animation-name: wcBreath; animation-duration: 6s; }
-  .work-chick-layer[data-prep="1"] .wc-wing-l { animation-name: wcPrepWingL; animation-duration: 6s; }
-  .work-chick-layer[data-prep="1"] .wc-wing-r { animation-name: wcPrepWingR; animation-duration: 6s; }
-  .work-chick-layer[data-prep="1"] .wc-foot-l, .work-chick-layer[data-prep="1"] .wc-foot-r { animation: none; }
-  .work-chick-layer[data-prep="1"] .wc-face { animation-duration: 9s; }
-  .work-chick-layer[data-prep="1"] .wc-eyes { animation: wcPrepEyes 6s ease-in-out infinite; }
-  .work-chick-layer[data-prep="1"] .wc-shadow { animation-name: wcPrepShadow; animation-duration: 6s; }
+  .work-chick-layer[data-prep="1"] .wc-sway { scale: .68; transition: none; animation-name: wcPrepSway; animation-duration: 8s; animation-timing-function: ease-in-out; }
+  .work-chick-layer[data-prep="1"] .wc-bounce { animation-name: wcPrepBounce; animation-duration: 8s; animation-timing-function: ease-in-out; }
+  .work-chick-layer[data-prep="1"] .wc-wing-l { animation-name: wcPrepWingL; animation-duration: 8s; animation-timing-function: ease-in-out; }
+  .work-chick-layer[data-prep="1"] .wc-wing-r { animation-name: wcPrepWingR; animation-duration: 8s; animation-timing-function: ease-in-out; }
+  .work-chick-layer[data-prep="1"] .wc-foot-l { animation: wcPrepFootL 8s ease-in-out infinite; }
+  .work-chick-layer[data-prep="1"] .wc-foot-r { animation: wcPrepFootR 8s ease-in-out infinite; }
+  .work-chick-layer[data-prep="1"] .wc-face { animation-name: wcPrepFace; animation-duration: 8s; }
+  .work-chick-layer[data-prep="1"] .wc-shadow { animation-name: wcPrepShadow; animation-duration: 8s; }
   .work-chick-layer[data-prep="1"] .wc-note { display: none; }
   .work-chick-layer[data-prep="1"] .wc-shell { opacity: 1; transform: none; }
-  .work-chick-layer[data-prep="1"] .wc-breath { opacity: 1; }
-  .work-chick-layer[data-prep="1"] .wc-breath ellipse { animation: wcBreathRing 6s ease-out infinite; }
-  .work-chick-layer[data-prep="1"] .wc-breath ellipse:nth-child(2) { animation-delay: .9s; }
-  @keyframes wcPrepSway { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
-  @keyframes wcBreath { 0%,100% { transform: translateY(0) scale(.97,.96); } 42%,55% { transform: translateY(-5px) scale(1.07,1.08); } }
-  @keyframes wcPrepWingL { 0%,100% { transform: rotate(0deg); } 42%,55% { transform: rotate(52deg); } }
-  @keyframes wcPrepWingR { 0%,100% { transform: rotate(0deg); } 42%,55% { transform: rotate(-52deg); } }
-  @keyframes wcPrepEyes { 0%,100% { transform: scaleY(1); } 10%,88% { transform: scaleY(.12); } }
-  @keyframes wcPrepShadow { 0%,100% { transform: scale(1); opacity: 1; } 42%,55% { transform: scale(.88); opacity: .7; } }
-  @keyframes wcBreathRing { 0%,52% { opacity: 0; transform: translate(0,0) scale(.6); } 60% { opacity: .75; } 100% { opacity: 0; transform: translate(26px,-6px) scale(2.6); } }
+  @keyframes wcPrepSway { 0% { transform: translate(0,0) rotate(0deg); } 10% { transform: translate(0,0) rotate(0deg); } 20% { transform: translate(0,0) rotate(0deg); } 28% { transform: translate(-8px,0) rotate(-9deg); } 36% { transform: translate(8px,0) rotate(9deg); } 44% { transform: translate(-6px,0) rotate(-7deg); } 52% { transform: translate(0,0) rotate(0deg); } 57% { transform: translate(0,0) rotate(-2.5deg); } 62% { transform: translate(0,0) rotate(2.5deg); } 67% { transform: translate(0,0) rotate(-2.5deg); } 72% { transform: translate(0,0) rotate(2.5deg); } 77% { transform: translate(0,0) rotate(-2.5deg); } 82% { transform: translate(0,0) rotate(2.5deg); } 87% { transform: translate(0,0) rotate(-2.5deg); } 92% { transform: translate(0,0) rotate(2.5deg); } 97% { transform: translate(0,0) rotate(-2.5deg); } 100% { transform: translate(0,0) rotate(0deg); } }
+  @keyframes wcPrepBounce { 0% { transform: translateY(0) scale(1,1); } 8% { transform: translateY(-3px) scale(.96,1.09); } 22% { transform: translateY(-3px) scale(.96,1.09); } 30% { transform: translateY(0) scale(1.04,.96); } 48% { transform: translateY(0) scale(1.03,.97); } 52% { transform: translateY(0) scale(1,1); } 55% { transform: translateY(-7px) scale(.98,1.03); } 60% { transform: translateY(0) scale(1.03,.97); } 65% { transform: translateY(-7px) scale(.98,1.03); } 70% { transform: translateY(0) scale(1.03,.97); } 75% { transform: translateY(-7px) scale(.98,1.03); } 80% { transform: translateY(0) scale(1.03,.97); } 85% { transform: translateY(-7px) scale(.98,1.03); } 90% { transform: translateY(0) scale(1.03,.97); } 95% { transform: translateY(-7px) scale(.98,1.03); } 100% { transform: translateY(0) scale(1,1); } }
+  @keyframes wcPrepWingL { 0% { transform: rotate(8deg); } 8% { transform: rotate(150deg); } 22% { transform: rotate(150deg); } 30% { transform: rotate(60deg); } 36% { transform: rotate(20deg); } 44% { transform: rotate(70deg); } 52% { transform: rotate(10deg); } 55% { transform: rotate(50deg); } 60% { transform: rotate(10deg); } 65% { transform: rotate(50deg); } 70% { transform: rotate(10deg); } 75% { transform: rotate(50deg); } 80% { transform: rotate(10deg); } 85% { transform: rotate(50deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(50deg); } 100% { transform: rotate(10deg); } }
+  @keyframes wcPrepWingR { 0% { transform: rotate(-8deg); } 8% { transform: rotate(-150deg); } 22% { transform: rotate(-150deg); } 30% { transform: rotate(-20deg); } 36% { transform: rotate(-60deg); } 44% { transform: rotate(-20deg); } 52% { transform: rotate(-10deg); } 55% { transform: rotate(-10deg); } 60% { transform: rotate(-50deg); } 65% { transform: rotate(-10deg); } 70% { transform: rotate(-50deg); } 75% { transform: rotate(-10deg); } 80% { transform: rotate(-50deg); } 85% { transform: rotate(-10deg); } 90% { transform: rotate(-50deg); } 95% { transform: rotate(-10deg); } 100% { transform: rotate(-50deg); } }
+  @keyframes wcPrepFootL { 0% { transform: translateY(0) rotate(0deg); } 52% { transform: translateY(0) rotate(0deg); } 55% { transform: translateY(-7px) rotate(-8deg); } 60% { transform: translateY(0) rotate(0deg); } 65% { transform: translateY(-7px) rotate(-8deg); } 70% { transform: translateY(0) rotate(0deg); } 75% { transform: translateY(-7px) rotate(-8deg); } 80% { transform: translateY(0) rotate(0deg); } 85% { transform: translateY(-7px) rotate(-8deg); } 90% { transform: translateY(0) rotate(0deg); } 95% { transform: translateY(-7px) rotate(-8deg); } 100% { transform: translateY(0) rotate(0deg); } }
+  @keyframes wcPrepFootR { 0% { transform: translateY(0) rotate(0deg); } 52% { transform: translateY(0) rotate(0deg); } 55% { transform: translateY(0) rotate(0deg); } 60% { transform: translateY(-7px) rotate(8deg); } 65% { transform: translateY(0) rotate(0deg); } 70% { transform: translateY(-7px) rotate(8deg); } 75% { transform: translateY(0) rotate(0deg); } 80% { transform: translateY(-7px) rotate(8deg); } 85% { transform: translateY(0) rotate(0deg); } 90% { transform: translateY(-7px) rotate(8deg); } 95% { transform: translateY(0) rotate(0deg); } 100% { transform: translateY(0) rotate(0deg); } }
+  @keyframes wcPrepFace { 0% { transform: translate(0,0); } 10% { transform: translate(0,-2px); } 22% { transform: translate(0,-2px); } 28% { transform: translate(-4px,0); } 36% { transform: translate(4px,0); } 44% { transform: translate(-3px,0); } 52% { transform: translate(0,0); } 100% { transform: translate(0,0); } }
+  @keyframes wcPrepShadow { 0% { transform: scale(1); opacity: 1; } 52% { transform: scale(1); opacity: 1; } 55% { transform: scale(.88); opacity: .7; } 60% { transform: scale(1); opacity: 1; } 65% { transform: scale(.88); opacity: .7; } 70% { transform: scale(1); opacity: 1; } 75% { transform: scale(.88); opacity: .7; } 80% { transform: scale(1); opacity: 1; } 85% { transform: scale(.88); opacity: .7; } 90% { transform: scale(1); opacity: 1; } 95% { transform: scale(.88); opacity: .7; } 100% { transform: scale(1); opacity: 1; } }
   /* 2026-10-22：作業中（running）の「現在の状況」カードも画面下に固定（ドック）。表示は「作業中・プロジェクト名・今回・集中サイクル残り・中断」に絞る。
      休憩中と同じく長押し→ドラッグで動かせ、動かすとふわふわ浮く。モーダル（z-index 9998〜）より下に置く。 */
   .is-working #dashboard .status-card.running { position: fixed; left: 0; right: 0; margin: 0 auto; width: min(94vw, 520px); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 900; padding: 12px 16px 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 0; box-shadow: 0 -4px 26px rgba(0,0,0,.20), 0 10px 28px rgba(0,0,0,.18); }
@@ -252,6 +249,27 @@
   .is-working #dashboard .status-card.running button.big-btn { width: 100%; }
   .is-working main { padding-bottom: calc(var(--rest-dock-h, 190px) + 28px); }
   @media (min-width: 900px) { .is-working #dashboard .status-card.running { left: auto; right: 20px; margin: 0; width: 440px; } }
+  /* 2026-10-26：スマホ幅では作業中のドックをさらに小さく（高さ約360px→約210px。幅も狭め、ひよこ80px、「今回」の合計行は上部バーと重複なので非表示、バッジとタスク名は1行、ヒントは小さく） */
+  @media (max-width: 600px) {
+    .is-working #dashboard .status-card.running { width: min(80vw, 320px); padding: 6px 10px 8px; border-radius: 14px; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 8px; }
+    .is-working #dashboard .status-card.running > * { flex: 0 0 auto; }
+    .is-working #dashboard .status-card.running .focus-cycle-badge, .is-working #dashboard .status-card.running .status-btn-row { flex: 0 0 100%; width: 100%; }
+    .is-working #dashboard .status-card.running .status-badge { margin: 0; padding: 2px 9px; font-size: 10.5px; }
+    .is-working #dashboard .status-card.running > .timer-project { font-size: 13px; margin: 0; }
+    .is-working #dashboard .status-card.running .timer-project .task-id-chip, .is-working #dashboard .status-card.running .timer-project [class*="chip"] { font-size: 9px; padding: 0 4px; }
+    .is-working #dashboard .status-card.running .timer-total-line { display: none; }
+    .is-working #dashboard .status-card.running .focus-cycle-badge { margin: 5px 0 0; padding: 5px 8px 6px; border-radius: 10px; }
+    .is-working #dashboard .status-card.running .fcb-top { margin-bottom: 3px; }
+    .is-working #dashboard .status-card.running .fcb-label { font-size: 10px; }
+    .is-working #dashboard .status-card.running .focus-cycle-badge-num { font-size: 18px; }
+    .is-working #dashboard .status-card.running .fcb-bar { height: 14px; }
+    .is-working #dashboard .status-card.running .fcb-pct { font-size: 10px; }
+    .is-working #dashboard .status-card.running .fcb-prep, .is-working #dashboard .status-card.running .fcb-fight { margin-top: 4px; padding: 3px 6px; font-size: 10px; gap: 0 6px; border-radius: 8px; line-height: 1.3; }
+    .is-working #dashboard .status-card.running .status-btn-row { margin-top: 5px; }
+    .is-working #dashboard .status-card.running button.big-btn { margin: 0; padding: 6px 12px; border-radius: 11px; font-size: 13px; min-height: 0; }
+    .work-chick-layer svg { width: 80px; }
+    .is-working main { padding-bottom: calc(var(--rest-dock-h, 190px) + 16px); }
+  }
   /* 2026-10-22：ひよこと休憩カード（ドック）は「セット」で押して0.06秒後から→ドラッグで動かせる。ひよこの絵／カードの余白部分が持ち手で、ボタンは今までどおり押せる。
      位置は html の --rc-dx / --rc-dy（2つ共通）。元の位置から離れたら .rc-floating になり、セットでふわふわ上下する。ダブルタップで「画面の真ん中に浮かぶ／画面下に戻る」。表示した直後は真ん中に浮かぶ（初期位置）。 */
   .rest-chick-layer svg, .work-chick-layer svg, .is-resting #dashboard .status-card.break-general, .is-working #dashboard .status-card.running { translate: var(--rc-dx, 0px) calc(var(--rc-dy, 0px) + var(--rc-bob, 0px)); scale: 1; transition: scale .15s ease, filter .15s ease; }
@@ -1080,11 +1098,6 @@
   .sched-block-delete-btn:hover { background: var(--series-8); color: #fff; }
   .sched-block-menu-close-btn { appearance: none; border: none; background: transparent; color: var(--text-secondary); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; }
 
-  /* 2026-09-22:「集中カウント開始」→「業務開始」の2ステップ化用。実際の開始ボタンと同じクラス・サイズの
-     まま、まだ押していない間だけこのクラスで色を差し替える（要素セレクタ込みで詳細度を上げ、常に上書きする）。 */
-  button.focus-count-btn { background: var(--page-plane); color: var(--series-1); border: 1px dashed var(--series-1); }
-  button.focus-count-btn:hover { background: var(--series-1); color: #fff; }
-
   @media (max-width: 760px) {
     .dashboard-top-grid { grid-template-columns: 1fr; }
     #planListWrap, .plan-done-grid { grid-template-columns: 1fr 1fr; }
@@ -1436,7 +1449,7 @@
   .day-start-card .ds-greet { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: #92400e; }
   #dashboard .status-card.day-start-card .day-start-question { margin: 10px 0 4px; font-size: 24px; font-weight: 800; color: #7c2d12; letter-spacing: 0.01em; }
   .day-start-card .big-btn { margin-top: 18px; max-width: 340px; padding: 16px 22px; font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #d97706, #c2410c); color: #fff; border-radius: 999px; box-shadow: 0 8px 22px rgba(194,65,12,0.35); animation: dsBtnGlow 2.6s ease-in-out infinite; transition: transform 0.15s; }
-  #dashboard .day-start-card button.big-btn, #dashboard .day-start-card button.big-btn.focus-count-btn { border: none; background: linear-gradient(135deg, #d97706, #c2410c); color: #fff; }
+  #dashboard .day-start-card button.big-btn { border: none; background: linear-gradient(135deg, #d97706, #c2410c); color: #fff; }
   #dashboard .day-start-card button.big-btn:hover { background: linear-gradient(135deg, #e08a0b, #d04a14); color: #fff; opacity: 1; transform: translateY(-1px); }
   .day-start-card .big-btn:active { transform: scale(0.98); }
   .day-start-card .generated-note { color: #9a6a3a; }
@@ -2120,12 +2133,7 @@
     btn.classList.toggle("is-on", on);
   }
 
-  // 2026-09-22:「集中カウント開始→業務開始ボタン」の2ステップにしたいというご要望で追加。
-  // 「▶ 今すぐ開始」「予定からの開始」「▶ 作業に戻る」「☀ 開始する」「スケジュールからの再開」など、
-  // タスクを開始・再開するすべての操作の直前に、まず「● 集中カウント開始」ボタンを表示する。
-  // これを押すとフラグが立ち、その場にあった実際の開始ボタンに差し替わる（全箇所いっせいに切り替わる）。
-  // 実際にタスクが開始・再開された瞬間にfalseへ戻す一時的なフラグ（保存はしない）。
-  var focusCountArmed = false;
+  // 2026-10-26：「集中カウント開始」の確認ステップ（2回押し）は廃止。開始・再開ボタンは1回押しで始まる。
 
   // 2026-09-17：「2:00〜6:00は記入することがないので表示しない」とのご要望で、日表示のこの
   // 時間帯を非表示にする。実際の分（0〜1440、0時からの経過分）を、非表示区間の分だけ詰めた
@@ -2222,22 +2230,6 @@
     return String(str).replace(/[&<>"']/g, function (c) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
-  }
-
-  // 「集中カウント開始」ボタンのHTMLを共通生成する。実際の開始ボタンと同じclass文字列を渡すことで、
-  // 見た目のサイズ・位置は変えずに色だけ差し替える（focus-count-btnで上書き）。data-focus-gate属性を
-  // 目印に、クリックはdocument側で一括して拾う（再描画のたびに作り直されるボタンにもその都度効くようにするため）。
-  function focusGateButtonHtml(baseClass) {
-    return '<button type="button" class="' + baseClass + ' focus-count-btn" data-focus-gate="1">● 集中カウント開始</button>';
-  }
-  // 2026-09-23：「今日の予定からタスクを切り替える場合、集中時間は通算されるのに『集中カウント開始』
-  // ボタンを挟むのはおかしいのでは」というご指摘を受けて追加。すでに作業中（getRunningSession()）の
-  // ときに開始系のボタンを押すのは、必ず「休憩を挟まないタスクの切り替え＝集中サイクルは継続」になる
-  // （中断中・アイドル状態から新規に始める場合だけが「新しく集中し始める」ケースで、その場合のみ
-  // ゲートを挟む意味がある）。そのため、既に作業中であればゲートを満たしたものとして扱い、
-  // その場で直接の開始ボタンを表示する。
-  function focusGateSatisfied() {
-    return focusCountArmed || !!getRunningSession();
   }
 
   function pad2(n) { n = String(n); return n.length < 2 ? "0" + n : n; }
@@ -2380,7 +2372,6 @@
     fresh.startMs = Date.now();
     if (memo !== undefined) fresh.memo = memo;
     state.sessions.push(fresh);
-    focusCountArmed = false; // 実際に再開したので、次回また「集中カウント開始」から押し直してもらう
     // 実際に休憩（中断）から戻ったタイミングなので、集中サイクルの起点はここでリセットする。
     state.focusStreakStartIso = nowLocalIso();
     // 2026-09-23：集中サイクルの時間を一時的に変更する機能を追加。「一時的」＝その場の1回だけ
@@ -3318,7 +3309,6 @@
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: remarks || "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
     if (!continuingFocusStreak) { state.focusStreakStartIso = nowLocalIso(); state.focusCycleOverrideSec = null; }
     persistState();
-    focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
   }
   // 今日、記録（セッション）が1件でもあるかどうか。「今日はまだ何も始めていない」状態を
@@ -3351,7 +3341,6 @@
     state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, remarks: "", start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
     if (!continuingFocusStreak) { state.focusStreakStartIso = nowLocalIso(); state.focusCycleOverrideSec = null; }
     persistState();
-    focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
     return true;
   }
   // タスクに紐づく記録のうち、最も新しい開始日時をミリ秒で返す。開始時刻にミリ秒精度の
@@ -3801,15 +3790,14 @@
         '<div class="break-elapsed-badge" id="breakElapsedTimer">中断してから ' + formatHMS(elapsedSinceSec(onBreak.end)) + '</div>' +
         focusCycleNoteHtml(onBreak) +
         breakTipHtml() +
-        '<button type="button" class="big-btn start focus-count-btn" id="resumeBreakBtn">● 集中カウントを開始</button>' +
+        '<button type="button" class="big-btn start" id="resumeBreakBtn">▶ 作業を再開</button>' +
         '<button type="button" class="big-btn secondary" id="breakStartBtn">'+icon("coffee")+' 休憩を開始</button>';
-      // 2026-10-07：中断後の現在の状況は「集中カウントを開始」「休憩を開始」の2択にした。
-      // 「集中カウントを開始」＝この作業をその場で再開して集中カウントを新しく始める（ゲート不要の1クリック）。
+      // 2026-10-07：中断後の現在の状況は「作業を再開」「休憩を開始」の2択（2026-10-26：旧「集中カウントを開始」を改名）。
+      // 「作業を再開」＝この作業をその場で再開して集中カウントを新しく始める（1クリック）。
       // 「休憩を開始」＝タスクに紐づかない休憩（業務全体の休憩）へ移行。休憩は中断した時刻から
       // 続けて数える（中断〜今の間が記録の空白にならないようにするため）。
       document.getElementById("resumeBreakBtn").addEventListener("click", function () {
         resumeSession(onBreak);
-        focusCountArmed = false;
         state.onBreakSessionId = null;
         state.focusCycleAutoPausedSessionId = null;
         state.focusCycleOverageSessionId = null;
@@ -3860,14 +3848,12 @@
         '<p class="ds-date">' + escapeHtml(dayStartDateLabel()) + '</p>' +
         '<p class="ds-greet">' + escapeHtml(dayStartGreeting()) + '</p>' +
         '<p class="day-start-question">今日の業務を開始しますか？</p>' +
-        (focusCountArmed ? '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' : focusGateButtonHtml("big-btn")) +
+        '<button type="button" class="big-btn start" id="dayStartBtn">▶ 開始する</button>' +
         '<p class="generated-note" style="text-align:center; margin-top:8px;">プロジェクト「ルーティン」で開始します。</p>';
-      if (focusCountArmed) {
-        document.getElementById("dayStartBtn").addEventListener("click", function () {
-          if (!startDailyRoutineTask()) return;
-          renderAll();
-        });
-      }
+      document.getElementById("dayStartBtn").addEventListener("click", function () {
+        if (!startDailyRoutineTask()) return;
+        renderAll();
+      });
     } else {
       card.className = "card status-card";
       card.style.removeProperty("--project-color");
@@ -4143,7 +4129,7 @@
           (p.remarks ? '<div class="plan-row-remarks">' + escapeHtml(p.remarks) + '</div>' : '') +
           '<div class="plan-row-actions">' +
           '<button type="button" class="plan-edit-btn" data-plan-id="' + escapeHtml(p.id) + '">編集</button>' +
-          (focusGateSatisfied() ? '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' : focusGateButtonHtml("plan-start-btn")) +
+          '<button type="button" class="plan-start-btn" data-plan-id="' + escapeHtml(p.id) + '">▶ 開始</button>' +
           '<button type="button" class="plan-delete-btn" data-plan-id="' + escapeHtml(p.id) + '">削除</button>' +
           '</div>' +
           '</div>' +
@@ -4236,12 +4222,7 @@
       });
     });
 
-    // 2026-09-23：data-focus-gate（「集中カウント開始」のゲート仮ボタン）にも
-    // 同じ .plan-start-btn クラスが付いているため、除外せずに querySelectorAll すると
-    // ゲート未達の仮ボタンにまで「即座に開始する」本処理が二重に紐づいてしまう
-    // （1回目のクリックでゲートを飛ばして本当に開始されてしまう）。ここでは
-    // ゲート仮ボタンを明示的に除外し、本物の開始ボタンにのみ本処理を紐づける。
-    wrap.querySelectorAll(".plan-start-btn:not([data-focus-gate])").forEach(function (btn) {
+    wrap.querySelectorAll(".plan-start-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var plan = getPlans().find(function (p) { return p.id === btn.getAttribute("data-plan-id"); });
         if (!plan) return;
@@ -5766,7 +5747,7 @@
       html += '<div class="schedule-block-menu" style="top:' + scheduleBlockMenuState.top + 'px;">' +
         '<div class="schedule-block-menu-info"><strong>' + escapeHtml(menuLabel) + '</strong></div>' +
         '<div class="schedule-block-menu-actions">' +
-        (focusGateSatisfied() ? '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' : focusGateButtonHtml("sched-block-resume-btn")) +
+        '<button type="button" class="sched-block-resume-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">▶ 今から再開</button>' +
         '<button type="button" class="sched-block-edit-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">編集</button>' +
         '<button type="button" class="sched-block-delete-btn" data-session-id="' + escapeHtml(scheduleBlockMenuState.sessionId) + '">削除</button>' +
         '<button type="button" class="sched-block-menu-close-btn">閉じる</button>' +
@@ -5842,8 +5823,7 @@
       return;
     }
 
-    // 2026-09-23：plan-start-btn と同じ理由で、ゲート仮ボタン（data-focus-gate）を除外する。
-    var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn:not([data-focus-gate])");
+    var schedResumeBtn = menuEl.querySelector(".sched-block-resume-btn");
     if (schedResumeBtn) {
       schedResumeBtn.addEventListener("click", function () {
         var sessionId = this.getAttribute("data-session-id");
@@ -5889,7 +5869,6 @@
         state.sessions.push({ id: generateId(), project: task.project, memo: task.memo, number: task.number, start: nowLocalIso(), startMs: Date.now(), end: null, taskId: task.id });
         if (!continuingFocusStreak) { state.focusStreakStartIso = nowLocalIso(); state.focusCycleOverrideSec = null; }
         persistState();
-        focusCountArmed = false; // 実際に開始したので、次回また「集中カウント開始」から押し直してもらう
         renderAll();
       });
     }
@@ -7967,17 +7946,6 @@
       document.getElementById("manualEndDate").value = todayDateInputValue();
     }
   }
-
-  // 2026-09-22:「集中カウント開始」ボタン（day-start-card／on-break／今日の予定の各行／
-  // スケジュールの操作メニューなど、再描画のたびに作り直される箇所すべて）のクリックを、
-  // 個別に配線し直すのではなくここで一括して拾う。data-focus-gate属性がある要素なら
-  // どこをクリックしてもフラグを立てて再描画し、実際の開始ボタンに切り替える。
-  document.addEventListener("click", function (evt) {
-    var gateBtn = evt.target.closest ? evt.target.closest("[data-focus-gate]") : null;
-    if (!gateBtn) return;
-    focusCountArmed = true;
-    renderAll();
-  });
 
   // 2026-09-23：全画面オーバーレイの「確認しました」ボタン。静的なDOM要素（renderAll等で
   // 作り直されない）なので、他の一回だけの配線と同じくここで一度だけbindする。
