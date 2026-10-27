@@ -801,6 +801,20 @@
   /* 2026-09-18：連番はそのまま残し、実施中の再生アイコンは行の右側の余白（右上）に表示する形に変更
      （左の連番バッジと数字を奪い合わないように）。 */
   .plan-row-playing-icon { position: absolute; top: 10px; right: 12px; width: 26px; height: 26px; border-radius: 50%; background: #d9702f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; padding-left: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+  /* 2026-10-26：「作業中の項目をもっと目立たせて」→ 実施中の予定を強調：外側のグロー（左だけの太線は2026-10-27に廃止）（ゆっくり脈打つ）・大きめの太字タイトル・点滅する「● 実施中」バッジ。
+     ほかの未完了の予定は少し薄くして（触れる/ホバーで元に戻る）、いまやっている行が一目で分かるようにする。 */
+  .plan-row.plan-row-active { border-width: 2px; box-shadow: 0 0 0 4px color-mix(in srgb, #d9702f 24%, transparent), 0 8px 22px color-mix(in srgb, #d9702f 38%, transparent); animation: planActivePulse 2.6s ease-in-out infinite; z-index: 1; }
+  .plan-row.plan-row-active .plan-row-project, .plan-row.plan-row-active .plan-row-memo { font-size: 15px; font-weight: 800; color: var(--text-primary); }
+  .plan-row.plan-row-active .plan-row-worked { font-size: 13px; }
+  .plan-row.plan-row-active .plan-row-seq { background: #d9702f; box-shadow: 0 0 0 3px color-mix(in srgb, #d9702f 30%, transparent); }
+  .plan-row-active-badge { top: -11px; font-size: 12px; padding: 3px 12px 3px 10px; display: inline-flex; align-items: center; gap: 5px; letter-spacing: .04em; }
+  .plan-row-active-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: planActiveDot 1.2s ease-in-out infinite; }
+  .plan-row-playing-icon { width: 30px; height: 30px; font-size: 13px; animation: planActiveDot 1.2s ease-in-out infinite; }
+  #planListWrap:has(.plan-row-active) .plan-row:not(.plan-row-active):not(.done):not(.plan-row-editing) { opacity: .62; transition: opacity .2s ease; }
+  #planListWrap:has(.plan-row-active) .plan-row:not(.plan-row-active):not(.done):hover { opacity: 1; }
+  @keyframes planActivePulse { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, #d9702f 20%, transparent), 0 6px 16px color-mix(in srgb, #d9702f 28%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in srgb, #d9702f 30%, transparent), 0 10px 26px color-mix(in srgb, #d9702f 46%, transparent); } }
+  @keyframes planActiveDot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .plan-row.plan-row-active, .plan-row-active-badge::before, .plan-row-playing-icon { animation: none; } }
   .plan-row-checkbox { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; accent-color: var(--series-1); margin-top: 2px; }
   /* 「今日の予定」の並び替え用ドラッグハンドル（未完了の予定のみに表示）。
      6つの点で構成する、よく使われる「つかむ」アイコン形。マウスのドラッグだけでなく
